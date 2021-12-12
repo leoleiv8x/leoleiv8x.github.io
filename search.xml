@@ -1,0 +1,1449 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>epoll发展及redis简单使用</title>
+    <url>/posts/90e8.html</url>
+    <content><![CDATA[<h2 id="一、BIO到Epoll发展"><a href="#一、BIO到Epoll发展" class="headerlink" title="一、BIO到Epoll发展"></a>一、BIO到Epoll发展</h2><p>如果下图是BIO到NIO的多路复用的一个发展图:</p>
+<p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637894869713.png" alt="1637894869713"></p>
+<span id="more"></span>
+
+<h3 id="一-BIO"><a href="#一-BIO" class="headerlink" title="(一)BIO"></a>(一)BIO</h3><p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637895046279.png" alt="1637895046279"></p>
+<p>客户端传来文件,服务器线程读取fd8文件标识符(read fd8),如果没有的话就会阻塞,一直等待数据包的到达,所以服务器只能开辟新的线程来读取资源才行,如果只用一个线程,即使f9的数据包已经到达,线程还是阻塞的.这样计算机的资源运用起来,所以后面内核发生了变化.</p>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">问题:</span><br><span class="line"><span class="code">	1.单线程读取文件描述符,如果数据包未到达会阻塞</span></span><br><span class="line"><span class="code">	2.若用其他线程在读取其他的文件描述符,线程的切换需要消耗资源	</span></span><br><span class="line"><span class="code">扩展:</span></span><br><span class="line"><span class="code">	cpu只有1颗JVM: 一个线程的成本  1MB</span></span><br><span class="line"><span class="code">	1.线程多了调度成本CPU浪费</span></span><br><span class="line"><span class="code">	2内存成本</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="二-NIO"><a href="#二-NIO" class="headerlink" title="(二)NIO"></a>(二)NIO</h3><p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637895530541.png" alt="1637895530541"></p>
+<blockquote>
+<p>下载 yum install man man-pages (这是一个帮助文档软件,一共有8类文档)</p>
+<p>2:系统调用</p>
+<p>指令man  2 read -&gt;系统内核给程序暴露的一个方法-&gt;读取文件描述符</p>
+<p>​    原文: read - read from a file descriptor</p>
+<p>man socket -&gt; 有一个文件描述符type为SOCK_NONBLOCK</p>
+<p>​    原文: SOCK_NONBLOCK   Set  the  O_NONBLOCK  file status flag on the new open file description.  Using this flag saves extra calls to fcntl(2) to achieve the same result.</p>
+<p>因为多了一个SOCK_NONBLOCK类型的文件描述符,所以可以read多个文件描述符且线程不在阻塞了</p>
+<p>同一个线程通过轮询遍历(死循环)的方式,读取fd8,如果没有就读取fd9了,但还是同一个线程完成的,所以是同步非阻塞IO</p>
+</blockquote>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">问题:</span><br><span class="line"><span class="code">	1.如果有很多文件描述符,1000fd,那么用户进程轮询调用1000次kernel,如果这1000次中只有1,2个有返回的数据包</span></span><br><span class="line"><span class="code">	这样的出现了成本问题,每次都要调用1000次</span></span><br><span class="line"><span class="code">设想:</span></span><br><span class="line"><span class="code">	如果我们知道有哪些数据包要返回?这样的话就不用调用1000次</span></span><br></pre></td></tr></table></figure>
+
+<p>11</p>
+<h3 id="三-NIO-多路复用"><a href="#三-NIO-多路复用" class="headerlink" title="(三)NIO-多路复用"></a>(三)NIO-多路复用</h3><p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637897732472.png" alt="1637897732472"></p>
+<p>内核继续发展,增加了一个系统调用叫select</p>
+<blockquote>
+<p>man 2 select</p>
+<p>原文: select()  and  pselect()  allow a program to monitor multiple file descriptors, waiting until one or<br>    more of the file descriptors become “ready” for some class of I/O operation (e.g., input  possible).<br>    A  file  descriptor  is  considered ready if it is possible to perform a cor</p>
+<p>监控,查询1000fds里面那些已经返回了,返回了的就是ready状态,然后再调用read对应已经准备好的文件描述符,这样就是只有返回数据包的文件描述符我们才read</p>
+</blockquote>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">问题:</span><br><span class="line"><span class="code">	1.存在用户态和内核态,fd文件描述符相关数据拷来拷去(这里的文件描述符指的是否有传输数据的fd)</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="四-Epoll-多路复用-完整版"><a href="#四-Epoll-多路复用-完整版" class="headerlink" title="(四)Epoll-多路复用(完整版)"></a>(四)Epoll-多路复用(完整版)</h3><p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637980061064.png" alt="1637980061064"></p>
+<p>内核的升级,增加了对于用户空间和内核空间的共享空间mmap(红黑树+链表),<strong>省去了文件描述符的拷贝过程</strong></p>
+<ul>
+<li>红黑树   放1000fd</li>
+<li>链表       放ready的fd</li>
+<li>共享空间(mmap)    <ol>
+<li>原文: creates  a  new  mapping  in the virtual address space of the calling process.   The starting address for the new mapping is specified in addr.</li>
+<li><strong>该空间的修改是通过内核完成的,查询的话用户和内核均可</strong></li>
+<li>步骤<ol>
+<li>线程调用epool,会创建一个epoll的文件描述符(通过它来跟共享空间打交道)</li>
+<li>add  delete 会在红黑树中进行注册或剔除操作</li>
+<li>wait  如果链表有数据就wait之后就返回,返回的是实际的文件描述符</li>
+<li>调用read方法</li>
+</ol>
+</li>
+</ol>
+</li>
+</ul>
+<p><strong>问题:NIO和Epool的区别在哪里?</strong></p>
+<p><strong>回答:NIO每次都要select对1000个文件描述符来遍历,而Epool是在文件描述符创建的时候就会在红黑树中注册,然后内核会将返回数据包的文件描述符放到链表中,用户只需要wait等待,遍历链表并read就可以了</strong></p>
+<blockquote>
+<p>扩展:</p>
+<p>​    什么是零拷贝?</p>
+<p>​        man 2 sendfile</p>
+<ul>
+<li>原文: sendfile() copies data between one file descriptor and another.  Because this copying is done within</li>
+</ul>
+<p>​       the kernel, sendfile() is more efficient than the combination of read(2) and write(2),  which  would</p>
+<p>​    require transferring data to and from user space.</p>
+<ul>
+<li><p>理解:</p>
+<p>​    内核之间两个文件描述符的拷贝,不会通过用户,效率更高</p>
+<p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637997558086.png" alt="1637997558086"></p>
+</li>
+</ul>
+<p>sendfile(普通拷贝): file-&gt;kernel-&gt;kernel缓冲区-&gt;read-&gt;write-&gt;网卡</p>
+<p>sendfile(零拷贝): file-&gt;kernel-&gt;kernel(缓冲区)-&gt;网卡</p>
+<p>​    Kafka中的零拷贝:</p>
+<p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637982768134.png" alt="1637982768134"></p>
+<p>这里零拷贝是用户空间到内核空间减少的这个过程,通过mmap来挂载文件,消费者通过偏移量读数据,走sendfile,输入来自于文件,输出来自消费者.</p>
+</blockquote>
+<h2 id="二、redis原理"><a href="#二、redis原理" class="headerlink" title="二、redis原理"></a>二、redis原理</h2><p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637984096715.png" alt="1637984096715"></p>
+<p>​    <strong>redis是一个单线程,单实例的程序,如果我们并发很多请求,它是如何变的很快的呢?</strong></p>
+<p>​        多个客户端请求kernel,通过epoll来遍历那些传了请求,并<strong>按连接的命令顺序</strong>进行逐个处理</p>
+<p>​    如下图所示,niginx也一样:</p>
+<p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637984315464.png" alt="1637984315464"></p>
+<h2 id="三、Redis使用"><a href="#三、Redis使用" class="headerlink" title="三、Redis使用"></a>三、Redis使用</h2><figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">redis默认有16个数据库(0~15),且各个库的数据是独立的,存储的数据是key-value的键值对</span><br><span class="line"></span><br><span class="line">1.通过指令可以查看命令参数对应的信息</span><br><span class="line"><span class="code">	redis-cli -h</span></span><br><span class="line"><span class="code">2.连接端口为6379的redis服务的第8个库</span></span><br><span class="line"><span class="code">	redis-cli -p 6379 -n 8</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>问题:如何自学redis呢?</strong><br>    在redis客户端中有help命令(通过tab可补全)</p>
+<p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637995445290.png" alt="1637995445290"></p>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">指令:</span><br><span class="line"><span class="code">	1.keys *	查询所有key中指定的类型的key</span></span><br><span class="line"><span class="code">	2.flushdb 	刷新库,相当于清空</span></span><br><span class="line"><span class="code">	3.help @String|List|hash|Set|sortedSet 可查看相关操作来学习</span></span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+        <category>redis</category>
+      </categories>
+      <tags>
+        <tag>redis中Eoll的发展</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>布隆过滤器和redis作为缓存的使用</title>
+    <url>/posts/3ae1.html</url>
+    <content><![CDATA[<h2 id="一、布隆过滤器"><a href="#一、布隆过滤器" class="headerlink" title="一、布隆过滤器"></a>一、布隆过滤器</h2><p>在我们学习中,可以去redis的官方文档,点击module,这里面有很多三方的程序,供我们学习</p>
+<p>网站:     <a href="https://redis.io/modules">https://redis.io/modules</a></p>
+<h3 id="1-概念"><a href="#1-概念" class="headerlink" title="1.概念"></a>1.概念</h3><p>布隆过滤器(Probabilistic Data Structures for Redis):    <strong>redis概率数据结构</strong></p>
+<p>RedisBloom模块提供四种数据结构:一个可伸缩的Bloom过滤器、一个布谷鸟过滤器、一个count-min草图和一个top-k。这些数据结构用完美的准确性换取了极高的内存效率，因此它们对大数据和流应用程序特别有用。</p>
+<span id="more"></span>
+
+<h3 id="2-作用"><a href="#2-作用" class="headerlink" title="2.作用"></a>2.作用</h3><p>使用Bloom和cuckoo过滤器来确定一个元素是否属于一个集合的成员，具有很高的确定性</p>
+<ul>
+<li><p>场景</p>
+<p><strong>常用来解决redis缓存穿透问题</strong></p>
+</li>
+</ul>
+<h3 id="3-安装"><a href="#3-安装" class="headerlink" title="3.安装"></a>3.安装</h3><figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">1.访问redis.io</span><br><span class="line">2.点击modules</span><br><span class="line">3.访问RedisBloom的github      https://github.com/RedisBloom/RedisBloom</span><br><span class="line">4.linux中wget  <span class="emphasis">*.zip</span></span><br><span class="line"><span class="emphasis">5.yum install unzip</span></span><br><span class="line"><span class="emphasis">6.unzip *</span>.zip</span><br><span class="line">7.make</span><br><span class="line">8.cp bloom.so  /opt/lei/redis5/</span><br><span class="line">9.redis-server --loadmodule  /opt/lei/redis5/redisbloom.so </span><br><span class="line">10.redis-cli  </span><br><span class="line"><span class="code">	后续就可以进行使用了</span></span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638762477000.png" alt="1638762477000"></p>
+<h3 id="4-使用"><a href="#4-使用" class="headerlink" title="4.使用"></a>4.使用</h3><figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">1.通过添加一个新项目创建一个新的bloom过滤器</span><br><span class="line"><span class="code">	BF.ADD newFilter foo	//(integer) 1</span></span><br><span class="line"><span class="code"></span></span><br><span class="line">2.找出过滤器中是否存在一个项目</span><br><span class="line"><span class="code">	BF.EXISTS newFilter foo	//(integer) 1</span></span><br><span class="line"><span class="code">3.在本例中，1意味着foo最有可能出现在newFilter所表示的集合中。但请记住，使用Bloom过滤器可能会出现误报</span></span><br><span class="line"><span class="code">	BF.EXISTS newFilter bar	//(integer) 0</span></span><br><span class="line"><span class="code">	</span></span><br><span class="line"><span class="code">	注意:值0表示bar肯定不在集合中。布隆过滤器不允许假阴性</span></span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638600949104.png" alt="1638600949104"></p>
+<h3 id="5-弊端及原因"><a href="#5-弊端及原因" class="headerlink" title="5.弊端及原因"></a>5.弊端及原因</h3><p>布隆过滤器是使用概率数据结构来进行数据的过滤,也就是概率解决问题</p>
+<ul>
+<li><p>概率解决问题的特性</p>
+<ol>
+<li>不可能百分百阻挡 (&gt;1%)</li>
+<li>你有啥,有的就像bitmap中标记</li>
+<li>请求可能被误标记</li>
+<li>但是,一定概率会大量减少放行(穿透)</li>
+<li>成本低</li>
+</ol>
+</li>
+<li><p>布隆过滤器过滤原理</p>
+<p>添加一个元素的时候会通过映射函数在bitmap也就是二进制位上进行标记</p>
+<p>如果查找这个元素是否存在的时候就会反过来去bitmap上面去找</p>
+</li>
+</ul>
+<p><strong>注意: 可能会出现bitmap上可能被其他元素标记,会误认为已经存在</strong></p>
+<p><img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638602107076.png" alt="1638602107076"></p>
+<h2 id="二、redis作为缓存的使用"><a href="#二、redis作为缓存的使用" class="headerlink" title="二、redis作为缓存的使用"></a>二、redis作为缓存的使用</h2><h3 id="1-问题引入"><a href="#1-问题引入" class="headerlink" title="1.问题引入"></a>1.问题引入</h3><ul>
+<li><p>问题1: redis作为数据库或缓存的区别是什么?</p>
+<ol>
+<li>缓存数据没那么重要</li>
+<li>缓存不是全量数据</li>
+<li>缓存应该随着访问变化</li>
+<li>一般放的是热数据</li>
+</ol>
+</li>
+<li><p>问题2: redis作为缓存应该考虑什么?</p>
+<ol>
+<li>redis里的数据怎么能随着业务变化,只保留热数据</li>
+<li>原因是内存大小有限,有瓶颈</li>
+</ol>
+</li>
+</ul>
+<h3 id="2-特性"><a href="#2-特性" class="headerlink" title="2.特性"></a>2.特性</h3><p>参考资料: <a href="http://redis.cn/topics/lru-cache.html">将Redis当做使用LRU算法的缓存来使用</a> </p>
+<p><img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638773788965.png" alt="1638773788965"></p>
+<ul>
+<li><p>业务逻辑</p>
+<p><strong>key的有效期的操作</strong>,如下图所示</p>
+<p>详情请参考: <a href="http://redis.cn/commands/expire.html">过期（Expires）</a> </p>
+</li>
+</ul>
+<p><img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638772714618.png" alt="1638772714618"></p>
+<blockquote>
+<p>总结:</p>
+<ol>
+<li>key的有效期不能随着访问延长</li>
+<li>发生写,会剔除过期时间</li>
+<li>EXPIRE-倒计时,且redis不能延长时间</li>
+<li>EXPIREAT-定时</li>
+</ol>
+</blockquote>
+<ul>
+<li><p>业务运转</p>
+<p>内存是有限的,所以redis有自己的淘汰机制,用来淘汰冷数据</p>
+<p><a href="http://redis.cn/topics/lru-cache.html">将Redis当做使用LRU算法的缓存来使用</a> </p>
+<p>在redis_6379.conf文件中可以设置</p>
+<ol>
+<li>maxmemory <bytes></li>
+<li>maxmemory-policy noeviction<ul>
+<li>LFU   碰了多少次</li>
+<li>LRU  多久没碰他</li>
+</ul>
+</li>
+</ol>
+</li>
+</ul>
+<h3 id="3-过期判断原理"><a href="#3-过期判断原理" class="headerlink" title="3.过期判断原理"></a>3.过期判断原理</h3><p>​    <img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638774303657.png" alt="1638774303657"></p>
+<h4 id="1-被动访问是判定-被动"><a href="#1-被动访问是判定-被动" class="headerlink" title="1.被动访问是判定(被动)"></a>1.被动访问是判定(被动)</h4><p>​    服务器中key已经过期但是已经保存,当用户访问的时候通过时间戳和访问的key的时间戳来判定是否过期,如        果过期则返回用户已过期,并将这个数据给删除</p>
+<h4 id="2-周期轮询判定-主动"><a href="#2-周期轮询判定-主动" class="headerlink" title="2.周期轮询判定(主动)"></a>2.周期轮询判定(主动)</h4><p>​    当然，这样是不够的，因为有些过期的keys，永远不会访问他们。 无论如何，这些keys应该过期，所以定时随机测试设置keys的过期时间。所有这些过期的keys将会从密钥空间删除。</p>
+<p>具体就是Redis每秒10次做的事情：</p>
+<ol>
+<li>测试随机的20个keys进行相关过期检测。</li>
+<li>删除所有已经过期的keys。</li>
+<li>如果有多于25%的keys过期，重复步奏1.</li>
+</ol>
+<p>这是一个平凡的概率算法，基本上的假设是，我们的样本是这个密钥控件，并且我们不断重复过期检测，直到过期的keys的百分百低于25%,这意味着，在任何给定的时刻，最多会清除1/4的过期keys</p>
+<h2 id=""><a href="#" class="headerlink" title=""></a></h2>]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+        <category>redis</category>
+      </categories>
+      <tags>
+        <tag>布隆过滤器和redis作为缓存的使用</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>redis中RDB和AOF实操</title>
+    <url>/posts/3844.html</url>
+    <content><![CDATA[<h2 id="RDB和AOF实操"><a href="#RDB和AOF实操" class="headerlink" title="RDB和AOF实操"></a>RDB和AOF实操</h2><h3 id="1-conf文件修改"><a href="#1-conf文件修改" class="headerlink" title="1.conf文件修改"></a>1.conf文件修改</h3><ol>
+<li>daemonize no (默认不是守护进程)</li>
+<li>注释日志文件</li>
+<li>开启rdb和aof</li>
+<li>关闭4.0的新特性,rdb和aof的混合体</li>
+</ol>
+<span id="more"></span>
+
+<p><img data-src="../images/redis%E4%B8%ADRDB%E5%92%8CAOF%E5%AE%9E%E6%93%8D.asset/1638947865113.png" alt="1638947865113"></p>
+<p><img data-src="../images/redis%E4%B8%ADRDB%E5%92%8CAOF%E5%AE%9E%E6%93%8D.asset/1638947980654.png" alt="1638947894848"></p>
+<h3 id="2-删除文件并重启服务"><a href="#2-删除文件并重启服务" class="headerlink" title="2.删除文件并重启服务"></a>2.删除文件并重启服务</h3><p>​    <img data-src="../images/redis%E4%B8%ADRDB%E5%92%8CAOF%E5%AE%9E%E6%93%8D.asset/1638950010250.png" alt="1638950010250"></p>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line"><span class="bullet">1.</span> 删除工作目录中的文件</span><br><span class="line"></span><br><span class="line"><span class="bullet">2.</span> 重新启动服务</span><br><span class="line"><span class="code">	 redis-server /etc/redis/6379.conf</span></span><br><span class="line"><span class="code">	 </span></span><br><span class="line"><span class="code">3. 查看文件</span></span><br><span class="line"><span class="code">	 cd /var/lib/redis/</span></span><br><span class="line"><span class="code"></span></span><br><span class="line">结果:</span><br><span class="line"><span class="code">	服务阻塞运行,生成新的appendonly.aof文件,</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-触发AOF"><a href="#3-触发AOF" class="headerlink" title="3.触发AOF"></a>3.触发AOF</h3><p>​    客户端操作之后触发aof,在查看appedonly.aof中追加命令</p>
+<p><img data-src="../images/redis%E4%B8%ADRDB%E5%92%8CAOF%E5%AE%9E%E6%93%8D.asset/1638950903277.png" alt="1638950587362"></p>
+<h3 id="4-触发RDB"><a href="#4-触发RDB" class="headerlink" title="4.触发RDB"></a>4.触发RDB</h3><ol>
+<li><p>客户端进行操作,然后调用BGSAVE</p>
+<p><img data-src="../images/redis%E4%B8%ADRDB%E5%92%8CAOF%E5%AE%9E%E6%93%8D.asset/1638951447378.png" alt="1638951447378"></p>
+</li>
+<li><p>查看dump.rdb</p>
+<p>​    该文件二进制的内容,看不懂可以使用redis-check-rdb 来进行一些内容查看</p>
+</li>
+</ol>
+<p><img data-src="../images/redis%E4%B8%ADRDB%E5%92%8CAOF%E5%AE%9E%E6%93%8D.asset/1638951522171.png" alt="1638951522171"></p>
+<h3 id="5-优化appendonly-aof-4-0之前"><a href="#5-优化appendonly-aof-4-0之前" class="headerlink" title="5.优化appendonly.aof(4.0之前)"></a>5.优化appendonly.aof(4.0之前)</h3><p>​    执行BGREWRITEAOF,删除抵消的指令,从而优化文件大小,提高加载性能</p>
+<p><img data-src="../images/redis%E4%B8%ADRDB%E5%92%8CAOF%E5%AE%9E%E6%93%8D.asset/1638951628298.png" alt="1638951628298"></p>
+<h3 id="6-优化appendonly-aof-4-0之后"><a href="#6-优化appendonly-aof-4-0之后" class="headerlink" title="6.优化appendonly.aof(4.0之后)"></a>6.优化appendonly.aof(4.0之后)</h3><p>需在配置文件中开启aof和rdb的混合体支持,然后4.0之后执行命令BGREWRITEAOF</p>
+<p>刚开始aof文件是空的,当客户端操作之后,会在aof文件后端明文添加,如果我们执行BGREWRITEAOF,会将这些数据转为实时的热点数据,之后写的数据在明文进行追加</p>
+<p><img data-src="../images/redis%E4%B8%ADRDB%E5%92%8CAOF%E5%AE%9E%E6%93%8D.asset/1639021367129.png" alt="1639021367129"></p>
+<p><img data-src="../images/redis%E4%B8%ADRDB%E5%92%8CAOF%E5%AE%9E%E6%93%8D.asset/1639021394455.png" alt="1639021394455"></p>
+<p><img data-src="redisRDB%E5%92%8CAOF%E5%AE%9E%E6%93%8D.assets/1639021417930.png" alt="1639021417930"></p>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+        <category>redis</category>
+      </categories>
+      <tags>
+        <tag>redis中RDB和AOF实操</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>redis的value类型解析</title>
+    <url>/posts/1575.html</url>
+    <content><![CDATA[<p>本章讲解的是redis的常用API和常见的场景,如下图所示</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1637998686120.png" alt="1637998686120"></p>
+<span id="more"></span>
+
+<h2 id="一、string"><a href="#一、string" class="headerlink" title="一、string"></a>一、string</h2><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128202540989.png" alt="image-20211128202540989"></p>
+<h3 id="1-字符串-值的基本操作"><a href="#1-字符串-值的基本操作" class="headerlink" title="1.字符串(值的基本操作)"></a>1.字符串(值的基本操作)</h3><h4 id="1-set-NX-XX-方法"><a href="#1-set-NX-XX-方法" class="headerlink" title="1.set(NX|XX)方法"></a>1.set(NX|XX)方法</h4><p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638000624143.png" alt="1638000624143"></p>
+<ul>
+<li>默认 有key覆盖,没key就创建<br>NX    Only set the key if it does not already exist.  -只能新建</li>
+<li>XX  Only set the key if it already exist. -只能更新</li>
+</ul>
+<h4 id="2-mset和mget"><a href="#2-mset和mget" class="headerlink" title="2.mset和mget"></a>2.mset和mget</h4><p>​    msetnx(原子性操作)</p>
+<p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638000926518.png" alt="1638000926518"></p>
+<h4 id="3-append"><a href="#3-append" class="headerlink" title="3.append"></a>3.append</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638001173047.png" alt="1638001173047"></p>
+<h4 id="4-setrange和getrange"><a href="#4-setrange和getrange" class="headerlink" title="4.setrange和getrange"></a>4.setrange和getrange</h4><ul>
+<li><p>正反向索引</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638001545120.png" alt="1638001545120"></p>
+<p>setrange中如果set的value值长度大于原来的值,会改变key长度并添加</p>
+</li>
+</ul>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638002224112.png" alt="1638002224112"></p>
+<h4 id="5-strlen"><a href="#5-strlen" class="headerlink" title="5.strlen"></a>5.strlen</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638002458992.png" alt="1638002458992"></p>
+<h3 id="2-数值"><a href="#2-数值" class="headerlink" title="2.数值"></a>2.数值</h3><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638176278061.png" alt="1638176278061"></p>
+<h4 id="1-redis的优化机制"><a href="#1-redis的优化机制" class="headerlink" title="1.redis的优化机制"></a>1.<strong>redis的优化机制</strong></h4><p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128151649493.png" alt="image-20211128151649493"></p>
+<h5 id="1-type"><a href="#1-type" class="headerlink" title="(1) type"></a>(1) type</h5><p>​            <strong>对于每个key都有一个type</strong></p>
+<p>​            <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638003274165.png" alt="1638003274165"></p>
+<p>​            命令是哪个分组的,set之后的value就是哪个类型的</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638003845796.png" alt="1638003845796"></p>
+<h5 id="2-encoding"><a href="#2-encoding" class="headerlink" title="(2)encoding"></a>(2)encoding</h5><p>​    随着不同的api操作encoding会改变</p>
+<h6 id="1-int"><a href="#1-int" class="headerlink" title="1.int"></a>1.int</h6><p>​                这里的set进去的string类型的k2的encoding是int类型,因为它的value是一个数值99,所以通过判断encoding类                型我们还可以进行数值对应的api操作</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128151433771.png" alt="image-20211128151433771"></p>
+<h6 id="2-embstr"><a href="#2-embstr" class="headerlink" title="2.embstr"></a>2.embstr</h6><h6 id="3-raw"><a href="#3-raw" class="headerlink" title="3.raw"></a>3.raw</h6><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128154528738.png" alt="image-20211128154528738"></p>
+<h5 id="3-原子性操作"><a href="#3-原子性操作" class="headerlink" title="(3)原子性操作"></a>(3)原子性操作</h5><p>​    mgetset原子性操作,通过一个命令进行一次通信,减少了一次通信该过程,减少了IO</p>
+<h5 id="4-二进制安全"><a href="#4-二进制安全" class="headerlink" title="(4)二进制安全"></a>(4)二进制安全</h5><p>流分为字节流和字符流.</p>
+<p>redis传输走的是字节流,只要双方有一致的编解码,数据就不会破坏,不会影响数据的存储</p>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">set k1 99</span><br><span class="line">那么它会事先判断能否数字计算,如果能encoding就是int类型</span><br><span class="line">下次调用加减的时候就可以少进行一次判断,提高性能,但他底层还是二进制进行加减的</span><br></pre></td></tr></table></figure>
+
+<p>如下图,分别在k2和k3中存入了UTF8和GBK格式的’中’,启动客户端不加–raw的话就默认为asscii码,加了就是本地的编码</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128155633153.png" alt="image-20211128155633153"></p>
+<h4 id="2-APi"><a href="#2-APi" class="headerlink" title="2.APi"></a>2.APi</h4><h5 id="1-incr-incrby和incrbyfloat"><a href="#1-incr-incrby和incrbyfloat" class="headerlink" title="(1).incr,incrby和incrbyfloat"></a>(1).incr,incrby和incrbyfloat</h5><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128152434516.png" alt="image-20211128152434516"></p>
+<h5 id="2-decr-decrby"><a href="#2-decr-decrby" class="headerlink" title="(2).decr,decrby"></a>(2).decr,decrby</h5><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128152528523.png" alt="image-20211128152528523"></p>
+<h3 id="3-bitmap-重要"><a href="#3-bitmap-重要" class="headerlink" title="3.bitmap(重要)"></a>3.bitmap(重要)</h3><p><strong>bitmap算得上redis的核心了,常见场景如下图所示:</strong></p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128202637232.png" alt="image-20211128202637232"></p>
+<h4 id="1-常见场景"><a href="#1-常见场景" class="headerlink" title="1.常见场景"></a>1.常见场景</h4><ol>
+<li><p><strong>场景一:有用户系统,统计用户登录天数,且窗口随机(在某个范围内统计用户登录的天数)</strong></p>
+<p>解决方式1    :    通过mysql存表查询获取</p>
+<p>解决方式2    :    通过redis操作解决(计算速度快,节省磁盘空间)</p>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">指令:</span><br><span class="line"><span class="code">	1.设置天数</span></span><br><span class="line"><span class="code">		setbit sean 1 1</span></span><br><span class="line"><span class="code">		setbit sean 7 1</span></span><br><span class="line"><span class="code">		setbit sean 364 1</span></span><br><span class="line"><span class="code">		strlen sean // 长度</span></span><br><span class="line"><span class="code">	2.统计某个范围的天数(一个字节代表能表示8天)</span></span><br><span class="line"><span class="code">    	bitcount sean -2 -1</span></span><br><span class="line"><span class="code">通过上述设置可得到结果在redis存储</span></span><br><span class="line"><span class="code">日期(第几天):	1	2	3	4	5	6	7	8	9	10 	...	   </span></span><br><span class="line"><span class="code">	jack 	    0	1	0	1	0	1	0	1	0	1 	...</span></span><br><span class="line"><span class="code">	tom	 		1	1	0	1	0	1	1	0	0	0	...</span></span><br></pre></td></tr></table></figure></li>
+<li><p><strong>场景二:618做活动送礼物,大库备货多少礼物?假设有2亿用户</strong></p>
+<blockquote>
+<p>账号存在僵尸用户(冷热用户/忠诚用户)</p>
+<p>步骤:</p>
+<ol>
+<li><p>统计活跃用户(随机窗口)</p>
+<p>比如统计 2-3号都登陆的, 连续登录要去重</p>
+<p>​    <strong>key为天数,bit每一位代表一个用户,做或预算之后在统计</strong></p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638154213403.png" alt="1638154213403"></p>
+</li>
+</ol>
+</blockquote>
+</li>
+</ol>
+<h4 id="2-API"><a href="#2-API" class="headerlink" title="2.API"></a>2.API</h4><h5 id="1-setbit"><a href="#1-setbit" class="headerlink" title="1.setbit"></a>1.setbit</h5><p>​    基于redis的二进制安全,进行的二进制位图操作</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128200037607.png" alt="image-20211128200037607"></p>
+<p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128195726893.png" alt="image-20211128195726893"></p>
+<h5 id="2-bitpos"><a href="#2-bitpos" class="headerlink" title="2.bitpos"></a>2.bitpos</h5><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128201543625.png" alt="image-20211128201543625"></p>
+<h5 id="3-bitcount"><a href="#3-bitcount" class="headerlink" title="3.bitcount"></a>3.bitcount</h5><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128201701012.png" alt="image-20211128201701012"></p>
+<h5 id="4-bittop"><a href="#4-bittop" class="headerlink" title="4.bittop"></a>4.bittop</h5><p>​    可以进行位操作</p>
+<p>​            <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128202002296.png" alt="image-20211128202002296"></p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128202257417.png" alt="image-20211128202257417"></p>
+<h2 id="二、list"><a href="#二、list" class="headerlink" title="二、list"></a>二、list</h2><h3 id="1-结构设计"><a href="#1-结构设计" class="headerlink" title="1.结构设计"></a>1.结构设计</h3><p>key上面有head和tail指针,可以通过key进行快速的访问</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638154598316.png" alt="1638154598316"></p>
+<p>相当于一个双向链表可以实现栈,队列等命令</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638154981515.png" alt="1638154981515"></p>
+<h3 id="2-API-1"><a href="#2-API-1" class="headerlink" title="2.API"></a>2.API</h3><h4 id="1-lpush和rpush"><a href="#1-lpush和rpush" class="headerlink" title="1.lpush和rpush"></a>1.lpush和rpush</h4><h4 id="2-lpop和rpop"><a href="#2-lpop和rpop" class="headerlink" title="2.lpop和rpop"></a>2.lpop和rpop</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638155697036.png" alt="1638155697036"></p>
+<h4 id="3-lrange和rrange-array"><a href="#3-lrange和rrange-array" class="headerlink" title="3.lrange和rrange(array)"></a>3.lrange和rrange(array)</h4><p>​        这里的l是指的list的意思,相当于是查找list指定索引的数据(redis有正反索引所以查找更快速)</p>
+<p>​        <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638155886884.png" alt="1638155886884"></p>
+<h4 id="4-lindex和lset-array"><a href="#4-lindex和lset-array" class="headerlink" title="4.lindex和lset(array)"></a>4.lindex和lset(array)</h4><p>​        单个索引获取元素</p>
+<p>​        <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638156194292.png" alt="1638156194292"></p>
+<h4 id="5-lrem和linsert"><a href="#5-lrem和linsert" class="headerlink" title="5.lrem和linsert"></a>5.lrem和linsert</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638156671341.png" alt="1638156671341"></p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638158201777.png" alt="1638158201777"></p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638158371343.png" alt="1638158371343"></p>
+<p>​    删除k3中后面两个a:</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638167112710.png" alt="1638167112710"></p>
+<h4 id="6-llen和ltrim"><a href="#6-llen和ltrim" class="headerlink" title="6.llen和ltrim"></a>6.llen和ltrim</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638170880938.png" alt="1638170880938"></p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638170861034.png" alt="1638170861034"></p>
+<h4 id="7-blpop-brpop-brpoplpush"><a href="#7-blpop-brpop-brpoplpush" class="headerlink" title="7.blpop,brpop,brpoplpush"></a>7.blpop,brpop,brpoplpush</h4><figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">阻塞的单播队列:</span><br><span class="line"><span class="code">		client1:</span></span><br><span class="line"><span class="code">			blpop key1 0</span></span><br><span class="line"><span class="code">		之后就会一直阻塞知道获取到key(可自定义超时时间)</span></span><br><span class="line"><span class="code">		client2:</span></span><br><span class="line"><span class="code">			blpop key1 0</span></span><br><span class="line"><span class="code">		client3:</span></span><br><span class="line"><span class="code">			blpush key1 1  -&gt;执行之后client1获取到</span></span><br><span class="line"><span class="code">			blpush key1 1  -&gt;执行之后client2获取到</span></span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638168037040.png" alt="1638168037040"></p>
+<h2 id="三、hash"><a href="#三、hash" class="headerlink" title="三、hash"></a>三、hash</h2><ul>
+<li>hash的引入原因:</li>
+</ul>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638172713521.png" alt="1638172713521"></p>
+<h3 id="1-常用场景"><a href="#1-常用场景" class="headerlink" title="1.常用场景"></a>1.常用场景</h3><ul>
+<li>点赞,收藏,详情页(对filed进行数值的计算)</li>
+</ul>
+<h3 id="2-API-2"><a href="#2-API-2" class="headerlink" title="2.API"></a>2.API</h3><h4 id="1-hset和hget"><a href="#1-hset和hget" class="headerlink" title="1.hset和hget"></a>1.hset和hget</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638172803779.png" alt="1638172803779"></p>
+<h4 id="2-hkeys-hvals-hgetall"><a href="#2-hkeys-hvals-hgetall" class="headerlink" title="2.hkeys,hvals,hgetall"></a>2.hkeys,hvals,hgetall</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638173078107.png" alt="1638173078107"></p>
+<h4 id="3-hincrby-hincrbyfloat"><a href="#3-hincrby-hincrbyfloat" class="headerlink" title="3.hincrby,hincrbyfloat"></a>3.hincrby,hincrbyfloat</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638173743122.png" alt="1638173743122"></p>
+<h2 id="四、set"><a href="#四、set" class="headerlink" title="四、set"></a>四、set</h2><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638179087443.png" alt="1638179087443"></p>
+<h3 id="1-特性"><a href="#1-特性" class="headerlink" title="1.特性"></a>1.特性</h3><ul>
+<li>无序</li>
+<li>随机</li>
+<li>去重</li>
+<li>放入的多少不同,元素存储的顺序不同</li>
+</ul>
+<h3 id="2-常用场景"><a href="#2-常用场景" class="headerlink" title="2.常用场景"></a>2.常用场景</h3><ul>
+<li><p><strong>场景1:随机抽10个奖品?</strong></p>
+<ol>
+<li>用户数量是否小于奖品数量</li>
+<li>用户中奖是否重复</li>
+</ol>
+</li>
+<li><p>解决</p>
+<p>srandmember key count</p>
+<ol>
+<li><p>正数:取出一个去重的结果集(不能超过已有集,也就是<strong>一个人最多中一件礼物</strong>)</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129201925402.png" alt="image-20211129201925402"></p>
+</li>
+<li><p>负数:取出一个带重复的结果集,一定要满足你要的数量(<strong>一个人可以中多件礼物</strong>)</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129201954441.png" alt="image-20211129201954441"></p>
+</li>
+<li><p>0:不返回</p>
+</li>
+</ol>
+</li>
+</ul>
+<h3 id="3-API"><a href="#3-API" class="headerlink" title="3.API"></a>3.API</h3><h4 id="1-sadd-去重-srem-smembers"><a href="#1-sadd-去重-srem-smembers" class="headerlink" title="1.sadd(去重),srem,smembers"></a>1.sadd(去重),srem,smembers</h4><p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638177564552.png" alt="1638177564552"></p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638177609700.png" alt="1638177609700"></p>
+<h4 id="2-sinter-sinterstore-交集"><a href="#2-sinter-sinterstore-交集" class="headerlink" title="2.sinter,sinterstore(交集)"></a>2.sinter,sinterstore(交集)</h4><p>​            </p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638178076945.png" alt="1638178076945"></p>
+<h4 id="3-sunion-sunionstore-并集且去重"><a href="#3-sunion-sunionstore-并集且去重" class="headerlink" title="3.sunion,sunionstore(并集且去重)"></a>3.sunion,sunionstore(并集且去重)</h4><p>​        </p>
+<p>​        <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638178367680.png" alt="1638178367680"></p>
+<h4 id="4-sdiff-sdiffstore-差集"><a href="#4-sdiff-sdiffstore-差集" class="headerlink" title="4.sdiff,sdiffstore(差集)"></a>4.sdiff,sdiffstore(差集)</h4><p>​        以第一个为基准,没有左右之分</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638178523331.png" alt="1638178523331"></p>
+<h4 id="5-srandmember-spop"><a href="#5-srandmember-spop" class="headerlink" title="5.srandmember,spop"></a>5.srandmember,spop</h4><ul>
+<li><p>srandmember</p>
+<p>整数-随机不重复</p>
+<p>负数-随机重复</p>
+</li>
+</ul>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129203224465.png" alt="image-20211129203224465"></p>
+<ul>
+<li><p>spop</p>
+<p>随机弹出</p>
+</li>
+</ul>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129203208056.png" alt="image-20211129203208056"></p>
+<h2 id="五、sorted-set"><a href="#五、sorted-set" class="headerlink" title="五、sorted_set"></a>五、sorted_set</h2><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129205139379.png" alt="image-20211129205139379"></p>
+<p>可以自定义进行排序,redis通过score来进行判断如何排序,</p>
+<p><strong>默认是左小右大顺序维护,且是实时的</strong></p>
+<p>也存在正反索引,都为1    则按照字典序来排列</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129211537765.png" alt="image-20211129211537765"></p>
+<h3 id="1-zadd-zrange"><a href="#1-zadd-zrange" class="headerlink" title="1.zadd,zrange"></a>1.zadd,zrange</h3><p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129211845952.png" alt="image-20211129211845952"></p>
+<h3 id="2-zrangebyscore-zrevrange"><a href="#2-zrangebyscore-zrevrange" class="headerlink" title="2.zrangebyscore,zrevrange"></a>2.zrangebyscore,zrevrange</h3><p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129211946576.png" alt="image-20211129211946576"></p>
+<p>​            从小到大取出前两个: zrange k1 0 1</p>
+<p>​            从大到小取出前两额: zrevrange k1 0 1</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129212415472.png" alt="image-20211129212415472"></p>
+<h3 id="3-zsocre-zrank"><a href="#3-zsocre-zrank" class="headerlink" title="3.zsocre,zrank"></a>3.zsocre,zrank</h3><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129212747620.png" alt="image-20211129212747620"></p>
+<h3 id="4-zincrby"><a href="#4-zincrby" class="headerlink" title="4.zincrby"></a>4.zincrby</h3><ul>
+<li><p>场景</p>
+<p>歌曲排行榜,实时榜单,倒序</p>
+</li>
+</ul>
+<p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129221416280.png" alt="image-20211129221416280"></p>
+<h3 id="5-zunionstore"><a href="#5-zunionstore" class="headerlink" title="5.zunionstore"></a>5.zunionstore</h3><ol>
+<li>如果不加权重和聚合函数,默认走的是权重都为1,且聚合函数为sum求和</li>
+</ol>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129222611683.png" alt="image-20211129222611683"></p>
+<ol start="2">
+<li><p>如果加上权重,不加聚合,相当于走默认的求和,权重相当于是对于原值的比例</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129222931630.png" alt="image-20211129222931630"></p>
+</li>
+<li><p>不加权重,聚合函数为max,则是返回两个相同中的score最大的</p>
+</li>
+</ol>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129223108111.png" alt="image-20211129223108111"></p>
+<h3 id="6"><a href="#6" class="headerlink" title="6."></a>6.</h3>]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+        <category>redis</category>
+      </categories>
+      <tags>
+        <tag>redis的value类型解析</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>redis的持久化机制RDB和AOF详解</title>
+    <url>/posts/5e05.html</url>
+    <content><![CDATA[<h2 id="一、前置知识"><a href="#一、前置知识" class="headerlink" title="一、前置知识"></a>一、前置知识</h2><p>资料:    <a href="http://redis.io/topics/persistence">http://redis.io/topics/persistence</a></p>
+<h3 id="1-问题引入"><a href="#1-问题引入" class="headerlink" title="1.问题引入"></a>1.问题引入</h3><blockquote>
+<p>首先我们必须明白以下知识:</p>
+<p>缓存和数据库的特性区别:</p>
+<ul>
+<li>缓存: 数据可以丢,急速,但掉电易失</li>
+<li>数据库: 数据绝不能丢(速度+持久化)</li>
+</ul>
+<p>存储层分为两层:</p>
+<ul>
+<li>快照|副本</li>
+<li>日志</li>
+</ul>
+</blockquote>
+<span id="more"></span>
+
+<ol>
+<li><p><strong>阻塞,redis不对外提供服务</strong></p>
+<p>持久化一定会消耗一定的时间进行,但是阻塞的话,就相当于redis停服了,外部不能访问,等redis持久化完成之后在重新启动服务器,这样显然是不可行的</p>
+<p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638842351636.png" alt="1638842351636"></p>
+</li>
+<li><p><strong>非阻塞,数据落地</strong></p>
+<p>如果非阻塞就可以让用户继续访问,但是如果持久化和访问同时进行的话也引来了新的问题,如下图所示:<br>如果在8:00(a=3,b=4 )进行持久化,假设要持久化到8:30,如果在此期间用户改变b=6,那么持久化文件<strong>db.file(a=3,b=6)应该数据那个时间点的文件呢?还属于8:00持久化的文件么?</strong></p>
+<p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638842683641.png" alt="1638842683641"></p>
+</li>
+<li><p><strong>非阻塞,数据落地(最终形态)</strong></p>
+<p>根据2中所述引来的问题,我们通过一下方式解决:</p>
+<ul>
+<li><p>8点创建子进程</p>
+</li>
+<li><p>父子进程对数据的修改,对方是看不到的</p>
+<p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638842830956.png" alt="1638842830956"></p>
+</li>
+</ul>
+</li>
+</ol>
+<h3 id="2-Linux中的管道"><a href="#2-Linux中的管道" class="headerlink" title="2.Linux中的管道"></a>2.Linux中的管道</h3><p>验证试验: <a href="https://www.jianshu.com/p/22f91104b95b">https://www.jianshu.com/p/22f91104b95b</a></p>
+<p>管道:</p>
+<ol>
+<li>衔接作用前一个命令的输出作为后一个命令的输入</li>
+<li>管道会触发创建【子进程】</li>
+</ol>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">命令:</span><br><span class="line"><span class="code">	echo $$  |   more</span></span><br><span class="line"><span class="code">	echo $BASHPID |  more</span></span><br><span class="line"><span class="code">注意: linux中$$ 优先级高于 |  </span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-fork机制"><a href="#3-fork机制" class="headerlink" title="3.fork机制"></a>3.fork机制</h3><p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638860432731.png" alt="1638860432731"></p>
+<ul>
+<li><p><strong>问题1: 父进程的数据，子进程可不可以看得到？</strong> </p>
+<ol>
+<li><p>进程之间数据是隔离的</p>
+</li>
+<li><p>父进程可以看到子进程的数据</p>
+</li>
+<li><p>export的环境变量，子进程的修改不会破坏父进程,父进程的修改也不会破坏子进程</p>
+</li>
+</ol>
+</li>
+<li><p><strong>问题2: 创建子进程的速度是怎样的,如果内存数据是10G,那么子进程的数据是拷贝一份过来么?</strong></p>
+<p>我们应该考虑速度和内存,通过fork(),希望达到<strong>速度快,空间小</strong>的效果,具体详情是copy on write机制.</p>
+<p><strong>结论:</strong></p>
+<ol>
+<li>进程是数据隔离的</li>
+<li>在linux中,父进程通过export能让子进程看到数据</li>
+<li>在linux中,export环境变量,子进程的修改不会破坏父进程,父进程的修改也不会破坏子进程</li>
+</ol>
+</li>
+</ul>
+<p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638843375146.png" alt="1638843375146"></p>
+<blockquote>
+<p>扩展(实验):</p>
+<ul>
+<li><p>父子进程</p>
+<p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638858408629.png" alt="1638858408629"></p>
+</li>
+</ul>
+<p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638858677637.png" alt="1638858677637"></p>
+<ul>
+<li>父进程能让子进程看到父进程的数据</li>
+</ul>
+<p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638859034857.png" alt="1638859034857"></p>
+<p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638859229143.png" alt="1638859229143"></p>
+<ul>
+<li>子进程的修改不会破坏父进程,父进程的修改也不会破坏子进程</li>
+</ul>
+</blockquote>
+<h3 id="4-copy-on-write-机制"><a href="#4-copy-on-write-机制" class="headerlink" title="4.copy on write 机制"></a>4.copy on write 机制</h3><p>​    为了达到速度快,空间小的效果,所以内核出现了写时复制的机制.</p>
+<p>​    copy on write：内核机制写时复制 </p>
+<p>注意:</p>
+<ol>
+<li>创建子进程并不发生复制 ,只是拷贝了数据的映射关系</li>
+<li>创建进程变快了 </li>
+<li>玩的是指针 ,减小了空间</li>
+<li>fork()为系统调用</li>
+</ol>
+<p>如果我们在持久化的过程中,用户修改了a=9,那么我们是直接在内存中开辟9然后再原来的a=3的位置指向9的位置</p>
+<p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638860239719.png" alt="1638860239719"></p>
+<h2 id="二、RDB机制"><a href="#二、RDB机制" class="headerlink" title="二、RDB机制"></a>二、RDB机制</h2><p>RDB(Redis DataBase) 是 Redis 持久化机制的一种，它会将内存中的所有数据进行快照保存，并且以二进制文件形式存储到硬盘上 </p>
+<h3 id="1-特点"><a href="#1-特点" class="headerlink" title="1.特点"></a>1.特点</h3><ul>
+<li><p>时点性</p>
+<p>根据一定时间变化规则来保存</p>
+</li>
+<li><p>save</p>
+<p>同步阻塞的,不向外提供服务,明确：比如，关机维护 </p>
+</li>
+<li><p>bgsave</p>
+<p>fork创建子进程 </p>
+<p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638847192468.png" alt="1638847192468"></p>
+</li>
+<li><p>在conf文件中给出了bgsave的规则</p>
+<p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638847503260.png" alt="1638847503260"></p>
+<p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638847553668.png" alt="1638847553668"></p>
+</li>
+</ul>
+<h3 id="2-弊端"><a href="#2-弊端" class="headerlink" title="2.弊端"></a>2.弊端</h3><ol>
+<li><p>不支持拉链,只有一个dump.rdb文件</p>
+</li>
+<li><p>丢数据相对多一些,时点与时点之间窗口数据容易丢失 </p>
+<p>比如:8点到一个rdb，9点要落盘一个rdb，挂机了,那么久会丢失1个小时的数据 </p>
+</li>
+</ol>
+<h3 id="3-优点"><a href="#3-优点" class="headerlink" title="3.优点"></a>3.优点</h3><p>​    采用二进制进行的存储,类似java中的序列化恢复的速度相对快 </p>
+<h2 id="三、AOF机制"><a href="#三、AOF机制" class="headerlink" title="三、AOF机制"></a>三、AOF机制</h2><p>AOF(<strong>Append-only file</strong> ) 是 Redis 持久化机制的一种,把用户执行的每个  ”写“ 指令（增加、修改、删除）都备份到文件中，还原数据的时候就是执行具体写指令.</p>
+<p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638934093892.png" alt="1638934093892"></p>
+<h3 id="1-优点"><a href="#1-优点" class="headerlink" title="1.优点"></a>1.优点</h3><p>​    redis的写操作记录在文件上,丢失数据少</p>
+<h3 id="2-特点"><a href="#2-特点" class="headerlink" title="2.特点"></a>2.特点</h3><p>​    redis中,RDB和AOF可以同时开启,但如果开启了AOF,redis服务器宕机之后只会用AOF来进行恢复数据</p>
+<p>​    在4.0版本之后AOF文件包含RDB全量,增加记录新的写操作</p>
+<h3 id="3-弊端"><a href="#3-弊端" class="headerlink" title="3.弊端"></a>3.弊端</h3><blockquote>
+<p>例子:</p>
+<p>​    redis运行了10年,开启的是AOF,现在挂掉了,如果要恢复我们应该考虑哪些?</p>
+<ol>
+<li>AOF多大 -&gt; 很大,10T</li>
+<li>恢复全部 -&gt; 会不会溢出?</li>
+<li>恢复要多久? -&gt; 恢复用5年(可能有指令相互消除)</li>
+</ol>
+</blockquote>
+<p>因此redis中AOF的持久化机制的<strong>弊端</strong>为:</p>
+<ol>
+<li>体量无线变大</li>
+<li>恢复慢</li>
+</ol>
+<ul>
+<li><p><strong>如何解决呢?</strong></p>
+<p>日志的优点就是在于如果保存了,就可以用,恢复数据</p>
+<p>我们要设计一个方案让日志既能完好的保存又足够的小</p>
+<ol>
+<li>让日志只记录增量,合并的过程(hdfs，fsimage+edits.log)</li>
+<li>4.0版本之前通过重写来删除抵消的命令合并重复的命令 ,最终生成一个纯指令的日志文件(明文)</li>
+<li>4.0版本之后<strong>通过重写来将老的数据RDB到aof文件中将增量的以指令的方式Append到AOF,最终生成混合体AOF中既有二进制的RDB数据,又有日志的全量(利用了RDB的快和日志的全量)</strong></li>
+</ol>
+</li>
+</ul>
+<h3 id="4-策略"><a href="#4-策略" class="headerlink" title="4.策略"></a>4.策略</h3><p>​    redis是内存数据库,写操作会触发IO,配置文件中也有上述解决方式对应的策略,如下图所示:<br>​    <img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638935641455.png" alt="1638935641455"></p>
+<p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638935770561.png" alt="1638935770561"></p>
+<p><img data-src="../images/redis%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E5%92%8CAOF%E8%AF%A6%E8%A7%A3.asset/1638944139860.png" alt="1638944139860"></p>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+        <category>redis</category>
+      </categories>
+      <tags>
+        <tag>redis的持久化机制理论</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Redis简介及安装实操</title>
+    <url>/posts/9093.html</url>
+    <content><![CDATA[<h2 id="一、前置知识"><a href="#一、前置知识" class="headerlink" title="一、前置知识"></a>一、前置知识</h2><h3 id="一-常识"><a href="#一-常识" class="headerlink" title="(一)常识"></a>(一)常识</h3><ul>
+<li>磁盘<ol>
+<li>寻址:ms</li>
+<li>带宽:G/M</li>
+<li>I/O buffer：成本问题<ul>
+<li>磁盘有磁道和扇区，一扇区 512Byte  带来一个成本变大–索引</li>
+<li>4K：操作系统，无论你读多少，都是最少4K从磁盘取</li>
+<li>随着文件变大，磁盘I/O会成为瓶颈，导致速度变慢</li>
+</ul>
+</li>
+</ol>
+</li>
+<li>内存<ol>
+<li>寻址:ms</li>
+<li>带宽:很大</li>
+</ol>
+</li>
+</ul>
+<span id="more"></span>
+
+<blockquote>
+<p>补充:</p>
+<ol>
+<li>秒&gt;毫秒&gt;微秒&gt;纳秒  磁盘比内存在寻址上慢了10W倍</li>
+<li>数据在磁盘和内存中，体积不一样(2G在内存可能1.9G) </li>
+</ol>
+</blockquote>
+<h3 id="二-关系型数据库"><a href="#二-关系型数据库" class="headerlink" title="(二)关系型数据库"></a>(二)关系型数据库</h3><p><img data-src="../images/Redis%E7%AE%80%E4%BB%8B%E5%8F%8A%E5%AE%89%E8%A3%85%E5%AE%9E%E6%93%8D.asset/1637842041761.png" alt="1637842041761"></p>
+<p>如上图所示:</p>
+<ul>
+<li><p>1页：等同于操作系统读取大小，避免浪费(data page 4k)</p>
+</li>
+<li><p>索引:等同于1页(data page 4k)</p>
+<p>注意: 数据和索引都是存储在硬盘,查询时会在内存中准备一个B+Tree</p>
+</li>
+</ul>
+<p><strong>特点:</strong></p>
+<ol>
+<li><p>关系型数据库建表时，必须给出schema（架构）</p>
+<p>之所给出schema是因为,这样当插入的时候，如果这行数据有列为null值，会进行占位，当更改数据时，直接在这一列中进行插入即可，避免了空间上的转换</p>
+<ol start="2">
+<li><p>类型：字节宽度</p>
+</li>
+<li><p>存：倾向于行级存储</p>
+</li>
+</ol>
+</li>
+</ol>
+<blockquote>
+<p>问题引入:</p>
+<p>​    数据库表很大,性能下降?-&gt;表中加索引-&gt;增删改变慢-&gt;查询速度怎么样?</p>
+<ol>
+<li>1个或少量查询依然很快</li>
+<li>并发大的时候会受磁盘带宽影响速度</li>
+</ol>
+<p>所以诞生了内存级别的关系型数据库SAP,HANA,但是如果数据库宕机了那么数据不能保证安全.</p>
+<p>最后综合上述,进行折中缓存,从而出现了memcached,redis这样的数据库</p>
+<p>注意:</p>
+<p>​    该数据库都依赖于两个基础设施,分别为:</p>
+<ol>
+<li>冯诺依曼体系的硬件</li>
+<li>以太网,tcp/ip网络</li>
+</ol>
+<p>扩展:</p>
+<ul>
+<li>数据库引擎学习:<a href="https://db-engines.com/en/">https://db-engines.com/en/</a></li>
+<li>redis中文翻译手册:<a href="http://redis.cn/">http://redis.cn/</a></li>
+</ul>
+</blockquote>
+<h2 id="二、Redis"><a href="#二、Redis" class="headerlink" title="二、Redis"></a>二、Redis</h2><h3 id="一-简介"><a href="#一-简介" class="headerlink" title="(一)简介"></a>(一)简介</h3><p>Redis 是一个开源（BSD许可）的，内存中的数据结构存储系统，它可以用作数据库、缓存和消息中间件。 它支持多种类型的数据结构，如 <a href="http://redis.cn/topics/data-types-intro.html#strings">字符串（strings）</a>， <a href="http://redis.cn/topics/data-types-intro.html#hashes">散列（hashes）</a>， <a href="http://redis.cn/topics/data-types-intro.html#lists">列表（lists）</a>， <a href="http://redis.cn/topics/data-types-intro.html#sets">集合（sets）</a>， <a href="http://redis.cn/topics/data-types-intro.html#sorted-sets">有序集合（sorted sets）</a> 与范围查询， <a href="http://redis.cn/topics/data-types-intro.html#bitmaps">bitmaps</a>， <a href="http://redis.cn/topics/data-types-intro.html#hyperloglogs">hyperloglogs</a> 和 <a href="http://redis.cn/commands/geoadd.html">地理空间（geospatial）</a> 索引半径查询。 Redis 内置了 <a href="http://redis.cn/topics/replication.html">复制（replication）</a>，<a href="http://redis.cn/commands/eval.html">LUA脚本（Lua scripting）</a>， <a href="http://redis.cn/topics/lru-cache.html">LRU驱动事件（LRU eviction）</a>，<a href="http://redis.cn/topics/transactions.html">事务（transactions）</a> 和不同级别的 <a href="http://redis.cn/topics/persistence.html">磁盘持久化（persistence）</a>， 并通过 <a href="http://redis.cn/topics/sentinel.html">Redis哨兵（Sentinel）</a>和自动 <a href="http://redis.cn/topics/cluster-tutorial.html">分区（Cluster）</a>提供高可用性（high availability）。 </p>
+<blockquote>
+<p>当我们学习到redis是value有类型的时候,我们应该想到:</p>
+<ol>
+<li><p>设想如果没有redis之前,value没有类型的概念,那么应该用什么来表示复杂的数据类型呢?</p>
+<p>使用json来表示,如下图所示.</p>
+</li>
+</ol>
+</blockquote>
+<p><img data-src="../images/Redis%E7%AE%80%E4%BB%8B%E5%8F%8A%E5%AE%89%E8%A3%85%E5%AE%9E%E6%93%8D.asset/1637844716516.png" alt="1637844716516"></p>
+<blockquote>
+<p>如果客户端想要从缓存中取出value值</p>
+<ul>
+<li>memchahce -&gt;返回的所有数据到client需要走网卡IO,且client需要实现代码来解码</li>
+<li>redis-&gt;对客户端来说类型不重要,redis的server对每种类型有自己的方法,用户只需直接调用方法,这样会轻盈很多,本质是解耦(也就是计算向数据移动)</li>
+</ul>
+<p>计算向数据移动   <a href="https://www.cnblogs.com/blog-of-zxf/p/10827941.html">https://www.cnblogs.com/blog-of-zxf/p/10827941.html</a></p>
+</blockquote>
+<p><img data-src="../images/Redis%E7%AE%80%E4%BB%8B%E5%8F%8A%E5%AE%89%E8%A3%85%E5%AE%9E%E6%93%8D.asset/1637845014178.png" alt="1637845014178"></p>
+<h3 id="二-安装实操"><a href="#二-安装实操" class="headerlink" title="(二)安装实操"></a>(二)安装实操</h3><p>​    安装环境</p>
+<ul>
+<li>centos 6.x</li>
+<li>redis 官网5.x  <a href="http://download.redis.io/releases/redis-5.0.5.tar.gz">http://download.redis.io/releases/redis-5.0.5.tar.gz</a> </li>
+</ul>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line"><span class="bullet">1.</span> yum install wget</span><br><span class="line"><span class="bullet">2.</span> cd</span><br><span class="line"><span class="bullet">3.</span> mkdir soft</span><br><span class="line"><span class="bullet">4.</span> cd soft</span><br><span class="line"><span class="bullet">5.</span> wget    http://download.redis.io/releases/redis-5.0.5.tar.gz</span><br><span class="line"><span class="bullet">6.</span> tar xf    redis...tar.gz</span><br><span class="line"><span class="bullet">7.</span> cd redis-src</span><br><span class="line"><span class="bullet">8.</span> 看README.md(重点,通过它可以自主学习,各种步骤都里面)</span><br><span class="line"><span class="bullet">9.</span> make </span><br><span class="line"><span class="code">	....yum install  gcc  </span></span><br><span class="line"><span class="code">	....  make distclean</span></span><br><span class="line"><span class="code">10. make</span></span><br><span class="line"><span class="code">11. cd src   </span></span><br><span class="line"><span class="code">	....生成了可执行程序</span></span><br><span class="line"><span class="code">12. cd ..</span></span><br><span class="line"><span class="code">13. make install PREFIX=/opt/mashibing/redis5(将执行脚本安装到指定路径)</span></span><br><span class="line"><span class="code">14.	vi /etc/profile(配置Redis全局环境)</span></span><br><span class="line"><span class="code">	... export  REDIS_HOME=/opt/mashibing/redis5  </span></span><br><span class="line"><span class="code">	... export PATH=$PATH:$REDIS_HOME/bin</span></span><br><span class="line"><span class="code">	... source /etc/profile</span></span><br><span class="line"><span class="code">15. cd utils</span></span><br><span class="line"><span class="code">16.	/install_server.sh  （可以执行一次或多次）    </span></span><br><span class="line"><span class="code">	从安装的过程我们可以得到如下结论:</span></span><br><span class="line"><span class="code">		a)  一个物理机中可以有多个redis实例（进程），通过port区分    </span></span><br><span class="line"><span class="code">		b)  可执行程序就一份在目录，但是内存中未来的多个实例需要各自的配置文件，持久化目录等资源    </span></span><br><span class="line"><span class="code">		c)	执行该命令之后会在linux的目录 &gt; /etc/init.d/**** 下放了一个脚本 redis_6379  </span></span><br><span class="line"><span class="code">			启动刚才设置的redis服务:service   redis_6379  start/stop/status    </span></span><br><span class="line"><span class="code">		d)	脚本还会帮你启动！</span></span><br><span class="line"><span class="code">17. ps -fe |  grep redis  </span></span><br><span class="line"><span class="code"></span></span><br><span class="line">总结:</span><br><span class="line"><span class="code">	1.下载wget下载工具</span></span><br><span class="line"><span class="code">	2.添加要安装的文件夹</span></span><br><span class="line"><span class="code">	3.通过wget在线下载对应的gz包</span></span><br><span class="line"><span class="code">	4.解压gz包到对应的文件夹</span></span><br><span class="line"><span class="code">	5.在解压的包中的src中查看README.md(重点:通过README.md文件知道后面的安装步骤)</span></span><br><span class="line"><span class="code">	6.执行make命令</span></span><br><span class="line"><span class="code">		如果报错提示差gcc环境,则下载gcc环境,并清理原先make的数据 make distclean</span></span><br><span class="line"><span class="code">	7.重新执行make命令</span></span><br><span class="line"><span class="code">	8.将执行脚本安装到指定路径</span></span><br><span class="line"><span class="code">	9.配置redis全局变量</span></span><br><span class="line"><span class="code">	10.安装redis服务端(生成在/etc/init.d/中设置的对应脚本,安装完后会自动启动)</span></span><br><span class="line"><span class="code">	11.通过service   redis_6379  start/stop/status(启动,终止,查看状态)</span></span><br><span class="line"><span class="code">	12.通过 ps -fe |  grep redis 查看redis进程</span></span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+        <category>redis</category>
+      </categories>
+      <tags>
+        <tag>redis简介和安装</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>管道和发布订阅事务</title>
+    <url>/posts/266d.html</url>
+    <content><![CDATA[<h2 id="一、管道"><a href="#一、管道" class="headerlink" title="一、管道"></a>一、管道</h2><h3 id="1-前置知识"><a href="#1-前置知识" class="headerlink" title="1.前置知识"></a>1.前置知识</h3><p>Redis是一种基于客户端-服务端模型以及请求/响应协议的TCP服务。</p>
+<p>这意味着通常情况下一个请求会遵循以下步骤：</p>
+<span id="more"></span>
+
+<ul>
+<li>客户端向服务端发送一个查询请求，并监听Socket返回，通常是以阻塞模式，等待服务端响应。</li>
+<li>服务端处理命令，并将结果返回给客户端。</li>
+<li>因此，例如下面是4个命令序列执行情况：<ul>
+<li><em>Client:</em> INCR X</li>
+<li><em>Server:</em> 1</li>
+<li><em>Client:</em> INCR X</li>
+<li><em>Server:</em> 2</li>
+<li><em>Client:</em> INCR X</li>
+<li><em>Server:</em> 3</li>
+<li><em>Client:</em> INCR X</li>
+<li><em>Server:</em> 4</li>
+</ul>
+</li>
+</ul>
+<p>客户端和服务器通过网络进行连接。这个连接可以很快（loopback接口）或很慢（建立了一个多次跳转的网络连接）。无论网络延如何延时，数据包总是能从客户端到达服务器，并从服务器返回数据回复客户端。</p>
+<p>这个时间被称之为 RTT (Round Trip Time - 往返时间). </p>
+<h3 id="2-概念"><a href="#2-概念" class="headerlink" title="2.概念"></a>2.概念</h3><p>​    一次请求/响应服务器能实现处理新的请求即使旧的请求还未被响应。这样就可以将<em>多个命令</em>发送到服务器，而不用等待回复，最后在一个步骤中读取该答复 ,这就是管道（pipelining）</p>
+<p>Redis很早就支持管道（pipelining）技术，因此无论你运行的是什么版本，你都可以使用管道（pipelining）操作Redis。下面是一个使用的例子：</p>
+<p><img data-src="../images/%E7%AE%A1%E9%81%93%E5%92%8C%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85%E4%BA%8B%E5%8A%A1.asset/1638583539885.png" alt="1638583539885"></p>
+<p>这一次我们没有为每个命令都花费了RTT开销，而是只用了一个命令的开销时间。</p>
+<p>非常明确的，用管道顺序操作的第一个例子如下：</p>
+<ul>
+<li><em>Client:</em> INCR X</li>
+<li><em>Client:</em> INCR X</li>
+<li><em>Client:</em> INCR X</li>
+<li><em>Client:</em> INCR X</li>
+<li><em>Server:</em> 1</li>
+<li><em>Server:</em> 2</li>
+<li><em>Server:</em> 3</li>
+<li><em>Server:</em> 4</li>
+</ul>
+<blockquote>
+<p>注意:</p>
+<p>​    <strong>使用管道发送命令时，服务器将被迫回复一个队列答复，占用很多内存</strong>。所以，如果你需要发送大量的命令，最好是把他们按照合理数量分批次的处理，例如10K的命令，读回复，然后再发送另一个10k的命令，等等。这样速度几乎是相同的，但是在回复这10k命令队列需要非常大量的内存用来组织返回数据内容。 </p>
+</blockquote>
+<h3 id="3-Pipelining-VS-Scripting"><a href="#3-Pipelining-VS-Scripting" class="headerlink" title="3.Pipelining VS Scripting"></a>3.Pipelining VS Scripting</h3><p>大量 pipeline 应用场景可通过 Redis <a href="http://redis.cn/commands/eval.html">脚本</a>（Redis 版本 &gt;= 2.6）得到更高效的处理，后者在服务器端执行大量工作。脚本的一大优势是可通过最小的延迟读写数据，让读、计算、写等操作变得非常快（pipeline 在这种情况下不能使用，因为客户端在写命令前需要读命令返回的结果）。</p>
+<blockquote>
+<p>理解:</p>
+<p>​    如果是组织大量的、无依赖关系的命令，可以选择管道，当然也可以选择脚本。 如果命令之间有依赖关系，比如后续的命令需要处理先前命令的返回值，只能选择脚本。 </p>
+</blockquote>
+<h3 id="4-扩展"><a href="#4-扩展" class="headerlink" title="4.扩展"></a>4.扩展</h3><pre><code> **问题:如果能将要执行的指令一行行存储到文件中，然后用一行命令将文件中的命令一次执行完成?**
+</code></pre>
+<p>​    参考资料:  <a href="http://redis.cn/topics/batch-insert.html">http://redis.cn/topics/batch-insert.html</a></p>
+<h2 id="二、发布订阅"><a href="#二、发布订阅" class="headerlink" title="二、发布订阅"></a>二、发布订阅</h2><h3 id="1-概念及简单使用"><a href="#1-概念及简单使用" class="headerlink" title="1.概念及简单使用"></a>1.概念及简单使用</h3><p>订阅者对一个或多个频道感兴趣，只需接收感兴趣的消息，不需要知道什么样的发布者发布的。这种发布者和订阅者的解耦合可以带来更大的扩展性和更加动态的网络拓扑。 </p>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">1.发布</span><br><span class="line"><span class="code">	publish k1 hahaha</span></span><br><span class="line"><span class="code">	</span></span><br><span class="line"><span class="code">2.订阅</span></span><br><span class="line"><span class="code">	subscribe|unsubscribe k1</span></span><br><span class="line"><span class="code">	该命令发生后会阻塞在这监听消息</span></span><br><span class="line"><span class="code">注意:</span></span><br><span class="line"><span class="code">	只有先监听后,才会接收到之后发布的消息</span></span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E7%AE%A1%E9%81%93%E5%92%8C%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85%E4%BA%8B%E5%8A%A1.asset/1638584650376.png" alt="1638584650376"></p>
+<p><img data-src="../images/%E7%AE%A1%E9%81%93%E5%92%8C%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85%E4%BA%8B%E5%8A%A1.asset/1638584619088.png" alt="1638584619088"></p>
+<h3 id="2-模拟场景"><a href="#2-模拟场景" class="headerlink" title="2.模拟场景"></a>2.模拟场景</h3><p>​    <strong>如果我们要看历史聊天记录和实时聊天记录,应该怎么设计?</strong></p>
+<ol>
+<li>客户端3天前的历史性数据放到redis的缓存中(sorted_set),更老的数据则放到数据库中</li>
+<li>实时的数据我们通过redis的发布订阅然后再放到redis缓存中解决,而另一边通过kafka持久化到数据库</li>
+</ol>
+<p><img data-src="../images/%E7%AE%A1%E9%81%93%E5%92%8C%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85%E4%BA%8B%E5%8A%A1.asset/1638584015058.png" alt="1638584015058"></p>
+<p>上述的图可能描述的有点模糊,所以这里补充了一张</p>
+<p>如下图步骤为:</p>
+<ol>
+<li><p>客户端通过redis发布消息</p>
+</li>
+<li><p>另一个客户端通过redis订阅消息从而获取到消息</p>
+</li>
+<li><p>另外一个redis客户端通过订阅消息,通过sorted_set将消息缓存到redis中(zset)</p>
+</li>
+<li><p>微服务订阅消息,通过中间件kafka消费数据,最终持久化到mysql</p>
+<p><strong>注意:上述的2,3,4是同时发生的</strong></p>
+</li>
+</ol>
+<p><img data-src="../images/%E7%AE%A1%E9%81%93%E5%92%8C%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85%E4%BA%8B%E5%8A%A1.asset/1638585374948.png" alt="1638585374948"></p>
+<h2 id="三、事务"><a href="#三、事务" class="headerlink" title="三、事务"></a>三、事务</h2><h3 id="1-概念"><a href="#1-概念" class="headerlink" title="1.概念"></a>1.概念</h3><ul>
+<li><p>特性</p>
+<p><a href="http://redis.cn/commands/multi.html">MULTI</a> 、 <a href="http://redis.cn/commands/exec.html">EXEC</a> 、 <a href="http://redis.cn/commands/discard.html">DISCARD</a> 和 <a href="http://redis.cn/commands/watch.html">WATCH</a> 是 Redis 事务相关的命令。事务可以一次执行多个命令， 并且带有以下两个重要的保证：</p>
+<ul>
+<li>事务是一个单独的隔离操作：事务中的所有命令都会序列化、按顺序地执行。事务在执行的过程中，不会被其他客户端发送来的命令请求所打断。</li>
+<li>事务是一个原子操作：事务中的命令要么全部被执行，要么全部都不执行。</li>
+</ul>
+<p>补充:</p>
+<p>​    2.2之后,Redis 还可以通过乐观锁（optimistic lock）实现 CAS （check-and-set）操作 ,其中watch就是乐观锁</p>
+</li>
+</ul>
+<p><img data-src="../images/%E7%AE%A1%E9%81%93%E5%92%8C%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85%E4%BA%8B%E5%8A%A1.asset/1638586002984.png" alt="1638586002984"></p>
+<p><a href="http://redis.cn/commands/exec.html">EXEC</a> 命令负责触发并执行事务中的所有命令：</p>
+<ul>
+<li>如果客户端在使用 <a href="http://redis.cn/commands/multi.html">MULTI</a> 开启了一个事务之后，却因为断线而没有成功执行 <a href="http://redis.cn/commands/exec.html">EXEC</a> ，那么事务中的所有命令都不会被执行。</li>
+<li>另一方面，如果客户端成功在开启事务之后执行 <a href="http://redis.cn/commands/exec.html">EXEC</a> ，那么事务中的所有命令都会被执行。</li>
+</ul>
+<p><img data-src="../images/%E7%AE%A1%E9%81%93%E5%92%8C%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85%E4%BA%8B%E5%8A%A1.asset/1638586749234.png" alt="1638586749234"></p>
+<h3 id="2-用法"><a href="#2-用法" class="headerlink" title="2.用法"></a>2.用法</h3><p>​    <a href="http://redis.cn/commands/multi.html">MULTI</a> 命令用于开启一个事务，它总是返回 <code>OK</code> 。 <a href="http://redis.cn/commands/multi.html">MULTI</a> 执行之后， 客户端可以继续向服务器发送任意多条命令， 这些命令不会立即被执行， 而是被放到一个队列中， 当 <a href="http://redis.cn/commands/exec.html">EXEC</a>命令被调用时， 所有队列中的命令才会被执行。如下图所示:</p>
+<p><img data-src="../images/%E7%AE%A1%E9%81%93%E5%92%8C%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85%E4%BA%8B%E5%8A%A1.asset/1638587107956.png" alt="1638587107956"></p>
+<p>另一方面， 通过调用 <a href="http://redis.cn/commands/discard.html">DISCARD</a> ， 客户端可以清空事务队列， 并放弃执行事务。</p>
+<p><img data-src="../images/%E7%AE%A1%E9%81%93%E5%92%8C%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85%E4%BA%8B%E5%8A%A1.asset/1638587932813.png" alt="1638587932813"></p>
+<p><a href="http://redis.cn/commands/exec.html">EXEC</a> 命令的回复是一个数组， 数组中的每个元素都是执行事务中的命令所产生的回复。 其中， 回复元素的先后顺序和命令发送的先后顺序一致。</p>
+<p>当客户端处于事务状态时， 所有传入的命令都会返回一个内容为 <code>QUEUED</code> 的状态回复（status reply）， 这些被入队的命令将在 EXEC 命令被调用时执行。</p>
+<h3 id="3-事务中的错误"><a href="#3-事务中的错误" class="headerlink" title="3.事务中的错误"></a>3.事务中的错误</h3><p>使用事务时可能会遇上以下两种错误：</p>
+<ul>
+<li>事务在执行 <a href="http://redis.cn/commands/exec.html">EXEC</a> 之前，入队的命令可能会出错。比如说，命令可能会产生语法错误（参数数量错误，参数名错误，等等），或者其他更严重的错误，比如内存不足（如果服务器使用 <code>maxmemory</code> 设置了最大内存限制的话）。</li>
+<li>命令可能在 <a href="http://redis.cn/commands/exec.html">EXEC</a> 调用之后失败。举个例子，事务中的命令可能处理了错误类型的键，比如将列表命令用在了字符串键上面，诸如此类。</li>
+</ul>
+<p>对于发生在 <a href="http://redis.cn/commands/exec.html">EXEC</a> 执行之前的错误，客户端以前的做法是检查命令入队所得的返回值：如果命令入队时返回 <code>QUEUED</code> ，那么入队成功；否则，就是入队失败。<strong>如果有命令在入队时失败，那么大部分客户端都会停止并取消这个事务。</strong></p>
+<p>不过，从 Redis 2.6.5 开始，**服务器会对命令入队失败的情况进行记录，并在客户端调用 <a href="http://redis.cn/commands/exec.html">EXEC</a> 命令时，拒绝执行并自动放弃这个事务。</p>
+<blockquote>
+<p>总结:</p>
+<ol>
+<li><p>以前检查入队所得返回值,为queue则成功,否则失败,若失败了一般会停止并取消该事务</p>
+<ol start="2">
+<li>2.65之后,会对命令入队失败进行记录,在调用EXEC命令时,拒绝执行并放弃该事务</li>
+</ol>
+<p><strong>注意:</strong></p>
+<pre><code>**即使事务中有某条/某些命令执行失败了， 事务队列中的其他命令仍然会继续执行 —— Redis 不会停止执行事务中的命令** 
+</code></pre>
+</li>
+</ol>
+</blockquote>
+<h3 id="4-为什么Redsi不支持回滚"><a href="#4-为什么Redsi不支持回滚" class="headerlink" title="4.为什么Redsi不支持回滚"></a>4.为什么Redsi不支持回滚</h3><p>如果你有使用关系式数据库的经验， 那么 “Redis 在事务失败时不进行回滚，而是继续执行余下的命令”这种做法可能会让你觉得有点奇怪。</p>
+<p>以下是这种做法的优点：</p>
+<ul>
+<li>Redis 命令只会因为错误的语法而失败（并且这些问题不能在入队时发现），或是命令用在了错误类型的键上面：这也就是说，从实用性的角度来说，失败的命令是由编程错误造成的，而这些错误应该在开发的过程中被发现，而不应该出现在生产环境中。</li>
+<li>因为不需要对回滚进行支持，所以 Redis 的内部可以保持简单且快速。</li>
+</ul>
+<p>有种观点认为 Redis 处理事务的做法会产生 bug ， 然而需要注意的是， 在通常情况下， 回滚并不能解决编程错误带来的问题。 举个例子， 如果你本来想通过 <a href="http://redis.cn/commands/incr.html">INCR</a> 命令将键的值加上 1 ， 却不小心加上了 2 ， 又或者对错误类型的键执行了 <a href="http://redis.cn/commands/incr.html">INCR</a> ， 回滚是没有办法处理这些情况的。</p>
+<h3 id="5-check-and-set-操作实现乐观锁"><a href="#5-check-and-set-操作实现乐观锁" class="headerlink" title="5. check-and-set 操作实现乐观锁"></a>5. check-and-set 操作实现乐观锁</h3><p><a href="http://redis.cn/commands/watch.html">WATCH</a> 命令可以为 Redis 事务提供 check-and-set （CAS）行为。</p>
+<p>被 <a href="http://redis.cn/commands/watch.html">WATCH</a> 的键会被监视，并会发觉这些键是否被改动过了。 如果有至少一个被监视的键在 <a href="http://redis.cn/commands/exec.html">EXEC</a> 执行之前被修改了， 那么整个事务都会被取消， <a href="http://redis.cn/commands/exec.html">EXEC</a> 返回<a href="http://redis.cn/topics/protocol.html#nil-reply">nil-reply</a>来表示事务已经失败。</p>
+<p>这种形式的锁被称作乐观锁， 它是一种非常强大的锁机制。 并且因为大多数情况下， 不同的客户端会访问不同的键， 碰撞的情况一般都很少， 所以通常并不需要进行重试 </p>
+<p><img data-src="../images/%E7%AE%A1%E9%81%93%E5%92%8C%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85%E4%BA%8B%E5%8A%A1.asset/1638588433435.png" alt="1638588433435"></p>
+<p><img data-src="../images/%E7%AE%A1%E9%81%93%E5%92%8C%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85%E4%BA%8B%E5%8A%A1.asset/1638588429751.png" alt="1638588429751"></p>
+<h3 id="6-WATCH"><a href="#6-WATCH" class="headerlink" title="6.WATCH"></a>6.WATCH</h3><p><img data-src="../images/%E7%AE%A1%E9%81%93%E5%92%8C%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85%E4%BA%8B%E5%8A%A1.asset/1638589602341.png" alt="1638589602341"></p>
+<p><a href="http://redis.cn/commands/watch.html">WATCH</a> 使得 <a href="http://redis.cn/commands/exec.html">EXEC</a> 命令需要有条件地执行： </p>
+<ol>
+<li>事务只能在所有被监视键都没有被修改的前提下执行， 如果这个前提不能满足的话，事务就不会被执行。</li>
+<li><a href="http://redis.cn/commands/watch.html">WATCH</a> 命令可以被调用多次。 对键的监视从 <a href="http://redis.cn/commands/watch.html">WATCH</a> 执行之后开始生效， 直到调用 <a href="http://redis.cn/commands/exec.html">EXEC</a> 为止。</li>
+</ol>
+<ul>
+<li>特性<ol>
+<li>用户还可以在单个 <a href="http://redis.cn/commands/watch.html">WATCH</a> 命令中监视任意多个键</li>
+<li>当 <a href="http://redis.cn/commands/exec.html">EXEC</a> 被调用时， 不管事务是否成功执行， 对所有键的监视都会被取消</li>
+<li>当客户端断开连接时， 该客户端对键的监视也会被取消。使用无参数的 <a href="http://redis.cn/commands/unwatch.html">UNWATCH</a> 命令可以手动取消对所有键的监视</li>
+</ol>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+        <category>redis</category>
+      </categories>
+      <tags>
+        <tag>redis的发布订阅和管道</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>redis中的AFK原理和CAP理论\</title>
+    <url>/posts/ea2e.html</url>
+    <content><![CDATA[<h2 id="一、AFK原理"><a href="#一、AFK原理" class="headerlink" title="一、AFK原理"></a>一、AFK原理</h2><blockquote>
+<p>问题引入:</p>
+<p>redis是单机单进程的,它有什么缺陷呢?</p>
+<ol>
+<li>单点故障</li>
+<li>容量有限</li>
+<li>压力</li>
+</ol>
+<p>​    <img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208213841058.png" alt="image-20211208213841058"></p>
+</blockquote>
+<span id="more"></span>
+
+<p>AKF 立方体也叫做scala cube，它在《The Art of Scalability》一书中被首次提出，旨在提供一个系统化的扩展思路。AKF 把系统扩展分为以下三个维度：</p>
+<ul>
+<li>X 轴：直接水平复制应用进程来扩展系统(全量,镜像)</li>
+<li>Y 轴：将功能拆分出来扩展系统(业务,功能)</li>
+<li>Z 轴：基于用户信息扩展系统(优先级,逻辑拆分,对Y上的业务功能进行逻辑拆分)</li>
+</ul>
+<p>如下图所示：</p>
+<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208213822477.png" alt="image-20211208213822477"></p>
+<p><strong>注意:通过AKF,我们可以解决单机的问题,但同时也引来的新的问题!!</strong></p>
+<ul>
+<li><p>问题:</p>
+<p><strong>数据一致性</strong></p>
+</li>
+<li><p>解决</p>
+<p>所有节点阻塞直到数据全部一致(强一致性)</p>
+</li>
+<li><p>新的问题</p>
+<p>因为强一致性,破坏了可用性!但是我们一变多的目的就是为了解决可用性</p>
+<p>所以我们不能最好不要强一致性</p>
+</li>
+<li><p>解决</p>
+<p>通过异步的方式,<strong>容忍数据丢失一部分</strong></p>
+</li>
+</ul>
+<p>由上所述,我们可以得出以下三种模型:</p>
+<ol>
+<li>强一致性</li>
+</ol>
+<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208214911987.png" alt="image-20211208214911987"></p>
+<ol start="2">
+<li>弱一致性</li>
+</ol>
+<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208214920721.png" alt="image-20211208214920721"></p>
+<p>3.最终数据一致性</p>
+<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208214929314.png" alt="image-20211208214929314"></p>
+<h2 id="二、CAP理论"><a href="#二、CAP理论" class="headerlink" title="二、CAP理论"></a>二、CAP理论</h2>]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+        <category>redis</category>
+        <category>redis集群</category>
+      </categories>
+      <tags>
+        <tag>redis集群中的AFK和CAP理论</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>LVS及LVS_DR模型实践</title>
+    <url>/posts/2036.html</url>
+    <content><![CDATA[<h2 id="LVS"><a href="#LVS" class="headerlink" title="LVS"></a>LVS</h2><h3 id="一、简介"><a href="#一、简介" class="headerlink" title="一、简介"></a>一、简介</h3><ul>
+<li><p>概念</p>
+<p>LVS（<a href="https://so.csdn.net/so/search?from=pc_blog_highlight&q=Linux">Linux</a> Virtual Server）即Linux虚拟服务器，是由章文嵩博士主导的开源负载均衡项目，目前LVS已经被集成到Linux内核模块中</p>
+</li>
+<li><p>特点</p>
+<ol>
+<li><p>数据包转发级别(特别快)</p>
+</li>
+<li><p>不会和客户端握手</p>
+</li>
+<li><p>后端服务器必须是镜像的</p>
+</li>
+<li><p>负载均衡服务器拥有偷窥能力并且记录,3次握手连接+1，四次挥手连接-1</p>
+<span id="more"></span></li>
+</ol>
+</li>
+<li><p>比较</p>
+<ol>
+<li>LVS-用于hold住流量(只要网速够快，就没有上限)</li>
+<li>nginx 用于hold 住握手(7层,但有负载上线)</li>
+</ol>
+</li>
+<li><p>工作模式</p>
+<ol>
+<li>NAT模式</li>
+<li>DR模式</li>
+<li>TUN模式</li>
+</ol>
+<p>详情见<a href="https://blog.csdn.net/qq_43583755/article/details/121504437?spm=1001.2014.3001.5501">https://blog.csdn.net/qq_43583755/article/details/121504437?spm=1001.2014.3001.5501</a></p>
+</li>
+</ul>
+<h3 id="二、隐藏VIP方法"><a href="#二、隐藏VIP方法" class="headerlink" title="二、隐藏VIP方法"></a>二、隐藏VIP方法</h3><ul>
+<li><p>特点</p>
+<p>对外隐藏,对内可见</p>
+</li>
+<li><p>kernel parameter</p>
+<p>目标mac地址为全F,交换机触发广播</p>
+<p>在linux系统中一切皆文件,在该目录**/proc/sys/net/ipv4/conf/<em>IF</em>/**可以修改内核设置,但不能直接vi修改,只能通过echo修改</p>
+<ol>
+<li>arp_ignore<ul>
+<li>0：只要本地配置的有相应地址，就给予响应</li>
+<li>1：仅在请求的目标(MAC)地址配置请求到达接口上的时候，才给予响应</li>
+</ul>
+</li>
+<li>arp_announce<ul>
+<li>0：将本地任何接口上的任何地址向外通告</li>
+<li>1：试图仅向目标网络通告与其网络匹配的地址</li>
+<li>2：仅向与本地接口上地址匹配的网络进行通告</li>
+</ul>
+</li>
+</ol>
+<blockquote>
+<p>为了方便理解,举一个例子:<br><img data-src="../images/LVS%E5%8F%8ALVS-DR%E6%A8%A1%E5%9E%8B%E5%AE%9E%E8%B7%B5.asset/1637723796676.png" alt="1637723796676"></p>
+<p>情景:</p>
+<ol>
+<li><p>arp_ignore(响应-被动)</p>
+<ul>
+<li>0   某人问我爱人电话号码-告诉他</li>
+<li>1   某人问我爱人电话号码-不告诉他</li>
+</ul>
+</li>
+<li><p>arp_announce(通告-主动)</p>
+<p>一个网卡上可以有多个ip地址也就是一个人可以有多个手机号(公用,私用)</p>
+<ul>
+<li>0    电话都告诉某人</li>
+<li>1    只告诉某人公用的(网络号不同)</li>
+<li>2    都不告诉</li>
+</ul>
+</li>
+</ol>
+<p><strong>结论</strong>:<strong>如果要配隐藏VIP,那么就要配arp设置和添加虚拟ip到环回接口上</strong></p>
+</blockquote>
+</li>
+<li><p>调度算法</p>
+<ol>
+<li>静态<ul>
+<li>rr 轮询</li>
+<li>wrr 加权轮询</li>
+<li>dh 目标地址散列调度</li>
+<li>sh 源地址散列调度</li>
+</ul>
+</li>
+<li>动态<ul>
+<li>Ic：最少连接</li>
+<li>Wic：加权最少连接</li>
+<li>sed：最短期望延迟</li>
+<li>nq：never queue</li>
+<li>dblc：基于本地的最少连接</li>
+<li>DH 目标地址散列调度</li>
+<li>LBLCR：基于本地的带复制功能的最少连接</li>
+</ul>
+</li>
+</ol>
+<blockquote>
+<p><strong>问题引入:</strong></p>
+<p>​    <strong>负载均衡服务器如何知道最少连接的是哪台服务器,如何知道它连接的服务器的信息?</strong></p>
+<p>​       负载均衡服务器拥有偷窥能力并且记录</p>
+<p>client发送sync数据包,经过负载均衡服务器,该服务器会看sync中的信息(ip,port)并记录,当client或者server发送ack确认的时候,会在server上握手连接+1,这里四次挥手连接-1同理</p>
+<p><strong>TIP:</strong></p>
+<p>​     如果我们要操作lvs内核设置,需要安装一个ipvs内核模块 ipvsadm(对于大多数程序来说)</p>
+<p>下图为可能用到的命令,在实践的时候会进行详细的说明.</p>
+</blockquote>
+</li>
+</ul>
+<p><img data-src="../images/LVS%E5%8F%8ALVS-DR%E6%A8%A1%E5%9E%8B%E5%AE%9E%E8%B7%B5.asset/1637733236890.png" alt="1637733236890"></p>
+<h3 id="三、DR模型-LVS-实践"><a href="#三、DR模型-LVS-实践" class="headerlink" title="三、DR模型(LVS)实践"></a>三、DR模型(LVS)实践</h3><p><img data-src="../images/LVS%E5%8F%8ALVS-DR%E6%A8%A1%E5%9E%8B%E5%AE%9E%E8%B7%B5.asset/1637733360419.png" alt="1637733360419"></p>
+<blockquote>
+<p>在准备服务器的时候会遇到一些问题:</p>
+<ul>
+<li><p>配置三台node服务器</p>
+<p><a href="https://www.jb51.net/article/115686.html">https://www.jb51.net/article/115686.html</a></p>
+</li>
+<li><p>Centos 6无法使用yum解决办法</p>
+<p><a href="https://www.xmpan.com/944.html">https://www.xmpan.com/944.html</a></p>
+</li>
+</ul>
+</blockquote>
+<h4 id="1-LVS"><a href="#1-LVS" class="headerlink" title="1.LVS"></a>1.LVS</h4><figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">node01:</span><br><span class="line"><span class="code">	添加网卡-ifconfig  eth0:8 192.168.188.100/24 (这里的24代表255.255.255.0)</span></span><br><span class="line"><span class="code">	补充:如果要删除网卡 - ifconfig  eth0:8 down</span></span><br><span class="line"><span class="code">node02~node03:</span></span><br><span class="line"><span class="code">	1)修改内核：</span></span><br><span class="line"><span class="code">		echo 1  &gt;  /proc/sys/net/ipv4/conf/eth0/arp_ignore </span></span><br><span class="line"><span class="code">		echo 1  &gt;  /proc/sys/net/ipv4/conf/all/arp_ignore </span></span><br><span class="line"><span class="code">		echo 2  &gt;   /proc/sys/net/ipv4/conf/eth0/arp_announce </span></span><br><span class="line"><span class="code">		echo 2  &gt;   /proc/sys/net/ipv4/conf/all/arp_announce </span></span><br><span class="line"><span class="code">	2）设置隐藏的vip：</span></span><br><span class="line"><span class="code">		ifconfig  lo:3  192.168.188.100  netmask 255.255.255.255</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>问题:</strong><br>    1.为什么添加lo:2时,子网掩码是255.255.255.255而不是255.255.255.0?<br>        如果是255.255.255.0,它的IP和MASK进行与运算和eth0走的是同一个网络号,又因为物理网卡(eth0)和虚拟网卡(lo:2)之间虚拟网卡更近,所以会优选虚拟网卡,换回接口将数据又发给自己,这样就死循环了,数据就发不出去了所以会出现如下情况:</p>
+<ol>
+<li>若 ping 192.168.188.1, 则数据会发不出去(因为如果是255.255.255.255那么它会先将IP和MASK进行与运算,获得网络号192.168.188.100)</li>
+<li>若 ping 192.168.188.1, 则走eth0,数据能发出去    </li>
+</ol>
+</blockquote>
+<h4 id="2-RS中的服务"><a href="#2-RS中的服务" class="headerlink" title="2.RS中的服务"></a>2.RS中的服务</h4><figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">node02~node03:</span><br><span class="line"><span class="code">	yum install httpd -y</span></span><br><span class="line"><span class="code">	service httpd start</span></span><br><span class="line"><span class="code">	vi   /var/www/html/index.html</span></span><br><span class="line"><span class="code">		from 192.168.188.1x</span></span><br><span class="line"><span class="code">	这里主要是看效果,所以写的不一样</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="3-LVS服务配置"><a href="#3-LVS服务配置" class="headerlink" title="3.LVS服务配置"></a>3.LVS服务配置</h4><figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">如果我们要操作lvs内核设置,需要安装一个ipvs内核模块 ipvsadm(对于大多数程序来说)</span><br><span class="line">node01:</span><br><span class="line"><span class="code">		yum install ipvsadm </span></span><br><span class="line"><span class="code">	ipvsadm -A  -t  192.168.188.100:80  -s rr</span></span><br><span class="line"><span class="code">	ipvsadm -a  -t 192.168.188.100:80  -r  192.168.188.102 -g -w 1</span></span><br><span class="line"><span class="code">	ipvsadm -a  -t 192.168.188.100:80  -r  192.168.188.103 -g -w 1</span></span><br><span class="line"><span class="code">	ipvsadm -ln</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="4-验证"><a href="#4-验证" class="headerlink" title="4.验证"></a>4.验证</h4><figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">验证：</span><br><span class="line"><span class="code">	浏览器访问  192.168.150.100   看到负载  疯狂F5</span></span><br><span class="line"><span class="code">	node01：</span></span><br><span class="line"><span class="code">		netstat -natp   结论看不到socket连接</span></span><br><span class="line"><span class="code">	node02~node03:</span></span><br><span class="line"><span class="code">		netstat -natp   结论看到很多的socket连接</span></span><br><span class="line"><span class="code">	node01:</span></span><br><span class="line"><span class="code">		ipvsadm -lnc    查看偷窥记录本</span></span><br><span class="line"><span class="code">		TCP 00:57  FIN_WAIT    192.168.150.1:51587 192.168.150.100:80 192.168.150.12:80</span></span><br><span class="line"><span class="code">		FIN_WAIT： 连接过，偷窥了所有的包</span></span><br><span class="line"><span class="code">		SYN_RECV： 基本上lvs都记录了，证明lvs没事，一定是后边网络层出问题</span></span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+        <category>高并发和负载均衡</category>
+      </categories>
+      <tags>
+        <tag>LVS及LVS-DR模型实践</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>负载均衡模型与实现</title>
+    <url>/posts/552f.html</url>
+    <content><![CDATA[<h2 id="负载均衡模型"><a href="#负载均衡模型" class="headerlink" title="负载均衡模型"></a>负载均衡模型</h2><h3 id="一、问题引入"><a href="#一、问题引入" class="headerlink" title="一、问题引入"></a>一、问题引入</h3><p>​        <strong>如果有多个用户来访问服务器,要想要减轻服务器的压力,应该怎么办呢?</strong></p>
+<ol>
+<li><p>首先想到的方法就是用多个服务器来分担</p>
+<p>问题:两台计算机通信最终是通过ip,如果客户端连接多台服务器,服务器这里是不能够都配相同的ip地址了(IP冲突),因为这里如果进行三次握手的话也乱了</p>
+<span id="more"></span></li>
+<li><p>使用一台服务器,客户端请求它,该服务器再将请求转给另外的几台服务器,<strong>只要该服务器足够快就能够解决高并发的问题</strong></p>
+<p>问题:转发给的几台服务器解决慢</p>
+<p>为什么tomcat慢,并发数少呢?</p>
+<ul>
+<li><p>网络层上:</p>
+<p>因为它是7层中的一层,自身就是应用层的,也是最末端的层次,所以通信上面不算最快的,而且想到应用的话传输控制层还要进行3次握手,然后才开辟应用层,CPU开辟资源等操作</p>
+</li>
+<li><p>开发语言,基于Java开发的,需要JVM</p>
+</li>
+</ul>
+</li>
+<li><p>知道为什么服务器会慢,所以负载均衡的服务器就应该快速的发给服务端,就避免握手,就跟网线一样</p>
+</li>
+</ol>
+<p><strong>结论</strong></p>
+<p>​        <strong>要想解决高并发,从通信层次我们要避免握手连接,客户端是直接与服务端进行握手的,并且传输控制层只是窥探了端口号,通过端口号来判定是否要将数据包转发给其他的服务器.</strong></p>
+<p><img data-src="../images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123201334798.png" alt="image-20211123201334798"></p>
+<p>基于上述理论,所以我们应该得出这样的服务器,如下图所示.这里服务器是镜像的,对于客户端是不可见的,所以服务器所得到的效果应该是一样</p>
+<h2 id="二、基本负载均衡模型"><a href="#二、基本负载均衡模型" class="headerlink" title="二、基本负载均衡模型"></a>二、基本负载均衡模型</h2><ul>
+<li><p>语义</p>
+<ol>
+<li>CIP-客户端IP</li>
+<li>VIP-虚拟IP</li>
+<li>DIP-分发IP</li>
+<li>RIP-真实IP</li>
+</ol>
+</li>
+<li><p>特点</p>
+<ol>
+<li>四层负载</li>
+<li>数据包转发级别(特别快)</li>
+<li>不会和client握手</li>
+<li>后端服务器是镜像的(相同)</li>
+</ol>
+</li>
+</ul>
+<p>注意: 这里客户端会CIP-&gt;VIP,但是server1不会响应,因为它会检查目标地址是否是RIP,如果不是会丢包</p>
+<p><img data-src="../images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123203550352.png" alt="image-20211123203550352"></p>
+<h2 id="三、NAT模型"><a href="#三、NAT模型" class="headerlink" title="三、NAT模型"></a>三、NAT模型</h2><p>模拟在家上网的网络模型(Network Address Translation，网络地址转换)-NAT模型,一般是在路由器,左边为内网地址,右边是公网地址</p>
+<ul>
+<li><p>场景:<br>在家两个人同时访问百度,也就是1.8和1.6同时访问8.8.8.8,</p>
+</li>
+<li><p>过程</p>
+<p>访问过程路由器会随机申请一个端口号并记录内网的ip和端口号然后发给百度,这两个信息的唯一区分就是在端口号上,当请求之后的数据回来的时候在路由器上的表查询,替换对应的信息在返回,从而达到独立通信的目的(如果是替换的原地址,那么就是S-NAT,其中S是source源地址的意思)</p>
+</li>
+</ul>
+<p><img data-src="../images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123204856662.png" alt="image-20211123204856662"></p>
+<h2 id="四、D-NAT模型"><a href="#四、D-NAT模型" class="headerlink" title="四、D-NAT模型"></a>四、D-NAT模型</h2><p>D-NAT(Destination Network Address Translation):目的地址转换</p>
+<ul>
+<li><p>特点</p>
+<ol>
+<li><p>非对称</p>
+<p>客户端发来的请求一般是很小的,但是服务端返回的数据很大,所以是非对称的</p>
+</li>
+<li><p>带宽</p>
+<p>来回都经过负载均衡服务器,带宽成为瓶颈</p>
+</li>
+<li><p>消耗算力</p>
+<p>请求出去和回来都有地址的转换,所以消耗算力</p>
+</li>
+<li><p>要求RS的GW指向负载均衡服务器</p>
+</li>
+</ol>
+</li>
+<li><p>过程</p>
+<p>CIP-&gt;VIP-&gt;负载均衡服务器-&gt;RIP-&gt;地址转换(RIP-CIP)-&gt;负载均衡服务器-&gt;CIP</p>
+</li>
+<li><p>场景</p>
+<p>常用于防火墙中</p>
+</li>
+</ul>
+<p><img data-src="../images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123210654344.png" alt="image-20211123210654344"></p>
+<h2 id="五、DR模型"><a href="#五、DR模型" class="headerlink" title="五、DR模型"></a>五、DR模型</h2><p>DR模式（<a href="http://www.linuxvirtualserver.org/VS-DRouting.html">直接路由模式:</a>Virtual Server via Direct Routing）</p>
+<ul>
+<li><p>特点</p>
+<ol>
+<li>负载均衡服务器暴露VIP,服务器隐藏VIP</li>
+<li>基于2层(链路,物理)</li>
+<li>mac地址欺骗</li>
+<li>负载服务器和RS在一跳的距离(负载服务器要和RS在同一局域网)</li>
+<li>直接返回给客户端,没走负载均衡服务器</li>
+</ol>
+</li>
+<li><p>过程</p>
+<p>CIP-&gt;VIP-&gt;负载均衡服务器(发送的时候拼接RIP的mac地址)-&gt;RIP-&gt;地址反转(通过隐藏VIP)-&gt;CIP</p>
+</li>
+</ul>
+<p><img data-src="../images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123215113274.png" alt="image-20211123215113274"></p>
+<h2 id="六、TUN模式"><a href="#六、TUN模式" class="headerlink" title="六、TUN模式"></a>六、TUN模式</h2><p>TUN 是IP Tunneling ，IP隧道的简称，它将调度器收到的IP数据包封装在一个新的IP数据包中，转交给应用服务器，然后实际服务器的返回数据会直接返回给用户</p>
+<ul>
+<li><p>特点</p>
+<ol>
+<li>解决了DR(负载服务器要和RS在同一局域网)和D-NAT模式(网关指向均衡负载服务器)的缺点</li>
+<li>拼接IP数据包,速度极快</li>
+</ol>
+</li>
+<li><p>过程</p>
+<p>CIP-&gt;VIP-&gt;负载均衡服务器(拼接DIP-&gt;RIP数据包)-&gt;RIP-&gt;解开数据包然后进行地址转换(CIP-&gt;VIP通过隐藏VIP)-&gt;VIP</p>
+</li>
+<li><p>VPN&amp;翻墙</p>
+</li>
+</ul>
+<p><img data-src="../images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123215104555.png" alt="image-20211123215104555"></p>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+        <category>高并发和负载均衡</category>
+      </categories>
+      <tags>
+        <tag>负载均衡模型和实现</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>高可用及DR-HA实操</title>
+    <url>/posts/3ecf.html</url>
+    <content><![CDATA[<h3 id="一、高可用理论"><a href="#一、高可用理论" class="headerlink" title="一、高可用理论"></a>一、高可用理论</h3><p><img data-src="../images/%E9%AB%98%E5%8F%AF%E7%94%A8%E5%8F%8ADR-HA%E5%AE%9E%E6%93%8D.asset/1637748893465.png" alt="1637748893465"></p>
+<h4 id="1-问题引入"><a href="#1-问题引入" class="headerlink" title="1.问题引入"></a>1.问题引入</h4><ul>
+<li><p><strong>如果LVS挂掉了(单点故障)怎么办,会出现什么问题?</strong></p>
+<p>所有用户都看不到,业务下线</p>
+</li>
+<li><p><strong>如果RS挂掉的话,会出现什么问题?</strong></p>
+<p>一部分用户会访问异常,LVS还存有RS的负载记录</p>
+<span id="more"></span></li>
+</ul>
+<h4 id="2-问题解决"><a href="#2-问题解决" class="headerlink" title="2.问题解决"></a>2.问题解决</h4><ul>
+<li><p>单点故障解决方式:既然是一个宕掉,就用多台(一变多)</p>
+<p><strong>(一)主备(使用较多)</strong></p>
+<ul>
+<li>方向性</li>
+<li>效率性</li>
+</ul>
+<p><strong>(二)主主</strong></p>
+</li>
+</ul>
+<blockquote>
+<p>为了方便理解,我们举一个例子</p>
+<p>皇帝 - &gt; 皇子们</p>
+<ol>
+<li><p>方向性</p>
+<ul>
+<li>皇子们轮训主动观察监视皇上(备轮询主)</li>
+<li>皇上上朝,主动对外发布自己的行动,但这里有一个重试的机制,也就是如果发现皇上3天都没有上朝的话就准备替代皇上(主通告备)</li>
+</ul>
+</li>
+<li><p>效率性</p>
+<p>如果皇上3天没上朝了,皇子们认为皇上驾崩了,那么谁来登基呢?</p>
+<p>如果没有加什么条件,皇子们通过争抢的方式来替代的话,会争抢很多轮,抢不下来</p>
+<p>所以我们加了一个权重值,通过权重值来判定谁来替代皇帝</p>
+<p>也就是<strong>备用机替代主机是通过推选制而不是争夺制</strong></p>
+</li>
+</ol>
+<p><strong>扩展:</strong></p>
+<p>​    <strong>我们常听到主从和主备的概念,这两个相同是同一个东西么?</strong></p>
+<ol>
+<li>主从:有主有从,各司其职,是分布式的,在这里面主还是单点的,所以一般在主从中还会对主服务器进行主备的高可用设置</li>
+<li>主备:有主无备 </li>
+</ol>
+</blockquote>
+<ul>
+<li><p>RS挂了怎么确定?</p>
+<p>如果回答ping地址,是不对的.</p>
+<p>原因:访问一下,验证的是底层中的应用层的http协议 </p>
+<p>解决方式:发请求,判断返回200 OK</p>
+</li>
+</ul>
+<p><strong>问题:怎么实现主备呢?</strong></p>
+<ul>
+<li>lvs:内核中有模块:ipvs-&gt;增加代码?</li>
+<li>第三方实现?</li>
+<li>人来监控 然后响应?(最不靠谱)</li>
+</ul>
+<p>企业追求自动化,所以把人解耦出去,<strong>用程序来进行代替方向性和效率性对应的操作 -&gt;keepalived!</strong></p>
+<p><strong>通过keepalived代替自动运维,解决单点故障,实现HA</strong></p>
+<ol>
+<li>监控自己服务</li>
+<li>Master通告自己还活着,Backup监听Master状态,Master挂了,一堆Backup推举出新的Master</li>
+<li>配置vip,添加ipvs(keepalived有配置文件)</li>
+<li>对后端server做健康检查</li>
+</ol>
+<blockquote>
+<p>tip:</p>
+<ul>
+<li>keepalived是一个通用的工具,主要作为HA实现</li>
+<li>nginx可以作为公司的负载均衡来用,nginx成为了单点故障,也可以用keepalived来解决</li>
+</ul>
+</blockquote>
+<h3 id="二、DR-HA-keepalived-实践"><a href="#二、DR-HA-keepalived-实践" class="headerlink" title="二、DR-HA(keepalived)实践"></a>二、DR-HA(keepalived)实践</h3><p><img data-src="../images/%E9%AB%98%E5%8F%AF%E7%94%A8%E5%8F%8ADR-HA%E5%AE%9E%E6%93%8D.asset/1637823001618.png" alt="1637823001618"></p>
+<h4 id="1-详情步骤"><a href="#1-详情步骤" class="headerlink" title="1.详情步骤"></a>1.详情步骤</h4><figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">基于上次我们做的负载均衡实验,我们进行高可用的实验.</span><br><span class="line"><span class="code">	所以node1,node2,node3为已经负载均衡的机器</span></span><br><span class="line"><span class="code">keepalived实验：</span></span><br><span class="line"><span class="code">主机： node01~node04</span></span><br><span class="line"><span class="code">node01:</span></span><br><span class="line"><span class="code">后续直接通过keepalived自动配置lvs和网卡,所以我们先清理掉</span></span><br><span class="line"><span class="code">	ipvsadm -C     清除lvs</span></span><br><span class="line"><span class="code">	ifconfig eth0:8 down 清除网卡</span></span><br><span class="line"><span class="code"></span></span><br><span class="line">----------------------------</span><br><span class="line">node01,node04:</span><br><span class="line"><span class="code">	yum install keepalived ipvsadm -y</span></span><br><span class="line"><span class="code">	配置：</span></span><br><span class="line"><span class="code">		cd  /etc/keepalived/</span></span><br><span class="line"><span class="code">		cp keepalived.conf keepalived.conf.bak  备份,防止改错</span></span><br><span class="line"><span class="code">		vi keepalived.conf 修改配置</span></span><br><span class="line"><span class="code">			node01:</span></span><br><span class="line"><span class="code">1.配置vrrp协议(vrrp：虚拟路由冗余协议)</span></span><br><span class="line"><span class="code">				</span></span><br><span class="line"><span class="code">				vrrp_instance VI_1 &#123;</span></span><br><span class="line"><span class="code">					state MASTER         //  node04  BACKUP(主从状态)</span></span><br><span class="line"><span class="code">					interface eth0</span></span><br><span class="line"><span class="code">					virtual_router_id 51</span></span><br><span class="line"><span class="code">					priority 100		 //	 node04	 50(优先级)</span></span><br><span class="line"><span class="code">					advert_int 1</span></span><br><span class="line"><span class="code">					authentication &#123;</span></span><br><span class="line"><span class="code">						auth_type PASS</span></span><br><span class="line"><span class="code">						auth_pass 1111</span></span><br><span class="line"><span class="code">					&#125;</span></span><br><span class="line"><span class="code">					virtual_ipaddress &#123;</span></span><br><span class="line"><span class="code">						192.168.188.100/24 dev eth0 label  eth0:3</span></span><br><span class="line"><span class="code">					&#125;</span></span><br><span class="line"><span class="code">				&#125;</span></span><br><span class="line"><span class="code">				</span></span><br><span class="line"><span class="code">2.配置虚拟服务,相当于lvs配置</span></span><br><span class="line"><span class="code">			</span></span><br><span class="line"><span class="code">			</span></span><br><span class="line"><span class="code">			virtual_server 192.168.150.100 80 &#123; //相当于配置A(访问进入)</span></span><br><span class="line"><span class="code">				delay_loop 6</span></span><br><span class="line"><span class="code">				lb_algo rr</span></span><br><span class="line"><span class="code">				lb_kind DR</span></span><br><span class="line"><span class="code">				nat_mask 255.255.255.0</span></span><br><span class="line"><span class="code">				persistence_timeout 0          // (因为不同用户访问,会在服务器开辟内存资源,所以为了避免资源浪费,设置规定时间内访问就负载到之前访问的那台服务器上)</span></span><br><span class="line"><span class="code">				protocol TCP</span></span><br><span class="line"><span class="code"></span></span><br><span class="line"><span class="code">				real_server 192.168.150.12 80 &#123; //相当于配置A(访问出去)</span></span><br><span class="line"><span class="code">					weight 1</span></span><br><span class="line"><span class="code">					HTTP_GET &#123;</span></span><br><span class="line"><span class="code">						url &#123;</span></span><br><span class="line"><span class="code">						  path /</span></span><br><span class="line"><span class="code">						  status_code 200</span></span><br><span class="line"><span class="code">						&#125;</span></span><br><span class="line"><span class="code">						connect_timeout 3</span></span><br><span class="line"><span class="code">						nb_get_retry 3</span></span><br><span class="line"><span class="code">						delay_before_retry 3</span></span><br><span class="line"><span class="code">					&#125;   </span></span><br><span class="line"><span class="code">				&#125;       </span></span><br><span class="line"><span class="code">				real_server 192.168.150.13 80 &#123;</span></span><br><span class="line"><span class="code">					weight 1</span></span><br><span class="line"><span class="code">					HTTP_GET &#123;</span></span><br><span class="line"><span class="code">						url &#123;</span></span><br><span class="line"><span class="code">						  path /</span></span><br><span class="line"><span class="code">						  status_code 200</span></span><br><span class="line"><span class="code">						&#125;</span></span><br><span class="line"><span class="code">						connect_timeout 3</span></span><br><span class="line"><span class="code">						nb_get_retry 3</span></span><br><span class="line"><span class="code">						delay_before_retry 3</span></span><br><span class="line"><span class="code">					&#125;</span></span><br><span class="line"><span class="code">				&#125;</span></span><br><span class="line"><span class="code">			scp  ./keepalived.conf  root@node04:`pwd`</span></span><br><span class="line"><span class="code">			</span></span><br><span class="line"><span class="code">	linux命令:</span></span><br><span class="line"><span class="code">			3 dd :删除3行</span></span><br><span class="line"><span class="code">			O:向上新开一行</span></span><br><span class="line"><span class="code">			tab:切进来</span></span><br><span class="line"><span class="code">			d G 删除当前到最后的所有</span></span><br><span class="line"><span class="code">			.,$-1y  赋值当前行到最后的文本</span></span><br><span class="line"><span class="code">			p 粘贴</span></span><br><span class="line"><span class="code">			r 替换</span></span><br><span class="line"><span class="code">			scp  ./keepalived.conf  root@192.168.188.104:`pwd`   远程拷贝</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="2-扩展"><a href="#2-扩展" class="headerlink" title="2.扩展"></a>2.扩展</h4><figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">扩展:	</span><br><span class="line"><span class="code">	通过帮助程序man学习</span></span><br><span class="line"><span class="code">	指令:</span></span><br><span class="line"><span class="code">		yum install man</span></span><br><span class="line"><span class="code">	哪里不会写了就把哪儿的文字复制命令上:例如我们不知道virural_ipaddress这里应该咋写,</span></span><br><span class="line"><span class="code">    	man 5 keepalived.conf 然后再/vitural_ipaddress</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>问题:所有主备中,主宕了之后又能抢回主?</strong></p>
+<p><strong>回答:lvs是,其他的不一定,要参考成本复杂度</strong></p>
+<ul>
+<li>lvs没有数据同步(因为是数据包转发),所以能直接抢回,但如果不lvs就不一定</li>
+<li>在大数据中nameNode还考率数据同步问题,如果又抢回主的话会出现用户请求阻塞,在这段时间来进行数据的同步,会导致业务下线</li>
+</ul>
+<p>因为keepalived会对后端server做健康检查(主备),如果RS其中一台挂掉的话,他会在ipvsadm -ln 中剔除掉不健康的,</p>
+<p>备机也是一样,这样就不会存在服务器宕机了之后,部分用户请求不到的情况</p>
+<p>如果RS又修复好了,那么会有加载上,而这一切的操作对于用户来说是透明的</p>
+<h4 id="3-验证HA"><a href="#3-验证HA" class="headerlink" title="3.验证HA"></a>3.验证HA</h4><ul>
+<li><p>验证主备(ipvsadm -lnc)</p>
+<ol>
+<li><p>删除node1的eth0网卡(可以关机,在这里我们直接把node1网卡删除)</p>
+<ul>
+<li><p>命令     ifconfig eth0 down</p>
+</li>
+<li><p>结果</p>
+<ol>
+<li><p>用户访问依旧</p>
+</li>
+<li><p>node1和node4的lvs(-a,-A)配置均启动</p>
+</li>
+<li><p>node1的eth0:3剔除,node4的eth0:3启动</p>
+</li>
+<li><p>用户访问走node4负载均衡</p>
+</li>
+</ol>
+</li>
+</ul>
+</li>
+<li><p>.恢复node1的eth0网卡</p>
+<ul>
+<li>命令    ifconfig eth0 up</li>
+<li>结果<ol>
+<li>用户访问依旧</li>
+<li>node1的eth0:3启动,node4的eth0:3剔除</li>
+<li>用户访问走node1负载均衡</li>
+</ol>
+</li>
+</ul>
+</li>
+</ol>
+</li>
+<li><p>验证RS宕机</p>
+<ol>
+<li><p>关闭node2的httpd服务</p>
+<ul>
+<li><p>命令    ipvsadm -ln (查看ipvs转发对应服务信息)</p>
+</li>
+<li><p>结果    剔除了对应的负载均衡的信息</p>
+</li>
+</ul>
+</li>
+<li><p>开启node2的httpd服务</p>
+<ul>
+<li><p>命令    ipvsadm -ln (查看ipvs转发对应服务信息)</p>
+</li>
+<li><p>结果    恢复了对应的负载均衡的信息</p>
+</li>
+</ul>
+</li>
+</ol>
+</li>
+</ul>
+<h3 id="三、总结"><a href="#三、总结" class="headerlink" title="三、总结"></a>三、总结</h3><figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">keepalived功能:</span><br><span class="line"><span class="bullet">	1.</span> 监控自己服务</span><br><span class="line"><span class="bullet">	2.</span> Master通告自己还活着,Backup监听Master状态,Master挂了,一堆Backup推举出新的Master</span><br><span class="line"><span class="bullet">	3.</span> 配置vip,添加ipvs(keepalived有配置文件)</span><br><span class="line"><span class="bullet">	4.</span> 对后端server做健康检查</span><br><span class="line"><span class="code">    根据上述功能,我们对/etc/keepalived中的keepalived.conf文件进行配置,并启动</span></span><br><span class="line"><span class="code">问题:</span></span><br><span class="line"><span class="code">	</span></span><br><span class="line"><span class="code">	</span></span><br><span class="line"><span class="code">	演示:通过杀死httped健康检查的进程(模拟keepalived异常退出)</span></span><br><span class="line"><span class="code">	</span></span><br><span class="line"><span class="code">	问题:</span></span><br><span class="line"><span class="code">		两台主机都配了vip,且没有剔除对应的lvs的转发服务器的设置,从而导致数据包紊乱</span></span><br><span class="line"><span class="code">				(破坏了原子性,三次握手紊乱,连接建立不起来,数据包丢弃)</span></span><br><span class="line"><span class="code">		</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="四、问题引入"><a href="#四、问题引入" class="headerlink" title="四、问题引入"></a>四、问题引入</h3><h4 id="1-问题提出"><a href="#1-问题提出" class="headerlink" title="1.问题提出"></a>1.问题提出</h4><p>​            keepalived异常退出,出现的问题?</p>
+<h4 id="2-问题模拟"><a href="#2-问题模拟" class="headerlink" title="2.问题模拟"></a>2.问题模拟</h4><p>​    通过杀死httped健康检查的进程(模拟keepalived异常退出)</p>
+<h4 id="3-演示结果"><a href="#3-演示结果" class="headerlink" title="3.演示结果"></a>3.演示结果</h4><ol>
+<li>两台主机都配了vip</li>
+<li>没有剔除对应的lvs的转发服务器的设置,</li>
+<li>从而导致数据包紊乱(破坏了原子性,三次握手紊乱,连接建立不起来,数据包丢弃)</li>
+</ol>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+        <category>高并发和负载均衡</category>
+      </categories>
+      <tags>
+        <tag>高可用及DR-HA实操</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>网络分层及通信过程</title>
+    <url>/posts/868b.html</url>
+    <content><![CDATA[<h2 id="一、网络分层结构"><a href="#一、网络分层结构" class="headerlink" title="一、网络分层结构"></a>一、网络分层结构</h2><p>注意:<strong>网络的每一层都会执行自己负责的功能之后阻塞然后调用下一层要执行的功能,从而达到解耦的效果</strong></p>
+<p><img data-src="../images/%E7%BD%91%E7%BB%9C%E5%88%86%E5%B1%82%E5%8F%8A%E9%80%9A%E4%BF%A1%E8%BF%87%E7%A8%8B.asset/1637639149032.png" alt="1637639149032"></p>
+<span id="more"></span>
+
+<h3 id="1-应用层"><a href="#1-应用层" class="headerlink" title="1. 应用层"></a>1. 应用层</h3><ul>
+<li>指令</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//1.建立连接</span></span><br><span class="line">cd /proc/$$/fd</span><br><span class="line">exec <span class="number">8</span> &lt;&gt; /dev/tcp/www.baidu.com/<span class="number">80</span></span><br><span class="line"><span class="comment">//2.传送数据(http协议:规范标准)</span></span><br><span class="line">echo -e <span class="string">&#x27;GET / HTTP/1.0\n&#x27;</span> &gt;&amp; <span class="number">8</span></span><br><span class="line">cat &lt;&amp; <span class="number">8</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p>演示图(应用层协议)</p>
+<p><img data-src="../images/%E7%BD%91%E7%BB%9C%E5%88%86%E5%B1%82%E5%8F%8A%E9%80%9A%E4%BF%A1%E8%BF%87%E7%A8%8B.asset/1637639160421.png" alt="1637639160421"></p>
+</li>
+</ul>
+<h3 id="2-传输控制层"><a href="#2-传输控制层" class="headerlink" title="2.传输控制层"></a>2.传输控制层</h3><p>三次握手&gt;数据传输&gt;四次握手(最小粒度不可分割)</p>
+<p>通过netstat - help来进行查看参数的详细意思</p>
+<p><img data-src="../images/%E7%BD%91%E7%BB%9C%E5%88%86%E5%B1%82%E5%8F%8A%E9%80%9A%E4%BF%A1%E8%BF%87%E7%A8%8B.asset/1637639168551.png" alt="1637639168551"></p>
+<h3 id="3-网络层"><a href="#3-网络层" class="headerlink" title="3.网络层"></a>3.网络层</h3><ul>
+<li>概念<ol>
+<li>TCP/IP协议</li>
+<li>路由判定-基于下一跳机制</li>
+<li>IP是端点的,mac是节点的</li>
+</ol>
+</li>
+<li>指令</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//查看网卡信息</span></span><br><span class="line">cat /etc/sysconfig/network-scripts/ifcfg-eth0</span><br><span class="line"><span class="comment">//这里会把ip和Genmask进行与运算,如果等于Destination那么数据会到对应的网关</span></span><br><span class="line">ping www.baidu.com</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E7%BD%91%E7%BB%9C%E5%88%86%E5%B1%82%E5%8F%8A%E9%80%9A%E4%BF%A1%E8%BF%87%E7%A8%8B.asset/1637639185376.png" alt="1637639185376"></p>
+<h3 id="4-链路层"><a href="#4-链路层" class="headerlink" title="4.链路层"></a>4.链路层</h3><ul>
+<li>指令</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//获得ip为17.23.223.253的mac地址为ee:ff:ff:ff:ff:ff</span></span><br><span class="line">arp -an</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E7%BD%91%E7%BB%9C%E5%88%86%E5%B1%82%E5%8F%8A%E9%80%9A%E4%BF%A1%E8%BF%87%E7%A8%8B.asset/1637639195169.png" alt="1637639195169"></p>
+<h3 id="5-物理层"><a href="#5-物理层" class="headerlink" title="5.物理层"></a>5.物理层</h3><h2 id="二、通信的过程详解"><a href="#二、通信的过程详解" class="headerlink" title="二、通信的过程详解"></a>二、通信的过程详解</h2><ol>
+<li>ip地址相当于是始发地和目的地</li>
+<li>mac地址相当于是每一跳之间的开始和结束</li>
+<li>port端口号则是每个ip对应的程序</li>
+</ol>
+<p>所以通过以上三点可以完成通信的精确定位</p>
+<p><strong>计算机1(192.168.1.1)到计算机4(192.168.3.4)通信为例</strong></p>
+<blockquote>
+<p>前置知识:</p>
+<ul>
+<li><p>网络号</p>
+<p>计算机1和计算机2网络号:192.168.1.0</p>
+<p>计算机3和计算机4网络号192.168.3.0</p>
+</li>
+<li><p>ip</p>
+<p>计算机1ip:192.168.1.4</p>
+<p>计算机4ip:192.168.3.4</p>
+</li>
+<li><p>路由信息与网卡</p>
+<p>计算机1的路由信息应有两个:</p>
+<ul>
+<li>192.168.1.0 eth0 -&gt;本地</li>
+<li>0.0.0.0    192.168.1.1 </li>
+</ul>
+<p>其中路由器中有两个网关分别是192.168.1.1,192.168.3.1</p>
+<p>路由器就是用来连接不同的网段,所以才叫路由器,选路用的</p>
+<p>这里网关可以理解为就是下一跳</p>
+</li>
+<li><p>交换机</p>
+<p>交换机具有学习的功能,在arp地址发送的时候他会记录目标mac地址和端口号port-&gt;mac(这里目标mac地址),方便以后回溯</p>
+</li>
+</ul>
+</blockquote>
+<p><img data-src="../images/%E7%BD%91%E7%BB%9C%E5%88%86%E5%B1%82%E5%8F%8A%E9%80%9A%E4%BF%A1%E8%BF%87%E7%A8%8B.asset/1637639204273.png" alt="1637639204273"></p>
+<p><strong>如上图通信过程步骤如下:</strong></p>
+<p>​    ip: 192.168.1.4-&gt;192.168.3.4</p>
+<ol>
+<li><p>首先A有两个路由信息detination分别192.168.1.0   0.0.0.0,因为网段是192.168.3.0所以匹配不上,最终匹配上的是0.0.0.0,然后走的是默认网关192.168.1.1(下一跳地址),这样就确认了下一跳是谁</p>
+<p><img data-src="../images/%E7%BD%91%E7%BB%9C%E5%88%86%E5%B1%82%E5%8F%8A%E9%80%9A%E4%BF%A1%E8%BF%87%E7%A8%8B.asset/1637648054904.png" alt="1637648054904"></p>
+</li>
+<li><p>确认了下一跳是谁之后就要确认mac地址,也就是从网络层到了链路层.</p>
+<p>因为计算机1中不知道有哪些路由,所以不知道目标mac地址,他会先封装一个数据包里面的目标MAC地址为FFFF,发送给目标IP192.168.1.1,途中经过交换机,交换机会将数据包广播给除了计算机1之外的其他计算机(这里是计算机2),然后计算机2会比较目标ip地址是否是自己的地址,如果不是的话就会丢弃数据包,如果路由器发现目标地址是自己包含的地址它会相应这个数据包,查看它的协议,发现协议是arp就会将数据包发回给原mac地址,这个时候数据包中的源mac地址为1.1@mac而目标mac地址则是1.4@mac,目标ip和源ip也跟原来相反,然后通过交换机转发给计算机1(这里交换机不会广播,直接通过port-&gt;mac地址来进行转发),最终计算机1获取到了到达192.168.1.1的mac地址.</p>
+</li>
+<li><p>因为获取到了路由的mac地址,所以这里才是正式的发送,封装的数据包中源ip和目标ip为1.4-&gt;3.4,源mac和目标mac则是1.4@mac-&gt;1.1@mac,路由器中route-n查看路由信息,会有192.168.1.0和192.168.3.0,发送的是3.4所以走的是3.0这个直联的网络,这里如果路由如果没有3.4的mac地址的话和步骤2一样会走一遍交换机学习的过程,获取到3.4的mac地址然后才封装数据包进行发送,该数据包源mac为3.1@mac-&gt;3.4@mac,192.168.1.4-&gt;192.168.3.4也就是mac地址发生变化,ip地址不变,最终找到对应的计算机,再通过端口号找到对应的进程.</p>
+<blockquote>
+<p>补充:</p>
+<p>如果我们要ping8.0,那么只需在对应的机器上加上对应的路由信息</p>
+<p>只需记住ping的ip跟子网掩码进行与运算,看是否匹配destination,如果匹配走对应的网关</p>
+<p>网关也可以理解为下一跳</p>
+</blockquote>
+</li>
+</ol>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+        <category>高并发和负载均衡</category>
+      </categories>
+      <tags>
+        <tag>网络分层及通信过程</tag>
+      </tags>
+  </entry>
+</search>

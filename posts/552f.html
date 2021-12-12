@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"leoleiv8x.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":true,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="负载均衡模型一、问题引入​        如果有多个用户来访问服务器,要想要减轻服务器的压力,应该怎么办呢?  首先想到的方法就是用多个服务器来分担 问题:两台计算机通信最终是通过ip,如果客户端连接多台服务器,服务器这里是不能够都配相同的ip地址了(IP冲突),因为这里如果进行三次握手的话也乱了">
+<meta property="og:type" content="article">
+<meta property="og:title" content="负载均衡模型与实现">
+<meta property="og:url" content="https://leoleiv8x.github.io/posts/552f.html">
+<meta property="og:site_name" content="LENO">
+<meta property="og:description" content="负载均衡模型一、问题引入​        如果有多个用户来访问服务器,要想要减轻服务器的压力,应该怎么办呢?  首先想到的方法就是用多个服务器来分担 问题:两台计算机通信最终是通过ip,如果客户端连接多台服务器,服务器这里是不能够都配相同的ip地址了(IP冲突),因为这里如果进行三次握手的话也乱了">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123201334798.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123203550352.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123204856662.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123210654344.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123215113274.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123215104555.png">
+<meta property="article:published_time" content="2021-12-12T07:53:36.000Z">
+<meta property="article:modified_time" content="2021-12-12T08:11:13.843Z">
+<meta property="article:author" content="Lei">
+<meta property="article:tag" content="负载均衡模型和实现">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leoleiv8x.github.io/images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123201334798.png">
+
+<link rel="canonical" href="https://leoleiv8x.github.io/posts/552f.html">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>负载均衡模型与实现 | LENO</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">LENO</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Keep track of your life</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/552f.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          负载均衡模型与实现
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-12-12 15:53:36 / 修改时间：16:11:13" itemprop="dateCreated datePublished" datetime="2021-12-12T15:53:36+08:00">2021-12-12</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/%E9%AB%98%E5%B9%B6%E5%8F%91%E5%92%8C%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/" itemprop="url" rel="index"><span itemprop="name">高并发和负载均衡</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>1.6k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>1 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="负载均衡模型"><a href="#负载均衡模型" class="headerlink" title="负载均衡模型"></a>负载均衡模型</h2><h3 id="一、问题引入"><a href="#一、问题引入" class="headerlink" title="一、问题引入"></a>一、问题引入</h3><p>​        <strong>如果有多个用户来访问服务器,要想要减轻服务器的压力,应该怎么办呢?</strong></p>
+<ol>
+<li><p>首先想到的方法就是用多个服务器来分担</p>
+<p>问题:两台计算机通信最终是通过ip,如果客户端连接多台服务器,服务器这里是不能够都配相同的ip地址了(IP冲突),因为这里如果进行三次握手的话也乱了</p>
+<span id="more"></span></li>
+<li><p>使用一台服务器,客户端请求它,该服务器再将请求转给另外的几台服务器,<strong>只要该服务器足够快就能够解决高并发的问题</strong></p>
+<p>问题:转发给的几台服务器解决慢</p>
+<p>为什么tomcat慢,并发数少呢?</p>
+<ul>
+<li><p>网络层上:</p>
+<p>因为它是7层中的一层,自身就是应用层的,也是最末端的层次,所以通信上面不算最快的,而且想到应用的话传输控制层还要进行3次握手,然后才开辟应用层,CPU开辟资源等操作</p>
+</li>
+<li><p>开发语言,基于Java开发的,需要JVM</p>
+</li>
+</ul>
+</li>
+<li><p>知道为什么服务器会慢,所以负载均衡的服务器就应该快速的发给服务端,就避免握手,就跟网线一样</p>
+</li>
+</ol>
+<p><strong>结论</strong></p>
+<p>​        <strong>要想解决高并发,从通信层次我们要避免握手连接,客户端是直接与服务端进行握手的,并且传输控制层只是窥探了端口号,通过端口号来判定是否要将数据包转发给其他的服务器.</strong></p>
+<p><img data-src="../images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123201334798.png" alt="image-20211123201334798"></p>
+<p>基于上述理论,所以我们应该得出这样的服务器,如下图所示.这里服务器是镜像的,对于客户端是不可见的,所以服务器所得到的效果应该是一样</p>
+<h2 id="二、基本负载均衡模型"><a href="#二、基本负载均衡模型" class="headerlink" title="二、基本负载均衡模型"></a>二、基本负载均衡模型</h2><ul>
+<li><p>语义</p>
+<ol>
+<li>CIP-客户端IP</li>
+<li>VIP-虚拟IP</li>
+<li>DIP-分发IP</li>
+<li>RIP-真实IP</li>
+</ol>
+</li>
+<li><p>特点</p>
+<ol>
+<li>四层负载</li>
+<li>数据包转发级别(特别快)</li>
+<li>不会和client握手</li>
+<li>后端服务器是镜像的(相同)</li>
+</ol>
+</li>
+</ul>
+<p>注意: 这里客户端会CIP-&gt;VIP,但是server1不会响应,因为它会检查目标地址是否是RIP,如果不是会丢包</p>
+<p><img data-src="../images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123203550352.png" alt="image-20211123203550352"></p>
+<h2 id="三、NAT模型"><a href="#三、NAT模型" class="headerlink" title="三、NAT模型"></a>三、NAT模型</h2><p>模拟在家上网的网络模型(Network Address Translation，网络地址转换)-NAT模型,一般是在路由器,左边为内网地址,右边是公网地址</p>
+<ul>
+<li><p>场景:<br>在家两个人同时访问百度,也就是1.8和1.6同时访问8.8.8.8,</p>
+</li>
+<li><p>过程</p>
+<p>访问过程路由器会随机申请一个端口号并记录内网的ip和端口号然后发给百度,这两个信息的唯一区分就是在端口号上,当请求之后的数据回来的时候在路由器上的表查询,替换对应的信息在返回,从而达到独立通信的目的(如果是替换的原地址,那么就是S-NAT,其中S是source源地址的意思)</p>
+</li>
+</ul>
+<p><img data-src="../images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123204856662.png" alt="image-20211123204856662"></p>
+<h2 id="四、D-NAT模型"><a href="#四、D-NAT模型" class="headerlink" title="四、D-NAT模型"></a>四、D-NAT模型</h2><p>D-NAT(Destination Network Address Translation):目的地址转换</p>
+<ul>
+<li><p>特点</p>
+<ol>
+<li><p>非对称</p>
+<p>客户端发来的请求一般是很小的,但是服务端返回的数据很大,所以是非对称的</p>
+</li>
+<li><p>带宽</p>
+<p>来回都经过负载均衡服务器,带宽成为瓶颈</p>
+</li>
+<li><p>消耗算力</p>
+<p>请求出去和回来都有地址的转换,所以消耗算力</p>
+</li>
+<li><p>要求RS的GW指向负载均衡服务器</p>
+</li>
+</ol>
+</li>
+<li><p>过程</p>
+<p>CIP-&gt;VIP-&gt;负载均衡服务器-&gt;RIP-&gt;地址转换(RIP-CIP)-&gt;负载均衡服务器-&gt;CIP</p>
+</li>
+<li><p>场景</p>
+<p>常用于防火墙中</p>
+</li>
+</ul>
+<p><img data-src="../images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123210654344.png" alt="image-20211123210654344"></p>
+<h2 id="五、DR模型"><a href="#五、DR模型" class="headerlink" title="五、DR模型"></a>五、DR模型</h2><p>DR模式（<a target="_blank" rel="noopener" href="http://www.linuxvirtualserver.org/VS-DRouting.html">直接路由模式:</a>Virtual Server via Direct Routing）</p>
+<ul>
+<li><p>特点</p>
+<ol>
+<li>负载均衡服务器暴露VIP,服务器隐藏VIP</li>
+<li>基于2层(链路,物理)</li>
+<li>mac地址欺骗</li>
+<li>负载服务器和RS在一跳的距离(负载服务器要和RS在同一局域网)</li>
+<li>直接返回给客户端,没走负载均衡服务器</li>
+</ol>
+</li>
+<li><p>过程</p>
+<p>CIP-&gt;VIP-&gt;负载均衡服务器(发送的时候拼接RIP的mac地址)-&gt;RIP-&gt;地址反转(通过隐藏VIP)-&gt;CIP</p>
+</li>
+</ul>
+<p><img data-src="../images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123215113274.png" alt="image-20211123215113274"></p>
+<h2 id="六、TUN模式"><a href="#六、TUN模式" class="headerlink" title="六、TUN模式"></a>六、TUN模式</h2><p>TUN 是IP Tunneling ，IP隧道的简称，它将调度器收到的IP数据包封装在一个新的IP数据包中，转交给应用服务器，然后实际服务器的返回数据会直接返回给用户</p>
+<ul>
+<li><p>特点</p>
+<ol>
+<li>解决了DR(负载服务器要和RS在同一局域网)和D-NAT模式(网关指向均衡负载服务器)的缺点</li>
+<li>拼接IP数据包,速度极快</li>
+</ol>
+</li>
+<li><p>过程</p>
+<p>CIP-&gt;VIP-&gt;负载均衡服务器(拼接DIP-&gt;RIP数据包)-&gt;RIP-&gt;解开数据包然后进行地址转换(CIP-&gt;VIP通过隐藏VIP)-&gt;VIP</p>
+</li>
+<li><p>VPN&amp;翻墙</p>
+</li>
+</ul>
+<p><img data-src="../images/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E4%B8%8E%E5%AE%9E%E7%8E%B0.asset/image-20211123215104555.png" alt="image-20211123215104555"></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+             <div class="post-tags">
+              <a href="/tags/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E5%92%8C%E5%AE%9E%E7%8E%B0/" rel="tag"><i class="fa fa-tag"></i> 负载均衡模型和实现</a>
+          </div>
+          <script type="text/javascript">
+            var tagsall=document.getElementsByClassName("post-tags")
+            for (var i = tagsall.length - 1; i >= 0; i--){
+                var tags=tagsall[i].getElementsByTagName("a");
+                for (var j = tags.length - 1; j >= 0; j--) {
+                    var golden_ratio = 0.618033988749895;
+                    var s = 0.5;
+                    var v = 0.999;
+                    var h = golden_ratio + Math.random()*0.8 - 0.5;
+                    var h_i = parseInt(h * 6);
+                    var f = h * 6 - h_i;
+                    var p = v * (1 - s);
+                    var q = v * (1 - f * s);
+                    var t = v * (1 - (1 - f) * s);
+                    var r, g, b;
+                    switch (h_i) {
+                        case 0:
+                            r = v;
+                            g = t;
+                            b = p;
+                            break;
+                        case 1:
+                            r = q;
+                            g = v;
+                            b = p;
+                            break;
+                        case 2:
+                            r = p;
+                            g = v;
+                            b = t;
+                            break;
+                        case 3 :
+                            r = p;
+                            g = q;
+                            b = v;
+                            break;
+                        case 4:
+                            r = t;
+                            g = p;
+                            b = v;
+                            break;
+                        case 5:
+                            r = v;
+                            g = p;
+                            b = q;
+                            break;
+                        default:
+                            r = 1;
+                            g = 1;
+                            b = 1;
+                      }
+                    tags[j].style.background = "rgba("+parseInt(r*255)+","+parseInt(g*255)+","+parseInt(b*255)+","+0.5+")";
+                }
+            }                        
+            </script>
+
+              <a href="/tags/%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B%E5%92%8C%E5%AE%9E%E7%8E%B0/" rel="tag"><i class="fa fa-tag"></i> 负载均衡模型和实现</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/posts/2036.html" rel="prev" title="LVS及LVS_DR模型实践">
+      <i class="fa fa-chevron-left"></i> LVS及LVS_DR模型实践
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/posts/3ecf.html" rel="next" title="高可用及DR-HA实操">
+      高可用及DR-HA实操 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B"><span class="nav-number">1.</span> <span class="nav-text">负载均衡模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E9%97%AE%E9%A2%98%E5%BC%95%E5%85%A5"><span class="nav-number">1.1.</span> <span class="nav-text">一、问题引入</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E5%9F%BA%E6%9C%AC%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E6%A8%A1%E5%9E%8B"><span class="nav-number">2.</span> <span class="nav-text">二、基本负载均衡模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81NAT%E6%A8%A1%E5%9E%8B"><span class="nav-number">3.</span> <span class="nav-text">三、NAT模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81D-NAT%E6%A8%A1%E5%9E%8B"><span class="nav-number">4.</span> <span class="nav-text">四、D-NAT模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81DR%E6%A8%A1%E5%9E%8B"><span class="nav-number">5.</span> <span class="nav-text">五、DR模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81TUN%E6%A8%A1%E5%BC%8F"><span class="nav-number">6.</span> <span class="nav-text">六、TUN模式</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Lei"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Lei</p>
+  <div class="site-description" itemprop="description">The Art of Code Documentation</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">12</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">12</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/leoleiv8x" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;leoleiv8x" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/qq_43583755" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;qq_43583755" rel="noopener" target="_blank"><i class="fab fa-telegram fa-fw"></i>CSDN</a>
+      </span>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Lei</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">26k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">23 分钟</span>
+</div>
+
+<!-- 网站运行时间的设置 -->
+<span id="timeDate">载入天数...</span>
+<span id="times">载入时分秒...</span>
+<script>
+    var now = new Date();
+    function createtime() {
+        var grt= new Date("12/12/2021 12:00:00");//此处修改你的建站时间或者网站上线时间
+        now.setTime(now.getTime()+250);
+        days = (now - grt ) / 1000 / 60 / 60 / 24; dnum = Math.floor(days);
+        hours = (now - grt ) / 1000 / 60 / 60 - (24 * dnum); hnum = Math.floor(hours);
+        if(String(hnum).length ==1 ){hnum = "0" + hnum;} minutes = (now - grt ) / 1000 /60 - (24 * 60 * dnum) - (60 * hnum);
+        mnum = Math.floor(minutes); if(String(mnum).length ==1 ){mnum = "0" + mnum;}
+        seconds = (now - grt ) / 1000 - (24 * 60 * 60 * dnum) - (60 * 60 * hnum) - (60 * mnum);
+        snum = Math.round(seconds); if(String(snum).length ==1 ){snum = "0" + snum;}
+        document.getElementById("timeDate").innerHTML = "本站已安全运行 "+dnum+" 天 ";
+        document.getElementById("times").innerHTML = hnum + " 小时 " + mnum + " 分 " + snum + " 秒";
+    }
+    setInterval("createtime()",250);
+</script>
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+<span><br></span> 
+
+<span class="post-meta-item-icon">
+      <i class="fa fa-user"></i>
+</span>
+<span>总访客&nbsp<span id="busuanzi_value_site_uv"></span>&nbsp人</span>
+    <span class="post-meta-divider">|</span>
+<span class="post-meta-item-icon">
+      <i class="fa fa-eye"></i>
+</span>
+    <span>总访问量&nbsp<span id="busuanzi_value_site_pv"></span>&nbsp次</span>
+
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/lozad@1/dist/lozad.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"jsonPath":"/live2dw/assets/assets/hijiki.model.json"},"display":{"position":"right","width":150,"height":300},"mobile":{"show":true},"react":{"opacity":0.7},"log":false});</script></body>
+</html>

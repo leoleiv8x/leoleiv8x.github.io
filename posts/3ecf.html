@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"leoleiv8x.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":true,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一、高可用理论 1.问题引入 如果LVS挂掉了(单点故障)怎么办,会出现什么问题? 所有用户都看不到,业务下线  如果RS挂掉的话,会出现什么问题? 一部分用户会访问异常,LVS还存有RS的负载记录">
+<meta property="og:type" content="article">
+<meta property="og:title" content="高可用及DR-HA实操">
+<meta property="og:url" content="https://leoleiv8x.github.io/posts/3ecf.html">
+<meta property="og:site_name" content="LENO">
+<meta property="og:description" content="一、高可用理论 1.问题引入 如果LVS挂掉了(单点故障)怎么办,会出现什么问题? 所有用户都看不到,业务下线  如果RS挂掉的话,会出现什么问题? 一部分用户会访问异常,LVS还存有RS的负载记录">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/%E9%AB%98%E5%8F%AF%E7%94%A8%E5%8F%8ADR-HA%E5%AE%9E%E6%93%8D.asset/1637748893465.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/%E9%AB%98%E5%8F%AF%E7%94%A8%E5%8F%8ADR-HA%E5%AE%9E%E6%93%8D.asset/1637823001618.png">
+<meta property="article:published_time" content="2021-12-12T07:53:42.000Z">
+<meta property="article:modified_time" content="2021-12-12T08:11:22.510Z">
+<meta property="article:author" content="Lei">
+<meta property="article:tag" content="高可用及DR-HA实操">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leoleiv8x.github.io/images/%E9%AB%98%E5%8F%AF%E7%94%A8%E5%8F%8ADR-HA%E5%AE%9E%E6%93%8D.asset/1637748893465.png">
+
+<link rel="canonical" href="https://leoleiv8x.github.io/posts/3ecf.html">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>高可用及DR-HA实操 | LENO</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">LENO</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Keep track of your life</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/3ecf.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          高可用及DR-HA实操
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-12-12 15:53:42 / 修改时间：16:11:22" itemprop="dateCreated datePublished" datetime="2021-12-12T15:53:42+08:00">2021-12-12</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/%E9%AB%98%E5%B9%B6%E5%8F%91%E5%92%8C%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/" itemprop="url" rel="index"><span itemprop="name">高并发和负载均衡</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>3.5k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>3 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="一、高可用理论"><a href="#一、高可用理论" class="headerlink" title="一、高可用理论"></a>一、高可用理论</h3><p><img data-src="../images/%E9%AB%98%E5%8F%AF%E7%94%A8%E5%8F%8ADR-HA%E5%AE%9E%E6%93%8D.asset/1637748893465.png" alt="1637748893465"></p>
+<h4 id="1-问题引入"><a href="#1-问题引入" class="headerlink" title="1.问题引入"></a>1.问题引入</h4><ul>
+<li><p><strong>如果LVS挂掉了(单点故障)怎么办,会出现什么问题?</strong></p>
+<p>所有用户都看不到,业务下线</p>
+</li>
+<li><p><strong>如果RS挂掉的话,会出现什么问题?</strong></p>
+<p>一部分用户会访问异常,LVS还存有RS的负载记录</p>
+<span id="more"></span></li>
+</ul>
+<h4 id="2-问题解决"><a href="#2-问题解决" class="headerlink" title="2.问题解决"></a>2.问题解决</h4><ul>
+<li><p>单点故障解决方式:既然是一个宕掉,就用多台(一变多)</p>
+<p><strong>(一)主备(使用较多)</strong></p>
+<ul>
+<li>方向性</li>
+<li>效率性</li>
+</ul>
+<p><strong>(二)主主</strong></p>
+</li>
+</ul>
+<blockquote>
+<p>为了方便理解,我们举一个例子</p>
+<p>皇帝 - &gt; 皇子们</p>
+<ol>
+<li><p>方向性</p>
+<ul>
+<li>皇子们轮训主动观察监视皇上(备轮询主)</li>
+<li>皇上上朝,主动对外发布自己的行动,但这里有一个重试的机制,也就是如果发现皇上3天都没有上朝的话就准备替代皇上(主通告备)</li>
+</ul>
+</li>
+<li><p>效率性</p>
+<p>如果皇上3天没上朝了,皇子们认为皇上驾崩了,那么谁来登基呢?</p>
+<p>如果没有加什么条件,皇子们通过争抢的方式来替代的话,会争抢很多轮,抢不下来</p>
+<p>所以我们加了一个权重值,通过权重值来判定谁来替代皇帝</p>
+<p>也就是<strong>备用机替代主机是通过推选制而不是争夺制</strong></p>
+</li>
+</ol>
+<p><strong>扩展:</strong></p>
+<p>​    <strong>我们常听到主从和主备的概念,这两个相同是同一个东西么?</strong></p>
+<ol>
+<li>主从:有主有从,各司其职,是分布式的,在这里面主还是单点的,所以一般在主从中还会对主服务器进行主备的高可用设置</li>
+<li>主备:有主无备 </li>
+</ol>
+</blockquote>
+<ul>
+<li><p>RS挂了怎么确定?</p>
+<p>如果回答ping地址,是不对的.</p>
+<p>原因:访问一下,验证的是底层中的应用层的http协议 </p>
+<p>解决方式:发请求,判断返回200 OK</p>
+</li>
+</ul>
+<p><strong>问题:怎么实现主备呢?</strong></p>
+<ul>
+<li>lvs:内核中有模块:ipvs-&gt;增加代码?</li>
+<li>第三方实现?</li>
+<li>人来监控 然后响应?(最不靠谱)</li>
+</ul>
+<p>企业追求自动化,所以把人解耦出去,<strong>用程序来进行代替方向性和效率性对应的操作 -&gt;keepalived!</strong></p>
+<p><strong>通过keepalived代替自动运维,解决单点故障,实现HA</strong></p>
+<ol>
+<li>监控自己服务</li>
+<li>Master通告自己还活着,Backup监听Master状态,Master挂了,一堆Backup推举出新的Master</li>
+<li>配置vip,添加ipvs(keepalived有配置文件)</li>
+<li>对后端server做健康检查</li>
+</ol>
+<blockquote>
+<p>tip:</p>
+<ul>
+<li>keepalived是一个通用的工具,主要作为HA实现</li>
+<li>nginx可以作为公司的负载均衡来用,nginx成为了单点故障,也可以用keepalived来解决</li>
+</ul>
+</blockquote>
+<h3 id="二、DR-HA-keepalived-实践"><a href="#二、DR-HA-keepalived-实践" class="headerlink" title="二、DR-HA(keepalived)实践"></a>二、DR-HA(keepalived)实践</h3><p><img data-src="../images/%E9%AB%98%E5%8F%AF%E7%94%A8%E5%8F%8ADR-HA%E5%AE%9E%E6%93%8D.asset/1637823001618.png" alt="1637823001618"></p>
+<h4 id="1-详情步骤"><a href="#1-详情步骤" class="headerlink" title="1.详情步骤"></a>1.详情步骤</h4><figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br></pre></td><td class="code"><pre><span class="line">基于上次我们做的负载均衡实验,我们进行高可用的实验.</span><br><span class="line"><span class="code">	所以node1,node2,node3为已经负载均衡的机器</span></span><br><span class="line"><span class="code">keepalived实验：</span></span><br><span class="line"><span class="code">主机： node01~node04</span></span><br><span class="line"><span class="code">node01:</span></span><br><span class="line"><span class="code">后续直接通过keepalived自动配置lvs和网卡,所以我们先清理掉</span></span><br><span class="line"><span class="code">	ipvsadm -C     清除lvs</span></span><br><span class="line"><span class="code">	ifconfig eth0:8 down 清除网卡</span></span><br><span class="line"><span class="code"></span></span><br><span class="line">----------------------------</span><br><span class="line">node01,node04:</span><br><span class="line"><span class="code">	yum install keepalived ipvsadm -y</span></span><br><span class="line"><span class="code">	配置：</span></span><br><span class="line"><span class="code">		cd  /etc/keepalived/</span></span><br><span class="line"><span class="code">		cp keepalived.conf keepalived.conf.bak  备份,防止改错</span></span><br><span class="line"><span class="code">		vi keepalived.conf 修改配置</span></span><br><span class="line"><span class="code">			node01:</span></span><br><span class="line"><span class="code">1.配置vrrp协议(vrrp：虚拟路由冗余协议)</span></span><br><span class="line"><span class="code">				</span></span><br><span class="line"><span class="code">				vrrp_instance VI_1 &#123;</span></span><br><span class="line"><span class="code">					state MASTER         //  node04  BACKUP(主从状态)</span></span><br><span class="line"><span class="code">					interface eth0</span></span><br><span class="line"><span class="code">					virtual_router_id 51</span></span><br><span class="line"><span class="code">					priority 100		 //	 node04	 50(优先级)</span></span><br><span class="line"><span class="code">					advert_int 1</span></span><br><span class="line"><span class="code">					authentication &#123;</span></span><br><span class="line"><span class="code">						auth_type PASS</span></span><br><span class="line"><span class="code">						auth_pass 1111</span></span><br><span class="line"><span class="code">					&#125;</span></span><br><span class="line"><span class="code">					virtual_ipaddress &#123;</span></span><br><span class="line"><span class="code">						192.168.188.100/24 dev eth0 label  eth0:3</span></span><br><span class="line"><span class="code">					&#125;</span></span><br><span class="line"><span class="code">				&#125;</span></span><br><span class="line"><span class="code">				</span></span><br><span class="line"><span class="code">2.配置虚拟服务,相当于lvs配置</span></span><br><span class="line"><span class="code">			</span></span><br><span class="line"><span class="code">			</span></span><br><span class="line"><span class="code">			virtual_server 192.168.150.100 80 &#123; //相当于配置A(访问进入)</span></span><br><span class="line"><span class="code">				delay_loop 6</span></span><br><span class="line"><span class="code">				lb_algo rr</span></span><br><span class="line"><span class="code">				lb_kind DR</span></span><br><span class="line"><span class="code">				nat_mask 255.255.255.0</span></span><br><span class="line"><span class="code">				persistence_timeout 0          // (因为不同用户访问,会在服务器开辟内存资源,所以为了避免资源浪费,设置规定时间内访问就负载到之前访问的那台服务器上)</span></span><br><span class="line"><span class="code">				protocol TCP</span></span><br><span class="line"><span class="code"></span></span><br><span class="line"><span class="code">				real_server 192.168.150.12 80 &#123; //相当于配置A(访问出去)</span></span><br><span class="line"><span class="code">					weight 1</span></span><br><span class="line"><span class="code">					HTTP_GET &#123;</span></span><br><span class="line"><span class="code">						url &#123;</span></span><br><span class="line"><span class="code">						  path /</span></span><br><span class="line"><span class="code">						  status_code 200</span></span><br><span class="line"><span class="code">						&#125;</span></span><br><span class="line"><span class="code">						connect_timeout 3</span></span><br><span class="line"><span class="code">						nb_get_retry 3</span></span><br><span class="line"><span class="code">						delay_before_retry 3</span></span><br><span class="line"><span class="code">					&#125;   </span></span><br><span class="line"><span class="code">				&#125;       </span></span><br><span class="line"><span class="code">				real_server 192.168.150.13 80 &#123;</span></span><br><span class="line"><span class="code">					weight 1</span></span><br><span class="line"><span class="code">					HTTP_GET &#123;</span></span><br><span class="line"><span class="code">						url &#123;</span></span><br><span class="line"><span class="code">						  path /</span></span><br><span class="line"><span class="code">						  status_code 200</span></span><br><span class="line"><span class="code">						&#125;</span></span><br><span class="line"><span class="code">						connect_timeout 3</span></span><br><span class="line"><span class="code">						nb_get_retry 3</span></span><br><span class="line"><span class="code">						delay_before_retry 3</span></span><br><span class="line"><span class="code">					&#125;</span></span><br><span class="line"><span class="code">				&#125;</span></span><br><span class="line"><span class="code">			scp  ./keepalived.conf  root@node04:`pwd`</span></span><br><span class="line"><span class="code">			</span></span><br><span class="line"><span class="code">	linux命令:</span></span><br><span class="line"><span class="code">			3 dd :删除3行</span></span><br><span class="line"><span class="code">			O:向上新开一行</span></span><br><span class="line"><span class="code">			tab:切进来</span></span><br><span class="line"><span class="code">			d G 删除当前到最后的所有</span></span><br><span class="line"><span class="code">			.,$-1y  赋值当前行到最后的文本</span></span><br><span class="line"><span class="code">			p 粘贴</span></span><br><span class="line"><span class="code">			r 替换</span></span><br><span class="line"><span class="code">			scp  ./keepalived.conf  root@192.168.188.104:`pwd`   远程拷贝</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="2-扩展"><a href="#2-扩展" class="headerlink" title="2.扩展"></a>2.扩展</h4><figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">扩展:	</span><br><span class="line"><span class="code">	通过帮助程序man学习</span></span><br><span class="line"><span class="code">	指令:</span></span><br><span class="line"><span class="code">		yum install man</span></span><br><span class="line"><span class="code">	哪里不会写了就把哪儿的文字复制命令上:例如我们不知道virural_ipaddress这里应该咋写,</span></span><br><span class="line"><span class="code">    	man 5 keepalived.conf 然后再/vitural_ipaddress</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>问题:所有主备中,主宕了之后又能抢回主?</strong></p>
+<p><strong>回答:lvs是,其他的不一定,要参考成本复杂度</strong></p>
+<ul>
+<li>lvs没有数据同步(因为是数据包转发),所以能直接抢回,但如果不lvs就不一定</li>
+<li>在大数据中nameNode还考率数据同步问题,如果又抢回主的话会出现用户请求阻塞,在这段时间来进行数据的同步,会导致业务下线</li>
+</ul>
+<p>因为keepalived会对后端server做健康检查(主备),如果RS其中一台挂掉的话,他会在ipvsadm -ln 中剔除掉不健康的,</p>
+<p>备机也是一样,这样就不会存在服务器宕机了之后,部分用户请求不到的情况</p>
+<p>如果RS又修复好了,那么会有加载上,而这一切的操作对于用户来说是透明的</p>
+<h4 id="3-验证HA"><a href="#3-验证HA" class="headerlink" title="3.验证HA"></a>3.验证HA</h4><ul>
+<li><p>验证主备(ipvsadm -lnc)</p>
+<ol>
+<li><p>删除node1的eth0网卡(可以关机,在这里我们直接把node1网卡删除)</p>
+<ul>
+<li><p>命令     ifconfig eth0 down</p>
+</li>
+<li><p>结果</p>
+<ol>
+<li><p>用户访问依旧</p>
+</li>
+<li><p>node1和node4的lvs(-a,-A)配置均启动</p>
+</li>
+<li><p>node1的eth0:3剔除,node4的eth0:3启动</p>
+</li>
+<li><p>用户访问走node4负载均衡</p>
+</li>
+</ol>
+</li>
+</ul>
+</li>
+<li><p>.恢复node1的eth0网卡</p>
+<ul>
+<li>命令    ifconfig eth0 up</li>
+<li>结果<ol>
+<li>用户访问依旧</li>
+<li>node1的eth0:3启动,node4的eth0:3剔除</li>
+<li>用户访问走node1负载均衡</li>
+</ol>
+</li>
+</ul>
+</li>
+</ol>
+</li>
+<li><p>验证RS宕机</p>
+<ol>
+<li><p>关闭node2的httpd服务</p>
+<ul>
+<li><p>命令    ipvsadm -ln (查看ipvs转发对应服务信息)</p>
+</li>
+<li><p>结果    剔除了对应的负载均衡的信息</p>
+</li>
+</ul>
+</li>
+<li><p>开启node2的httpd服务</p>
+<ul>
+<li><p>命令    ipvsadm -ln (查看ipvs转发对应服务信息)</p>
+</li>
+<li><p>结果    恢复了对应的负载均衡的信息</p>
+</li>
+</ul>
+</li>
+</ol>
+</li>
+</ul>
+<h3 id="三、总结"><a href="#三、总结" class="headerlink" title="三、总结"></a>三、总结</h3><figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">keepalived功能:</span><br><span class="line"><span class="bullet">	1.</span> 监控自己服务</span><br><span class="line"><span class="bullet">	2.</span> Master通告自己还活着,Backup监听Master状态,Master挂了,一堆Backup推举出新的Master</span><br><span class="line"><span class="bullet">	3.</span> 配置vip,添加ipvs(keepalived有配置文件)</span><br><span class="line"><span class="bullet">	4.</span> 对后端server做健康检查</span><br><span class="line"><span class="code">    根据上述功能,我们对/etc/keepalived中的keepalived.conf文件进行配置,并启动</span></span><br><span class="line"><span class="code">问题:</span></span><br><span class="line"><span class="code">	</span></span><br><span class="line"><span class="code">	</span></span><br><span class="line"><span class="code">	演示:通过杀死httped健康检查的进程(模拟keepalived异常退出)</span></span><br><span class="line"><span class="code">	</span></span><br><span class="line"><span class="code">	问题:</span></span><br><span class="line"><span class="code">		两台主机都配了vip,且没有剔除对应的lvs的转发服务器的设置,从而导致数据包紊乱</span></span><br><span class="line"><span class="code">				(破坏了原子性,三次握手紊乱,连接建立不起来,数据包丢弃)</span></span><br><span class="line"><span class="code">		</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="四、问题引入"><a href="#四、问题引入" class="headerlink" title="四、问题引入"></a>四、问题引入</h3><h4 id="1-问题提出"><a href="#1-问题提出" class="headerlink" title="1.问题提出"></a>1.问题提出</h4><p>​            keepalived异常退出,出现的问题?</p>
+<h4 id="2-问题模拟"><a href="#2-问题模拟" class="headerlink" title="2.问题模拟"></a>2.问题模拟</h4><p>​    通过杀死httped健康检查的进程(模拟keepalived异常退出)</p>
+<h4 id="3-演示结果"><a href="#3-演示结果" class="headerlink" title="3.演示结果"></a>3.演示结果</h4><ol>
+<li>两台主机都配了vip</li>
+<li>没有剔除对应的lvs的转发服务器的设置,</li>
+<li>从而导致数据包紊乱(破坏了原子性,三次握手紊乱,连接建立不起来,数据包丢弃)</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          
+          <div class="post-tags">
+             <div class="post-tags">
+              <a href="/tags/%E9%AB%98%E5%8F%AF%E7%94%A8%E5%8F%8ADR-HA%E5%AE%9E%E6%93%8D/" rel="tag"><i class="fa fa-tag"></i> 高可用及DR-HA实操</a>
+          </div>
+          <script type="text/javascript">
+            var tagsall=document.getElementsByClassName("post-tags")
+            for (var i = tagsall.length - 1; i >= 0; i--){
+                var tags=tagsall[i].getElementsByTagName("a");
+                for (var j = tags.length - 1; j >= 0; j--) {
+                    var golden_ratio = 0.618033988749895;
+                    var s = 0.5;
+                    var v = 0.999;
+                    var h = golden_ratio + Math.random()*0.8 - 0.5;
+                    var h_i = parseInt(h * 6);
+                    var f = h * 6 - h_i;
+                    var p = v * (1 - s);
+                    var q = v * (1 - f * s);
+                    var t = v * (1 - (1 - f) * s);
+                    var r, g, b;
+                    switch (h_i) {
+                        case 0:
+                            r = v;
+                            g = t;
+                            b = p;
+                            break;
+                        case 1:
+                            r = q;
+                            g = v;
+                            b = p;
+                            break;
+                        case 2:
+                            r = p;
+                            g = v;
+                            b = t;
+                            break;
+                        case 3 :
+                            r = p;
+                            g = q;
+                            b = v;
+                            break;
+                        case 4:
+                            r = t;
+                            g = p;
+                            b = v;
+                            break;
+                        case 5:
+                            r = v;
+                            g = p;
+                            b = q;
+                            break;
+                        default:
+                            r = 1;
+                            g = 1;
+                            b = 1;
+                      }
+                    tags[j].style.background = "rgba("+parseInt(r*255)+","+parseInt(g*255)+","+parseInt(b*255)+","+0.5+")";
+                }
+            }                        
+            </script>
+
+              <a href="/tags/%E9%AB%98%E5%8F%AF%E7%94%A8%E5%8F%8ADR-HA%E5%AE%9E%E6%93%8D/" rel="tag"><i class="fa fa-tag"></i> 高可用及DR-HA实操</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/posts/552f.html" rel="prev" title="负载均衡模型与实现">
+      <i class="fa fa-chevron-left"></i> 负载均衡模型与实现
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/posts/868b.html" rel="next" title="网络分层及通信过程">
+      网络分层及通信过程 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E9%AB%98%E5%8F%AF%E7%94%A8%E7%90%86%E8%AE%BA"><span class="nav-number">1.</span> <span class="nav-text">一、高可用理论</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E9%97%AE%E9%A2%98%E5%BC%95%E5%85%A5"><span class="nav-number">1.1.</span> <span class="nav-text">1.问题引入</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E9%97%AE%E9%A2%98%E8%A7%A3%E5%86%B3"><span class="nav-number">1.2.</span> <span class="nav-text">2.问题解决</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C%E3%80%81DR-HA-keepalived-%E5%AE%9E%E8%B7%B5"><span class="nav-number">2.</span> <span class="nav-text">二、DR-HA(keepalived)实践</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E8%AF%A6%E6%83%85%E6%AD%A5%E9%AA%A4"><span class="nav-number">2.1.</span> <span class="nav-text">1.详情步骤</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E6%89%A9%E5%B1%95"><span class="nav-number">2.2.</span> <span class="nav-text">2.扩展</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E9%AA%8C%E8%AF%81HA"><span class="nav-number">2.3.</span> <span class="nav-text">3.验证HA</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E6%80%BB%E7%BB%93"><span class="nav-number">3.</span> <span class="nav-text">三、总结</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E9%97%AE%E9%A2%98%E5%BC%95%E5%85%A5"><span class="nav-number">4.</span> <span class="nav-text">四、问题引入</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E9%97%AE%E9%A2%98%E6%8F%90%E5%87%BA"><span class="nav-number">4.1.</span> <span class="nav-text">1.问题提出</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E9%97%AE%E9%A2%98%E6%A8%A1%E6%8B%9F"><span class="nav-number">4.2.</span> <span class="nav-text">2.问题模拟</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E6%BC%94%E7%A4%BA%E7%BB%93%E6%9E%9C"><span class="nav-number">4.3.</span> <span class="nav-text">3.演示结果</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Lei"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Lei</p>
+  <div class="site-description" itemprop="description">The Art of Code Documentation</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">12</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">12</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/leoleiv8x" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;leoleiv8x" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/qq_43583755" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;qq_43583755" rel="noopener" target="_blank"><i class="fab fa-telegram fa-fw"></i>CSDN</a>
+      </span>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Lei</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">26k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">23 分钟</span>
+</div>
+
+<!-- 网站运行时间的设置 -->
+<span id="timeDate">载入天数...</span>
+<span id="times">载入时分秒...</span>
+<script>
+    var now = new Date();
+    function createtime() {
+        var grt= new Date("12/12/2021 12:00:00");//此处修改你的建站时间或者网站上线时间
+        now.setTime(now.getTime()+250);
+        days = (now - grt ) / 1000 / 60 / 60 / 24; dnum = Math.floor(days);
+        hours = (now - grt ) / 1000 / 60 / 60 - (24 * dnum); hnum = Math.floor(hours);
+        if(String(hnum).length ==1 ){hnum = "0" + hnum;} minutes = (now - grt ) / 1000 /60 - (24 * 60 * dnum) - (60 * hnum);
+        mnum = Math.floor(minutes); if(String(mnum).length ==1 ){mnum = "0" + mnum;}
+        seconds = (now - grt ) / 1000 - (24 * 60 * 60 * dnum) - (60 * 60 * hnum) - (60 * mnum);
+        snum = Math.round(seconds); if(String(snum).length ==1 ){snum = "0" + snum;}
+        document.getElementById("timeDate").innerHTML = "本站已安全运行 "+dnum+" 天 ";
+        document.getElementById("times").innerHTML = hnum + " 小时 " + mnum + " 分 " + snum + " 秒";
+    }
+    setInterval("createtime()",250);
+</script>
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+<span><br></span> 
+
+<span class="post-meta-item-icon">
+      <i class="fa fa-user"></i>
+</span>
+<span>总访客&nbsp<span id="busuanzi_value_site_uv"></span>&nbsp人</span>
+    <span class="post-meta-divider">|</span>
+<span class="post-meta-item-icon">
+      <i class="fa fa-eye"></i>
+</span>
+    <span>总访问量&nbsp<span id="busuanzi_value_site_pv"></span>&nbsp次</span>
+
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/lozad@1/dist/lozad.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"jsonPath":"/live2dw/assets/assets/hijiki.model.json"},"display":{"position":"right","width":150,"height":300},"mobile":{"show":true},"react":{"opacity":0.7},"log":false});</script></body>
+</html>
