@@ -1488,175 +1488,6 @@
       </tags>
   </entry>
   <entry>
-    <title>redis的主从复制原理</title>
-    <url>/posts/20b.html</url>
-    <content><![CDATA[<p>主从复制的光从理论上来将的话可能有些空洞,所以这次我们来进行实践+理论来帮助理解redis中的<strong>主从复制</strong>和高可用等知识.顺便我们也回顾一下redis的安装过程吧.</p>
-<span id="more"></span>
-
-<h2 id="一、redis安装"><a href="#一、redis安装" class="headerlink" title="一、redis安装"></a>一、redis安装</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">yum install wget</span><br><span class="line">cd</span><br><span class="line">mkdir soft</span><br><span class="line">cd soft</span><br><span class="line">wget    http://download.redis.io/releases/redis-5.0.5.tar.gz</span><br><span class="line">tar xf    redis-5.0.5.tar.gz</span><br><span class="line">cd redis-src</span><br><span class="line">make </span><br><span class="line">make install PREFIX=/opt/mashibing/redis5</span><br><span class="line">vi /etc/profile</span><br><span class="line">	... export  REDIS_HOME=/opt/mashibing/redis5  </span><br><span class="line">	... export PATH=$PATH:$REDIS_HOME/bin</span><br><span class="line">source /etc/profile</span><br><span class="line">/install_server.sh #&lt;指定端口号,默认为6379&gt;</span><br><span class="line">ps -fe |  grep redis  </span><br></pre></td></tr></table></figure>
-
-<h2 id="二、redis主从复制"><a href="#二、redis主从复制" class="headerlink" title="二、redis主从复制"></a>二、redis主从复制</h2><p>redis是采用的弱一致性,异步的方式来达到数据的同步</p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212221711342.png" alt="image-20211212221711342"></p>
-<h3 id="一-配置准备"><a href="#一-配置准备" class="headerlink" title="(一) 配置准备"></a>(一) 配置准备</h3><ol>
-<li><p>准备3个服务端,并进行如下配置</p>
-<ul>
-<li><p>关闭appendonly模式</p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212203232517.png" alt="image-20211212203232517"></p>
-</li>
-<li><p>设置为阻塞进程</p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212203212319.png" alt="image-20211212203212319"></p>
-</li>
-<li><p>取消打印日志</p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212203223170.png" alt="image-20211212203223170"></p>
-</li>
-</ul>
-</li>
-</ol>
-<h3 id="二-启动服务"><a href="#二-启动服务" class="headerlink" title="(二)启动服务"></a>(二)启动服务</h3><p>​    保证服务对应的/etc/redis中没有对应的持久化文件</p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212204823347.png" alt="image-20211212204823347"></p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212204814705.png" alt="image-20211212204814705"></p>
-<h3 id="三-主从配置"><a href="#三-主从配置" class="headerlink" title="(三)主从配置"></a>(三)主从配置</h3><p>让6380和6381追随6379,也就是6379为主,6380和6381为从</p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212205147720.png" alt="image-20211212205147720"></p>
-<p>问题1:</p>
-<p>​    <img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212205827739.png" alt="image-20211212205827739"></p>
-<blockquote>
-<p> 注意</p>
-<p>这里实验使用的是云服务器,所以ping 127.0.0.1最保险,不要找ip号ping,6380的去REPLICAOF 6379的服务</p>
-</blockquote>
-<p>如果主从配置成功,服务器应出现这样的提示:</p>
-<ul>
-<li>6379</li>
-</ul>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212211306114.png" alt="image-20211212211306114"></p>
-<ul>
-<li>6380</li>
-</ul>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212211320870.png" alt="image-20211212211320870"></p>
-<ul>
-<li><p>主从复制结果验证</p>
-<ol>
-<li><p>6379(可读写)</p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212211530638.png" alt="image-20211212211530638"></p>
-</li>
-<li><p>6380(默认只能读,不能写)</p>
-<p>​    <img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212211551214.png" alt="image-20211212211551214"></p>
-</li>
-</ol>
-</li>
-</ul>
-<h3 id="四-情景问题"><a href="#四-情景问题" class="headerlink" title="(四)情景问题"></a>(四)情景问题</h3><ul>
-<li><p>情景一</p>
-<p><strong>如果从库先有数据,然后再配置主为6379,那么从库中还有原来的数据么?</strong></p>
-<ul>
-<li><p>6379</p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212212417078.png" alt="image-20211212212417078"></p>
-</li>
-<li><p>6380</p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212212141627.png" alt="image-20211212212141627"></p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212212312673.png" alt="image-20211212212312673"></p>
-</li>
-</ul>
-</li>
-<li><p>情景二</p>
-<p><strong>如果6381突然宕机了,在此期间主6379添加了一些数据,那么6381和6380都是什么情况呢?</strong></p>
-<ul>
-<li><p>6379</p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212213137390.png" alt="image-20211212213137390"></p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212213228845.png" alt="image-20211212213228845"></p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212213530708.png" alt="image-20211212213530708"></p>
-</li>
-<li><p>6380</p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212213222348.png" alt="image-20211212213222348"></p>
-</li>
-<li><p>6381</p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212213546518.png" alt="image-20211212213546518"></p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212213523500.png" alt="image-20211212213523500"></p>
-</li>
-</ul>
-</li>
-<li><p>情景三</p>
-<p>情景二的基础上,重启6381的时候开启AOF持久化模式</p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212214357222.png" alt="image-20211212214357222"></p>
-</li>
-</ul>
-<blockquote>
-<p>总结:</p>
-<ol>
-<li><p>如果从库先有数据,然后再配置主为6379,那么从库中还有原来的数据么?</p>
-<p>没有,从库会刷新RDB文件删除旧的数据,然后从主库拿新的数据</p>
-</li>
-<li><p>如果6381突然宕机了,在此期间主6379添加了一些数据,那么6381和6380都是什么情况呢?</p>
-<ul>
-<li>6380会有添加的数据</li>
-<li>6380在开启的时候就跟随6379,依旧可以获取到宕机后主从中的数据,但没有RDB刷新而是直接获取主传来的RDB文件</li>
-</ul>
-</li>
-<li><p>情景二的基础上,重启6381的时候开启AOF持久化模式,6381会是什么情况</p>
-<p>6381每次都会先刷新RDB(获取到ID号)然后再写入到AOF中,但本地RDB文件中不存ID号</p>
-<p>问题:</p>
-<p>​        照理说redis开启AOF后,不走RDB的,只会从AOF读取,为什么这里还是读取了RDB呢?    </p>
-<p>​        RDB中应该记录了追随的id号什么的,但这里没有,所以每次都会重新接受一遍RDB</p>
-</li>
-</ol>
-</blockquote>
-<h3 id="五-配置文件解析"><a href="#五-配置文件解析" class="headerlink" title="(五)配置文件解析"></a>(五)配置文件解析</h3><ul>
-<li><p>replica-serve-stale-data yes</p>
-<p>因为从库和主库有一个IO同步的过程需要时间,在这个过程中设置分库是否暴露老的数据给外面访问</p>
-</li>
-<li><p>replica-read-only yes</p>
-<p>分库开启只读模式</p>
-</li>
-<li><p>repl-diskless-sync no</p>
-<p>是否不走磁盘,主会通过网络发给从,从在内存加载RDB文件,并磁盘写入到本地中</p>
-<p>如果磁盘性能不高,网速较快,就可以直接通过网络发送给本地RDB</p>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212220716041.png" alt="image-20211212220716041"></p>
-</li>
-<li><p>repl-backlog-size 1mb (增量复制)</p>
-<ol>
-<li><p>这里设置的大小就是队列的大小,设置复制待办事项列表的大小,backlog是一个不断积累的缓冲区</p>
-</li>
-<li><p>副本需要重新连接，通常不需要完全重新同步，而是部分重新同步</p>
-</li>
-<li><p>断开连接后，可以执行部分重同步,resync就足够了，只需传递副本丢失的部分数据即可</p>
-</li>
-<li><p>复制待办事项越大，副本可以使用的时间就越长,所以需要根据业务取合适的值</p>
-</li>
-<li><p>当至少有一个副本连接时，才分配backlog</p>
-</li>
-</ol>
-<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212221542870.png" alt="image-20211212221542870"></p>
-</li>
-<li><p>min-replicas-to-write 3</p>
-<p>至少写到从库3个</p>
-</li>
-<li><p>min-replicas-max-lag 10</p>
-<p>最多写从库10个</p>
-</li>
-</ul>
-<h3 id="六-实操总结"><a href="#六-实操总结" class="headerlink" title="(六)实操总结"></a>(六)实操总结</h3><ol>
-<li><p>主可读可写,从只能读</p>
-</li>
-<li><p>主可以知道有多少个从</p>
-</li>
-<li><p>从机不想追随         REPLICAOF no one</p>
-</li>
-<li><p>从库会先删自己的数据然后获取主的数据</p>
-</li>
-<li><p>从库宕机后,主库新加数据,从库恢复之后是能够同步到的</p>
-</li>
-<li><p>从库宕机后,主库新加数据,从库以AOF方式恢复,不会直接读取AOF文件,会先加载RDB然后再写ID号到AOF文件</p>
-</li>
-</ol>
-<h2 id="三、redis中哨兵sentinel的使用"><a href="#三、redis中哨兵sentinel的使用" class="headerlink" title="三、redis中哨兵sentinel的使用"></a>三、redis中哨兵sentinel的使用</h2>]]></content>
-      <categories>
-        <category>从网络到分布式</category>
-      </categories>
-      <tags>
-        <tag>redis</tag>
-        <tag>redis集群</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>设计模式-单例模式</title>
     <url>/posts/4c1a.html</url>
     <content><![CDATA[<h2 id="单例模式"><a href="#单例模式" class="headerlink" title="单例模式"></a>单例模式</h2><h3 id="一、概念"><a href="#一、概念" class="headerlink" title="一、概念"></a>一、概念</h3><ul>
@@ -2193,6 +2024,389 @@
       </categories>
       <tags>
         <tag>归并排序</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>redis集群理论</title>
+    <url>/posts/e17a.html</url>
+    <content><![CDATA[<h2 id="一、redis的cluster的引入"><a href="#一、redis的cluster的引入" class="headerlink" title="一、redis的cluster的引入"></a>一、redis的cluster的引入</h2><p>三个模式都不能作为数据库,这里三个模式分别指的是</p>
+<ul>
+<li><p>random</p>
+</li>
+<li><p>hash+modula</p>
+</li>
+<li><p>kemata</p>
+<span id="more"></span></li>
+</ul>
+<h3 id="random分片问题"><a href="#random分片问题" class="headerlink" title="random分片问题"></a>random分片问题</h3><p>为了redis引入中为了采用random来分片导致的部分数据取不到,所以redis中有一个预分区的功能</p>
+<ul>
+<li><p>random分片问题:    添加新的node3,会导致所有的取模数据都不一样了,需要全部rehash,所以涉及到了数据的迁移问题</p>
+</li>
+<li><p>解决:</p>
+<p>在redis服务有一个mapping,标记了自己在哪个hash环的槽位,如果添加了新的node那么就不需要全部rehash,而是对新的node进行预分区处理,然后把数据通过网络传输给redis3</p>
+</li>
+</ul>
+<p><img data-src="../images/redis%E9%9B%86%E7%BE%A4%E7%90%86%E8%AE%BA.asset/image-20211213185538110.png" alt="image-20211213185538110"></p>
+<h3 id="kemata击穿问题"><a href="#kemata击穿问题" class="headerlink" title="kemata击穿问题"></a>kemata击穿问题</h3><ul>
+<li><p>kemata击穿问题 : 新增节点后,访问没有数据的新增节点,导致数据穿透</p>
+</li>
+<li><p>解决</p>
+<p>在每个服务端都会有对应的槽点的映射,如果访问到没有数据的新增节点node3,那么他会进行hash运算然后返回给客户端,客户端在重新请求到对应的卡槽的redis服务</p>
+<p><img data-src="../images/redis%E9%9B%86%E7%BE%A4%E7%90%86%E8%AE%BA.asset/image-20211213190657311.png" alt="image-20211213190657311"></p>
+</li>
+</ul>
+<h2 id="二、redis的集群"><a href="#二、redis的集群" class="headerlink" title="二、redis的集群"></a>二、redis的集群</h2><p><strong>推荐直接看官方文档<a href="https://redis.io/">redis</a></strong>,后续会对<a href="https://github.com/joyieldInc/predixy">Predixy</a>进行实操</p>
+<p>redis在分片的情况是很难做事务和一些交集的聚合操作的,所以一般我们让用户来保证,如下图所示</p>
+<p><img data-src="../images/redis%E9%9B%86%E7%BE%A4%E7%90%86%E8%AE%BA.asset/image-20211213191906811.png" alt="image-20211213191906811"></p>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>redis</tag>
+        <tag>redis集群</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>redis的主从复制原理和哨兵sentinel模式</title>
+    <url>/posts/20b.html</url>
+    <content><![CDATA[<p>主从复制的光从理论上来将的话可能有些空洞,所以这次我们来进行实践+理论来帮助理解redis中的<strong>主从复制</strong>和高可用等知识.顺便我们也回顾一下redis的安装过程吧.</p>
+<p>如果我们要细致的学习,直接去<a href="https://redis.io/">redis官网</a>或者<a href="http://www.redis.cn/documentation.html">redis中文网</a></p>
+<span id="more"></span>
+
+<h2 id="一、redis安装"><a href="#一、redis安装" class="headerlink" title="一、redis安装"></a>一、redis安装</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">yum install wget</span><br><span class="line">cd</span><br><span class="line">mkdir soft</span><br><span class="line">cd soft</span><br><span class="line">wget    http://download.redis.io/releases/redis-5.0.5.tar.gz</span><br><span class="line">tar xf    redis-5.0.5.tar.gz</span><br><span class="line">cd redis-src</span><br><span class="line">make </span><br><span class="line">make install PREFIX=/opt/mashibing/redis5</span><br><span class="line">vi /etc/profile</span><br><span class="line">	... export  REDIS_HOME=/opt/mashibing/redis5  </span><br><span class="line">	... export PATH=$PATH:$REDIS_HOME/bin</span><br><span class="line">source /etc/profile</span><br><span class="line">/install_server.sh #&lt;指定端口号,默认为6379&gt;</span><br><span class="line">ps -fe |  grep redis  </span><br></pre></td></tr></table></figure>
+
+<h2 id="二、redis主从复制"><a href="#二、redis主从复制" class="headerlink" title="二、redis主从复制"></a>二、redis主从复制</h2><p>redis是采用的弱一致性,异步的方式来达到数据的同步</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212221711342.png" alt="image-20211212221711342"></p>
+<h3 id="一-配置准备"><a href="#一-配置准备" class="headerlink" title="(一) 配置准备"></a>(一) 配置准备</h3><ol>
+<li><p>准备3个服务端,并进行如下配置</p>
+<ul>
+<li><p>关闭appendonly模式</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212203232517.png" alt="image-20211212203232517"></p>
+</li>
+<li><p>设置为阻塞进程</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212203212319.png" alt="image-20211212203212319"></p>
+</li>
+<li><p>取消打印日志</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212203223170.png" alt="image-20211212203223170"></p>
+</li>
+</ul>
+</li>
+</ol>
+<h3 id="二-启动服务"><a href="#二-启动服务" class="headerlink" title="(二)启动服务"></a>(二)启动服务</h3><p>​    保证服务对应的/etc/redis中没有对应的持久化文件</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212204823347.png" alt="image-20211212204823347"></p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212204814705.png" alt="image-20211212204814705"></p>
+<h3 id="三-主从配置"><a href="#三-主从配置" class="headerlink" title="(三)主从配置"></a>(三)主从配置</h3><p>让6380和6381追随6379,也就是6379为主,6380和6381为从</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212205147720.png" alt="image-20211212205147720"></p>
+<p>问题1:</p>
+<p>​    <img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212205827739.png" alt="image-20211212205827739"></p>
+<blockquote>
+<p> 注意</p>
+<p>这里实验使用的是云服务器,所以ping 127.0.0.1最保险,不要找ip号ping,6380的去REPLICAOF 6379的服务</p>
+</blockquote>
+<p>如果主从配置成功,服务器应出现这样的提示:</p>
+<ul>
+<li>6379</li>
+</ul>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212211306114.png" alt="image-20211212211306114"></p>
+<ul>
+<li>6380</li>
+</ul>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212211320870.png" alt="image-20211212211320870"></p>
+<ul>
+<li><p>主从复制结果验证</p>
+<ol>
+<li><p>6379(可读写)</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212211530638.png" alt="image-20211212211530638"></p>
+</li>
+<li><p>6380(默认只能读,不能写)</p>
+<p>​    <img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212211551214.png" alt="image-20211212211551214"></p>
+</li>
+</ol>
+</li>
+</ul>
+<h3 id="四-情景问题"><a href="#四-情景问题" class="headerlink" title="(四)情景问题"></a>(四)情景问题</h3><ul>
+<li><p>情景一</p>
+<p><strong>如果从库先有数据,然后再配置主为6379,那么从库中还有原来的数据么?</strong></p>
+<ul>
+<li><p>6379</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212212417078.png" alt="image-20211212212417078"></p>
+</li>
+<li><p>6380</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212212141627.png" alt="image-20211212212141627"></p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212212312673.png" alt="image-20211212212312673"></p>
+</li>
+</ul>
+</li>
+<li><p>情景二</p>
+<p><strong>如果6381突然宕机了,在此期间主6379添加了一些数据,那么6381和6380都是什么情况呢?</strong></p>
+<ul>
+<li><p>6379</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212213137390.png" alt="image-20211212213137390"></p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212213228845.png" alt="image-20211212213228845"></p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212213530708.png" alt="image-20211212213530708"></p>
+</li>
+<li><p>6380</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212213222348.png" alt="image-20211212213222348"></p>
+</li>
+<li><p>6381</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212213546518.png" alt="image-20211212213546518"></p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212213523500.png" alt="image-20211212213523500"></p>
+</li>
+</ul>
+</li>
+<li><p>情景三</p>
+<p>情景二的基础上,重启6381的时候开启AOF持久化模式</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212214357222.png" alt="image-20211212214357222"></p>
+</li>
+</ul>
+<blockquote>
+<p>总结:</p>
+<ol>
+<li><p>如果从库先有数据,然后再配置主为6379,那么从库中还有原来的数据么?</p>
+<p>没有,从库会刷新RDB文件删除旧的数据,然后从主库拿新的数据</p>
+</li>
+<li><p>如果6381突然宕机了,在此期间主6379添加了一些数据,那么6381和6380都是什么情况呢?</p>
+<ul>
+<li>6380会有添加的数据</li>
+<li>6380在开启的时候就跟随6379,依旧可以获取到宕机后主从中的数据,但没有RDB刷新而是直接获取主传来的RDB文件</li>
+</ul>
+</li>
+<li><p>情景二的基础上,重启6381的时候开启AOF持久化模式,6381会是什么情况</p>
+<p>6381每次都会先刷新RDB(获取到ID号)然后再写入到AOF中,但本地RDB文件中不存ID号</p>
+<p>问题:</p>
+<p>​        照理说redis开启AOF后,不走RDB的,只会从AOF读取,为什么这里还是读取了RDB呢?    </p>
+<p>​        RDB中应该记录了追随的id号什么的,但这里没有,所以每次都会重新接受一遍RDB</p>
+</li>
+</ol>
+</blockquote>
+<h3 id="五-配置文件解析"><a href="#五-配置文件解析" class="headerlink" title="(五)配置文件解析"></a>(五)配置文件解析</h3><ul>
+<li><p>replica-serve-stale-data yes</p>
+<p>因为从库和主库有一个IO同步的过程需要时间,在这个过程中设置分库是否暴露老的数据给外面访问</p>
+</li>
+<li><p>replica-read-only yes</p>
+<p>分库开启只读模式</p>
+</li>
+<li><p>repl-diskless-sync no</p>
+<p>是否不走磁盘,主会通过网络发给从,从在内存加载RDB文件,并磁盘写入到本地中</p>
+<p>如果磁盘性能不高,网速较快,就可以直接通过网络发送给本地RDB</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212220716041.png" alt="image-20211212220716041"></p>
+</li>
+<li><p>repl-backlog-size 1mb (增量复制)</p>
+<ol>
+<li><p>这里设置的大小就是队列的大小,设置复制待办事项列表的大小,backlog是一个不断积累的缓冲区</p>
+</li>
+<li><p>副本需要重新连接，通常不需要完全重新同步，而是部分重新同步</p>
+</li>
+<li><p>断开连接后，可以执行部分重同步,resync就足够了，只需传递副本丢失的部分数据即可</p>
+</li>
+<li><p>复制待办事项越大，副本可以使用的时间就越长,所以需要根据业务取合适的值</p>
+</li>
+<li><p>当至少有一个副本连接时，才分配backlog</p>
+</li>
+</ol>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211212221542870.png" alt="image-20211212221542870"></p>
+</li>
+<li><p>min-replicas-to-write 3</p>
+<p>至少写到从库3个</p>
+</li>
+<li><p>min-replicas-max-lag 10</p>
+<p>最多写从库10个</p>
+</li>
+</ul>
+<h3 id="六-实操总结"><a href="#六-实操总结" class="headerlink" title="(六)实操总结"></a>(六)实操总结</h3><ol>
+<li><p>主可读可写,从只能读</p>
+</li>
+<li><p>主可以知道有多少个从</p>
+</li>
+<li><p>从机不想追随         REPLICAOF no one</p>
+</li>
+<li><p>从库会先删自己的数据然后获取主的数据</p>
+</li>
+<li><p>从库宕机后,主库新加数据,从库恢复之后是能够同步到的</p>
+</li>
+<li><p>从库宕机后,主库新加数据,从库以AOF方式恢复,不会直接读取AOF文件,会先加载RDB然后再写ID号到AOF文件</p>
+</li>
+</ol>
+<h2 id="三、redis中哨兵sentinel的使用"><a href="#三、redis中哨兵sentinel的使用" class="headerlink" title="三、redis中哨兵sentinel的使用"></a>三、redis中哨兵sentinel的使用</h2><p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211213162635357.png" alt="image-20211213162635357"></p>
+<h3 id="一-配置文件准备"><a href="#一-配置文件准备" class="headerlink" title="(一)配置文件准备"></a>(一)配置文件准备</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#添加配文件26379.conf,26380.conf,26381.conf</span><br><span class="line">vim 26379.conf</span><br><span class="line">		port 26379</span><br><span class="line">		sentinel monitor mymaster 127.0.0.1 6381 </span><br><span class="line">cp 26379.conf 26380.conf</span><br><span class="line">cp 26379.conf 26381.conf</span><br></pre></td></tr></table></figure>
+
+<h3 id="二-启动哨兵"><a href="#二-启动哨兵" class="headerlink" title="(二 )启动哨兵"></a>(二 )启动哨兵</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#启动服务</span><br><span class="line">redis-server ./6379.conf</span><br><span class="line">redis-server ./6380.conf --replicaof 127.0.0.1 6379</span><br><span class="line">redis-server ./6381.conf --replicaof 127.0.0.1 6379</span><br><span class="line"></span><br><span class="line">#启动哨兵</span><br><span class="line">redis-server ./26379.conf  --sentinel</span><br><span class="line">redis-server ./26380.conf  --sentinel</span><br><span class="line">redis-server ./26381.conf  --sentinel</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>问题1:配置文件中只写了主,为什么哨兵知道主库中有哪些从库呢?</strong></li>
+</ul>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211213155002334.png" alt="image-20211213155002334"></p>
+<p>主知道有哪些从,具体是通过发布订阅实现的</p>
+<ul>
+<li><p><strong>问题2:为什么26380哨兵知道6379中有26379哨兵在监控它呢?</strong></p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211213162701540.png" alt="image-20211213162701540"></p>
+</li>
+</ul>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211213155531764.png" alt="image-20211213155531764"></p>
+<p>通过发布订阅.如下图所示:</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211213162745769.png" alt="image-20211213162745769"></p>
+<h3 id="三-情景问题"><a href="#三-情景问题" class="headerlink" title="(三)情景问题"></a>(三)情景问题</h3><h4 id="1-情景一"><a href="#1-情景一" class="headerlink" title="1.情景一"></a>1.情景一</h4><ul>
+<li><p>假设6379宕机了,会出现什么情况呢?</p>
+<p>哨兵会投票推选一个新的master,并修改自己的配置文件</p>
+<ul>
+<li><p>6380和6381</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211213160543983.png" alt="image-20211213160543983"></p>
+</li>
+<li><p>26379</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211213160805097.png" alt="image-20211213160805097"></p>
+</li>
+<li><p>26380</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211213160722392.png" alt="image-20211213160722392"></p>
+</li>
+<li><p>26381</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211213161118875.png" alt="image-20211213161118875"></p>
+</li>
+</ul>
+</li>
+<li><p>验证6380选举成了主,6381为从</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211213161320629.png" alt="image-20211213161320629"></p>
+</li>
+<li><p>哨兵投票前后配置文件对比</p>
+<p><img data-src="../images/redis%E7%9A%84%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86.asset/image-20211213161906669.png" alt="image-20211213161906669"></p>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>redis</tag>
+        <tag>redis集群</tag>
+        <tag>主从复制</tag>
+        <tag>哨兵模式</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>sharding和cluster引入和redis代理的使用</title>
+    <url>/posts/493e.html</url>
+    <content><![CDATA[<h2 id="一、Spring官网学习"><a href="#一、Spring官网学习" class="headerlink" title="一、Spring官网学习"></a>一、Spring官网学习</h2><p>推荐:通过<a href="https://spring.io/">Spring官网</a>学习,读文档有更好的效果</p>
+<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213164018696.png" alt="image-20211213164018696"></p>
+<span id="more"></span>
+
+<h2 id="二、redis的sharding引入"><a href="#二、redis的sharding引入" class="headerlink" title="二、redis的sharding引入"></a>二、redis的sharding引入</h2><h3 id="1-问题引入"><a href="#1-问题引入" class="headerlink" title="1. 问题引入"></a>1. 问题引入</h3><p>通过AKF理论,我们知道单节点出现的<strong>容量问题</strong>,为了保证其<strong>可用性</strong>所以我们要对数据进行分类存库中</p>
+<h3 id="2-数据处理"><a href="#2-数据处理" class="headerlink" title="2.数据处理"></a>2.数据处理</h3><p>根据不同的情况我们可以有不同的处理方式,具体如下:</p>
+<h4 id="1-逻辑业务拆分"><a href="#1-逻辑业务拆分" class="headerlink" title="(1)逻辑业务拆分"></a>(1)逻辑业务拆分</h4><p>如果数据可以分类，交集不多,可以进行业务的拆分</p>
+<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213171019206.png" alt="image-20211213171019206"></p>
+<h4 id="2-hash-取模-modula"><a href="#2-hash-取模-modula" class="headerlink" title="(2)hash+取模(modula)"></a>(2)hash+取模(modula)</h4><ul>
+<li>弊端<ol>
+<li>取模的数必须固定(%3,%4%,10)</li>
+<li>影响分布式下的扩展性</li>
+</ol>
+</li>
+</ul>
+<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213171444504.png" alt="image-20211213171444504"></p>
+<h4 id="3-random"><a href="#3-random" class="headerlink" title="(3)random"></a>(3)random</h4><ul>
+<li><p>弊端</p>
+<p>如果我们随机取值的话,那么我们也不知道到底存的是哪个库,这样set进去的那个库就取不到值</p>
+</li>
+<li><p>常用场景</p>
+<p>消息队列(kafka),其中ooxx则是topic和partition</p>
+<p>我们通过random放到(lpush)一个list里面,虽然我们取不到值,但是可以用另外一个客户端直接消费(rpop)</p>
+</li>
+</ul>
+<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213171552606.png" alt="image-20211213171552606"></p>
+<h4 id="4-一致性哈希-kemata"><a href="#4-一致性哈希-kemata" class="headerlink" title="(4)一致性哈希(kemata)"></a>(4)一致性哈希(kemata)</h4><ul>
+<li>特点<ol>
+<li>没有取模,采用映射算法(hash,,crc16,crc32,fnv,md5)</li>
+</ol>
+</li>
+</ul>
+<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213172139652.png" alt="image-20211213172139652"></p>
+<h3 id="3-一致性哈希详细分析"><a href="#3-一致性哈希详细分析" class="headerlink" title="3.    一致性哈希详细分析"></a>3.    一致性哈希详细分析</h3><p>首先一致性哈希会规划一个哈希环,环上都是虚拟节点(0~2^32)</p>
+<h4 id="1-概念"><a href="#1-概念" class="headerlink" title="(1)概念"></a>(1)概念</h4><ul>
+<li>对于node服务器来说通过hash映射后的节点是物理的,它会放到一个treeMap之类的集中管理</li>
+<li>对于数据keydata来说,通过hash映射后到一个虚拟点上,然后他会找一个物理节点,为了避免数据倾斜问题,所以我们一般找的是离它最近的物理点,通过该物理点可以知道是node服务器,最终就知道了datakey应该存入到哪个服务器.如下图所示datakey找到了node2的物理节点,所以这个数据会存在node2上</li>
+</ul>
+<h4 id="2-优点"><a href="#2-优点" class="headerlink" title="(2)优点"></a>(2)优点</h4><p>如果对节点进行扩展的话,可以分担其他节点的压力,不会造成全局洗牌</p>
+<h4 id="3-缺点"><a href="#3-缺点" class="headerlink" title="(3)缺点"></a>(3)缺点</h4><p>在datakey设置到node2之后,新增节点node3,如果直接要获取datakey中的数据那么第一时间找的是node3(最近),但node3中是没有数据的,所以会造成redis的击穿问题</p>
+<ul>
+<li><p>解决</p>
+<p>取最近的两个点,如果node3没有就去看node2,而不是直接去mysql数据库中取</p>
+</li>
+</ul>
+<h4 id="4-使用场景"><a href="#4-使用场景" class="headerlink" title="(4)使用场景"></a>(4)使用场景</h4><p><strong>从缺点上也可以看出一致性哈希更适合用于redis当缓冲的场景且node2还可以通过redis的缓存淘汰机制来进行优化,而不是数据库</strong></p>
+<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213172340150.png" alt="image-20211213172340150"></p>
+<blockquote>
+<p>补充:</p>
+<p>​    1.虚拟节点间接解决了数据倾斜的问题</p>
+<p>场景:</p>
+<ol>
+<li><p>如果想上述那样会出现node1没数据,node2有数据</p>
+</li>
+<li><p>如果我们node01,node02原来是通过ip直接进行hash取值,而现在通过ip分别拼接0-10的数字,这样就会有在环上有10各个地方的对应node1的物理节点,从而解决了数据倾斜问题</p>
+</li>
+</ol>
+</blockquote>
+<h2 id="三、redis代理的使用"><a href="#三、redis代理的使用" class="headerlink" title="三、redis代理的使用"></a>三、redis代理的使用</h2><h3 id="1-问题引入-1"><a href="#1-问题引入-1" class="headerlink" title="1.问题引入"></a>1.问题引入</h3><p>对于高并发的情况下,一个redis服务可能有多个客户端访问,而一个客户可能访问多个redis,因为有分片的处理,这样就导致了redis的连接成本很高,对server端造成的,如下图所示.</p>
+<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213180317262.png" alt="image-20211213180317262"></p>
+<ul>
+<li><p>解决1:通过代理</p>
+<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213180408342.png" alt="image-20211213180408342"></p>
+<ul>
+<li>问题1:proxy可能顶不住,也宕机了,所以要提高proxy的高可用</li>
+<li>问题2:为了让客户端访问同一ip,方便管理,引入lvs</li>
+<li>防止lvs宕机,提高可用,引进备用lvs并使用keepalived做主备故障切换</li>
+</ul>
+<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213180938727.png" alt="image-20211213180938727"></p>
+</li>
+</ul>
+<blockquote>
+<p>总结:</p>
+<p>​    不要因为技术而技术,最终redis<strong>为了追求性能</strong>,所以使用了,下图代理,并在代理层做逻辑实现    (modula,random,kemata),最终我们使用<a href="https://github.com/twitter/twemproxy">twemproxy</a>,后续会对它进行详细实操</p>
+<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213181329476.png" alt="image-20211213181329476"></p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>redis</tag>
+        <tag>redis集群</tag>
+        <tag>redis的分片和代理</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>代理分片机制-twemproxy|predixy实操和redis集群实操</title>
+    <url>/posts/7dc0.html</url>
+    <content><![CDATA[<h2 id="代理分片机制实操"><a href="#代理分片机制实操" class="headerlink" title="代理分片机制实操"></a>代理分片机制实操</h2><p>对于这种开源的项目,我们要养成在github上看文档的习惯,所以这里不会逐一的分析,写个学习看文档的方式</p>
+<h3 id="twemprxy"><a href="#twemprxy" class="headerlink" title="twemprxy"></a>twemprxy</h3><h4 id="下载并配置文件"><a href="#下载并配置文件" class="headerlink" title="下载并配置文件"></a>下载并配置文件</h4><p><a href="https://github.com/twitter/twemproxy">twemprxy</a>的资料都在README.md文件中</p>
+<span id="more"></span>
+
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">git clone git@github.com:twitter/twemproxy.git</span><br><span class="line">cd twemproxy</span><br><span class="line">autoreconf -fvi</span><br><span class="line">./configure --enable-debug=full</span><br><span class="line">make</span><br><span class="line">cd scripts</span><br><span class="line">cp nutcracker.init /etc/init.d/twemproxy</span><br><span class="line">#加执行权限</span><br><span class="line">chmod +x twemproxy</span><br><span class="line">vim /etc/init.d/twemproxy  #查看期望配置文件的位置 OPTIONS=&quot;-d -c /etc/nutcracker/nutcracker.yml</span><br><span class="line">#所以在对应的位置创建文件夹</span><br><span class="line">mkdir /etc/nutcracker</span><br><span class="line">#它已经给你准备好了配置文件在conf目录中</span><br><span class="line">cp /twemproxy/conf/* /etc/nutcracker/</span><br><span class="line">#在src下有一个make之后的可执行程序nutcracker,把它放到 /usr/bin 则可以全局使用这个命令</span><br><span class="line">cp nutcracker /usr/bin</span><br><span class="line">#编辑配置文件</span><br><span class="line">vim /etc/nutcracker/nutcracker.yml</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215215646634.png" alt="image-20211215215646634"></p>
+<h4 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#通过客户端关闭service</span><br><span class="line">redis-cli -p 6379 shutdown</span><br><span class="line"></span><br><span class="line">#开启服务</span><br><span class="line">redis-server --port 6379</span><br><span class="line">redis-server --port 6380</span><br><span class="line"></span><br><span class="line">#开启twemprxy分片代理</span><br><span class="line">service twemproxy start</span><br><span class="line"></span><br><span class="line">#进入twemprxy进行操作</span><br><span class="line">redis-cli -p 22121</span><br><span class="line">#在之后执行命令,会根据算法分配到对应的库中</span><br><span class="line"></span><br><span class="line">#因为数据已经分支了,所以在代理层调用一下命令是不支持的</span><br><span class="line">keys *</span><br><span class="line">watch k1</span><br><span class="line">multi</span><br></pre></td></tr></table></figure>
+
+<h3 id="predixy"><a href="#predixy" class="headerlink" title="predixy"></a>predixy</h3><p><a href="https://github.com/joyieldInc/predixy/releases">predixy</a></p>
+<h4 id="下载并配置文件-1"><a href="#下载并配置文件-1" class="headerlink" title="下载并配置文件"></a>下载并配置文件</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">mkdir predixy</span><br><span class="line">wget https://github.com/joyieldInc/predixy/releases/download/1.0.5/predixy-1.0.5-bin-amd64-linux.tar.gz</span><br><span class="line">vim predixy.conf </span><br><span class="line">	-#开启哨兵配置文件	Include sentinel.conf</span><br><span class="line">vim sentinel.conf #见下图配置</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215230230542.png" alt="image-20211215230230542"></p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#配置哨兵配置文件</span><br><span class="line">vim 26379.conf</span><br><span class="line">vim 26380.conf</span><br><span class="line">vim 26381.conf</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215230938246.png" alt="image-20211215230938246"></p>
+<h4 id="验证-1"><a href="#验证-1" class="headerlink" title="验证"></a>验证</h4><h5 id="启动哨兵"><a href="#启动哨兵" class="headerlink" title="启动哨兵"></a>启动哨兵</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">redis-server 26379.conf --sentinel</span><br><span class="line">redis-server 26380.conf --sentinel</span><br><span class="line">redis-server 26381.conf --sentinel</span><br></pre></td></tr></table></figure>
+
+<h5 id="启动主从"><a href="#启动主从" class="headerlink" title="启动主从"></a>启动主从</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">mkdir 36379</span><br><span class="line">mkdir 36380</span><br><span class="line">mkdir 46379</span><br><span class="line">mkdir 36380</span><br><span class="line">cd 36379</span><br><span class="line">redis-server --port 36379</span><br><span class="line">cd 36380</span><br><span class="line">redis-server --port 36380 --replicaof 127.0.0.1 36379</span><br><span class="line"></span><br><span class="line">cd 46379</span><br><span class="line">redis-server --port 46379</span><br><span class="line">cd 46380</span><br><span class="line">redis-server --port 46380 --replicaof 127.0.0.1 46379</span><br></pre></td></tr></table></figure>
+
+<h5 id="启动predixy"><a href="#启动predixy" class="headerlink" title="启动predixy"></a>启动predixy</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">./predixy ../conf/predixy.conf</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215232319988.png" alt="image-20211215232319988"></p>
+<h5 id="操作验证"><a href="#操作验证" class="headerlink" title="操作验证"></a>操作验证</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#代理上进行简单添加操作</span><br><span class="line">redi-cli -p 7617</span><br><span class="line">set k1 sadad</span><br><span class="line">set k2 asca</span><br><span class="line">set k3 214sd</span><br><span class="line"></span><br><span class="line">#在36379上查找数据</span><br><span class="line">redi-cli -p 36379</span><br><span class="line">key *</span><br><span class="line">   --&quot;k1&quot;</span><br><span class="line">   --&quot;k3&quot;</span><br><span class="line">   </span><br><span class="line">#在46379上查找数据</span><br><span class="line">redi-cli -p 46379</span><br><span class="line">key *</span><br><span class="line">   --&quot;k2&quot;</span><br><span class="line"></span><br><span class="line">#代理上进行含逻辑名key的添加操作</span><br><span class="line">redi-cli -p 7617</span><br><span class="line">set &#123;oo&#125;k1 sadad</span><br><span class="line">set &#123;oo&#125;k2 ascaasfasf</span><br><span class="line">#最终会发现设置的两者在同一个主机上</span><br><span class="line"></span><br><span class="line">#代理上进行watch等事务操作</span><br><span class="line">watch &#123;oo&#125;k2</span><br><span class="line">multi</span><br><span class="line">#结果会发现不支持,原因:peidixy支持事务但是支持在单个标签的时候</span><br><span class="line">#解决: 删除sentinel.conf中的一组xxoo</span><br><span class="line">#结果: 数据将只会在ooxx中写,相当于降级了,有两套但只写到一套里面</span><br><span class="line">#修改之后重新启动predixy,执行以下命令</span><br><span class="line">watch k1</span><br><span class="line">multi</span><br><span class="line">get k1 </span><br><span class="line">set k2 asdasd</span><br><span class="line">exec</span><br><span class="line">#结果:可以执行</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>redis</tag>
+        <tag>redis集群</tag>
+        <tag>redis实操</tag>
       </tags>
   </entry>
 </search>
