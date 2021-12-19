@@ -657,6 +657,25 @@
       </tags>
   </entry>
   <entry>
+    <title>redis分布式锁介绍</title>
+    <url>/posts/331a.html</url>
+    <content><![CDATA[<h2 id="redis的分布式锁"><a href="#redis的分布式锁" class="headerlink" title="redis的分布式锁"></a>redis的分布式锁</h2><ol>
+<li>setnx</li>
+<li>过期时间</li>
+<li>多线程(守护线程)延长过期</li>
+</ol>
+<p>现在没有学zookeeper,所以了解不深,可以参考 <a href="http://redis.cn/topics/distlock.html">redis分布式锁</a></p>
+<span id="more"></span>]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>redis</tag>
+        <tag>redis集群</tag>
+        <tag>分布式锁</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>redis的value类型解析</title>
     <url>/posts/1575.html</url>
     <content><![CDATA[<p>本章讲解的是redis的常用API和常见的场景,如下图所示</p>
@@ -1059,6 +1078,89 @@
       </tags>
   </entry>
   <entry>
+    <title>redis的击穿|穿透|雪崩详解</title>
+    <url>/posts/a6fc.html</url>
+    <content><![CDATA[<p>本文比较粗糙,只要是有一个大致的概念,具体的概念和基本代码请参考</p>
+<p><a href="https://www.cnblogs.com/xichji/p/11286443.html">https://www.cnblogs.com/xichji/p/11286443.html</a></p>
+<span id="more"></span>
+
+<h2 id="redis击穿"><a href="#redis击穿" class="headerlink" title="redis击穿"></a>redis击穿</h2><h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><p><strong>击穿</strong>: 指的是<strong>单个key</strong>在缓存中查不到，去数据库查询，这样如果数据量不大或者并发不大的话是没有什么问题的。</p>
+<p> 如果数据库数据量大并且是<strong>高并发</strong>的情况下那么就可能会造成数据库压力过大而崩溃</p>
+<p><img data-src="../images/redis%E7%9A%84%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F-%E9%9B%AA%E5%B4%A9%E8%AF%A6%E8%A7%A3.asset/1639635439629.png" alt="1639635439629"></p>
+<h3 id="理解"><a href="#理解" class="headerlink" title="理解"></a>理解</h3><h4 id="前置知识"><a href="#前置知识" class="headerlink" title="前置知识"></a>前置知识</h4><ul>
+<li>并发有了,为了阻止并发到达DB</li>
+<li>redis是单进程单实例,且没有key</li>
+</ul>
+<h4 id="解决"><a href="#解决" class="headerlink" title="解决"></a>解决</h4><p>主要是setnx() -&gt; 设置锁</p>
+<ol>
+<li>get key  先获取key</li>
+<li>如果没有则setnx锁,也就是如果没有锁才设置锁</li>
+<li>如果client获取到锁则去DB</li>
+<li>如果client没有获取到则睡眠</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> String <span class="title">get</span><span class="params">(key)</span> </span>&#123;</span><br><span class="line">      String value = redis.get(key);</span><br><span class="line">      <span class="keyword">if</span> (value == <span class="keyword">null</span>) &#123; <span class="comment">//代表缓存值过期</span></span><br><span class="line">          <span class="comment">//设置3min的超时，防止del操作失败的时候，下次缓存过期一直不能load db</span></span><br><span class="line">      <span class="keyword">if</span> (redis.setnx(key_mutex, <span class="number">1</span>, <span class="number">3</span> * <span class="number">60</span>) == <span class="number">1</span>) &#123;  <span class="comment">//代表设置成功</span></span><br><span class="line">               value = db.get(key);</span><br><span class="line">                      redis.set(key, value, expire_secs);</span><br><span class="line">                      redis.del(key_mutex);</span><br><span class="line">              &#125; <span class="keyword">else</span> &#123;  <span class="comment">//这个时候代表同时候的其他线程已经load db并回设到缓存了，这时候重试获取缓存值即可</span></span><br><span class="line">                      sleep(<span class="number">50</span>);</span><br><span class="line">                      get(key);  <span class="comment">//重试</span></span><br><span class="line">              &#125;</span><br><span class="line">          &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">              <span class="keyword">return</span> value;      </span><br><span class="line">          &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="引入问题1"><a href="#引入问题1" class="headerlink" title="引入问题1"></a>引入问题1</h4><p>如果第一个人挂了?</p>
+<ul>
+<li><p>问题:    第一个人挂了,后面都等着锁返回</p>
+</li>
+<li><p>解决:    可以设置锁的过期时间,但过期时间要取决于压测</p>
+</li>
+</ul>
+<h4 id="引入问题2"><a href="#引入问题2" class="headerlink" title="引入问题2"></a>引入问题2</h4><p>如果第一个人没挂,但是锁超时了,怎么办?</p>
+<ul>
+<li><p>问题:    第一个人设置的过去时间过短,第一个人还没拿到,第二个人又设置了一把一样时间的锁,结果也在取的过程中阻塞了,这样就循环了</p>
+</li>
+<li><p>解决:    使用多线程,一个线程取DB,另一个线程监控前一个线程是否取回来,如果回来就更新锁时间</p>
+</li>
+</ul>
+<h2 id="redis穿透"><a href="#redis穿透" class="headerlink" title="redis穿透"></a>redis穿透</h2><h3 id="概念-1"><a href="#概念-1" class="headerlink" title="概念"></a>概念</h3><p><a href="https://leoleiv8x.github.io/posts/3ae1.html">redis穿透</a>恶意频繁查询才会对系统造成很大的问题: key缓存并且数据库不存在，所以每次查询都会查询数据库从而导致数据库崩溃</p>
+<p><img data-src="../images/redis%E7%9A%84%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F-%E9%9B%AA%E5%B4%A9%E8%AF%A6%E8%A7%A3.asset/1639636827290.png" alt="1639636827290"></p>
+<h3 id="解决-1"><a href="#解决-1" class="headerlink" title="解决"></a>解决</h3><ul>
+<li><a href="https://leoleiv8x.github.io/posts/3ae1.html">布隆过滤器</a><ol>
+<li>client实现bloom算法,自己承载bitmap</li>
+<li>client实现bloom算法,redis实现bitmap</li>
+<li>redis全部集成bloom算法和bitmap</li>
+</ol>
+</li>
+<li>存一个空key,设置过期时间</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//伪代码</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> object <span class="title">GetProductListNew</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> cacheTime = <span class="number">30</span>;</span><br><span class="line">    String cacheKey = <span class="string">&quot;product_list&quot;</span>;</span><br><span class="line"></span><br><span class="line">    String cacheValue = CacheHelper.Get(cacheKey);</span><br><span class="line">    <span class="keyword">if</span> (cacheValue != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> cacheValue;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    cacheValue = CacheHelper.Get(cacheKey);</span><br><span class="line">    <span class="keyword">if</span> (cacheValue != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> cacheValue;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">//数据库查询不到，为空</span></span><br><span class="line">        cacheValue = GetProductListFromDB();</span><br><span class="line">        <span class="keyword">if</span> (cacheValue == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="comment">//如果发现为空，设置个默认值，也缓存起来</span></span><br><span class="line">            cacheValue = string.Empty;</span><br><span class="line">        &#125;</span><br><span class="line">        CacheHelper.Add(cacheKey, cacheValue, cacheTime);</span><br><span class="line">        <span class="keyword">return</span> cacheValue;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h3><ul>
+<li>布隆过滤器的精确性不足</li>
+<li>布隆过滤器不能删除key<ul>
+<li>解决:    使用布谷鸟</li>
+</ul>
+</li>
+</ul>
+<h2 id="redis雪崩"><a href="#redis雪崩" class="headerlink" title="redis雪崩"></a>redis雪崩</h2><h3 id="概念-2"><a href="#概念-2" class="headerlink" title="概念"></a>概念</h3><p>雪崩指的是<strong>多个key</strong>查询并且出现<strong>高并发</strong>，缓存中失效或者查不到，然后都去db查询，从而导致db压力突然飙升，从而崩溃。</p>
+<p><img data-src="../images/redis%E7%9A%84%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F-%E9%9B%AA%E5%B4%A9%E8%AF%A6%E8%A7%A3.asset/1639637902057.png" alt="1639637902057"></p>
+<h3 id="解决-2"><a href="#解决-2" class="headerlink" title="解决"></a>解决</h3><ul>
+<li><p>加锁排队</p>
+<p>加锁排队的解决方式分布式环境的并发问题，有可能还要解决分布式锁的问题；线程还会被阻塞，用户体验很差！因此，在真正的高并发场景下很少使用！ </p>
+</li>
+<li><p>如果是跟时点性无关,可以设置随机过期时间</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//伪代码</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> object <span class="title">GetProductListNew</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> cacheTime = <span class="number">30</span>;</span><br><span class="line">    String cacheKey = <span class="string">&quot;product_list&quot;</span>;</span><br><span class="line">    <span class="comment">//缓存标记</span></span><br><span class="line">    String cacheSign = cacheKey + <span class="string">&quot;_sign&quot;</span>;</span><br><span class="line"></span><br><span class="line">    String sign = CacheHelper.Get(cacheSign);</span><br><span class="line">    <span class="comment">//获取缓存值</span></span><br><span class="line">    String cacheValue = CacheHelper.Get(cacheKey);</span><br><span class="line">    <span class="keyword">if</span> (sign != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> cacheValue; <span class="comment">//未过期，直接返回</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        CacheHelper.Add(cacheSign, <span class="string">&quot;1&quot;</span>, cacheTime);</span><br><span class="line">        ThreadPool.QueueUserWorkItem((arg) -&gt; &#123;</span><br><span class="line">      <span class="comment">//这里一般是 sql查询数据</span></span><br><span class="line">            cacheValue = GetProductListFromDB(); </span><br><span class="line">          <span class="comment">//日期设缓存时间的2倍，用于脏读</span></span><br><span class="line">          CacheHelper.Add(cacheKey, cacheValue, cacheTime * <span class="number">2</span>);                 </span><br><span class="line">        &#125;);</span><br><span class="line">        <span class="keyword">return</span> cacheValue;</span><br><span class="line">    &#125;</span><br><span class="line">&#125; </span><br></pre></td></tr></table></figure></li>
+<li><p>如果跟零点有关</p>
+<ol>
+<li>业务层加判断,零点延时</li>
+<li>强依赖击穿方案</li>
+</ol>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>redis</tag>
+        <tag>雪崩|击穿|穿透</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>redis的持久化机制RDB和AOF详解</title>
     <url>/posts/5e05.html</url>
     <content><![CDATA[<h2 id="一、前置知识"><a href="#一、前置知识" class="headerlink" title="一、前置知识"></a>一、前置知识</h2><p>资料:    <a href="http://redis.io/topics/persistence">http://redis.io/topics/persistence</a></p>
@@ -1223,86 +1325,45 @@
       </tags>
   </entry>
   <entry>
-    <title>redis的击穿|穿透|雪崩详解</title>
-    <url>/posts/a6fc.html</url>
-    <content><![CDATA[<p>本文比较粗糙,只要是有一个大致的概念,具体的概念和基本代码请参考</p>
-<p><a href="https://www.cnblogs.com/xichji/p/11286443.html">https://www.cnblogs.com/xichji/p/11286443.html</a></p>
+    <title>redis相关API代码实现</title>
+    <url>/posts/6a1c.html</url>
+    <content><![CDATA[<h2 id="API介绍"><a href="#API介绍" class="headerlink" title="API介绍"></a>API介绍</h2><p>大多数api其实是见名知意,所以可以回顾原来的<a href="https://leoleiv8x.github.io/posts/1575.html">redis的value类型</a>讲解那块儿.</p>
+<p><strong>这里我们是在本地windows连接云服务器,有几个坑</strong></p>
+<ul>
+<li>服务器上启动的conf文件绑定的bind注释调</li>
+<li>springboot配置的properties文件地址为外网地址</li>
+<li>systemctl status firewalld 和iptables -L  查看防火墙</li>
+<li>systemctl stop firewalld 关闭防火墙</li>
+<li>防火墙关闭也有可能被拦截 iptables -F  清除规则</li>
+</ul>
 <span id="more"></span>
 
-<h2 id="redis击穿"><a href="#redis击穿" class="headerlink" title="redis击穿"></a>redis击穿</h2><h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><p><strong>击穿</strong>: 指的是<strong>单个key</strong>在缓存中查不到，去数据库查询，这样如果数据量不大或者并发不大的话是没有什么问题的。</p>
-<p> 如果数据库数据量大并且是<strong>高并发</strong>的情况下那么就可能会造成数据库压力过大而崩溃</p>
-<p><img data-src="../images/redis%E7%9A%84%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F-%E9%9B%AA%E5%B4%A9%E8%AF%A6%E8%A7%A3.asset/1639635439629.png" alt="1639635439629"></p>
-<h3 id="理解"><a href="#理解" class="headerlink" title="理解"></a>理解</h3><h4 id="前置知识"><a href="#前置知识" class="headerlink" title="前置知识"></a>前置知识</h4><ul>
-<li>并发有了,为了阻止并发到达DB</li>
-<li>redis是单进程单实例,且没有key</li>
-</ul>
-<h4 id="解决"><a href="#解决" class="headerlink" title="解决"></a>解决</h4><p>主要是setnx() -&gt; 设置锁</p>
-<ol>
-<li>get key  先获取key</li>
-<li>如果没有则setnx锁,也就是如果没有锁才设置锁</li>
-<li>如果client获取到锁则去DB</li>
-<li>如果client没有获取到则睡眠</li>
-</ol>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> String <span class="title">get</span><span class="params">(key)</span> </span>&#123;</span><br><span class="line">      String value = redis.get(key);</span><br><span class="line">      <span class="keyword">if</span> (value == <span class="keyword">null</span>) &#123; <span class="comment">//代表缓存值过期</span></span><br><span class="line">          <span class="comment">//设置3min的超时，防止del操作失败的时候，下次缓存过期一直不能load db</span></span><br><span class="line">      <span class="keyword">if</span> (redis.setnx(key_mutex, <span class="number">1</span>, <span class="number">3</span> * <span class="number">60</span>) == <span class="number">1</span>) &#123;  <span class="comment">//代表设置成功</span></span><br><span class="line">               value = db.get(key);</span><br><span class="line">                      redis.set(key, value, expire_secs);</span><br><span class="line">                      redis.del(key_mutex);</span><br><span class="line">              &#125; <span class="keyword">else</span> &#123;  <span class="comment">//这个时候代表同时候的其他线程已经load db并回设到缓存了，这时候重试获取缓存值即可</span></span><br><span class="line">                      sleep(<span class="number">50</span>);</span><br><span class="line">                      get(key);  <span class="comment">//重试</span></span><br><span class="line">              &#125;</span><br><span class="line">          &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">              <span class="keyword">return</span> value;      </span><br><span class="line">          &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+<h2 id="高低阶API代码实现"><a href="#高低阶API代码实现" class="headerlink" title="高低阶API代码实现"></a>高低阶API代码实现</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Test</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">lowAndHighRedisApiTest</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      <span class="comment">//高阶API</span></span><br><span class="line">      stringRedisTemplate.opsForValue().set(<span class="string">&quot;k1&quot;</span>, <span class="string">&quot;hello&quot;</span>);</span><br><span class="line">      System.out.println(stringRedisTemplate.opsForValue().get(<span class="string">&quot;k1&quot;</span>));</span><br><span class="line"></span><br><span class="line">      <span class="comment">//低阶API(二进制安全)</span></span><br><span class="line">      RedisConnection conn = redisTemplate.getConnectionFactory().getConnection();</span><br><span class="line">      conn.set(<span class="string">&quot;name&quot;</span>.getBytes(), <span class="string">&quot;jack&quot;</span>.getBytes());</span><br><span class="line">      System.out.println(<span class="keyword">new</span> String(conn.get(<span class="string">&quot;name&quot;</span>.getBytes())));</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
 
-<h4 id="引入问题1"><a href="#引入问题1" class="headerlink" title="引入问题1"></a>引入问题1</h4><p>如果第一个人挂了?</p>
-<ul>
-<li><p>问题:    第一个人挂了,后面都等着锁返回</p>
-</li>
-<li><p>解决:    可以设置锁的过期时间,但过期时间要取决于压测</p>
-</li>
-</ul>
-<h4 id="引入问题2"><a href="#引入问题2" class="headerlink" title="引入问题2"></a>引入问题2</h4><p>如果第一个人没挂,但是锁超时了,怎么办?</p>
-<ul>
-<li><p>问题:    第一个人设置的过去时间过短,第一个人还没拿到,第二个人又设置了一把一样时间的锁,结果也在取的过程中阻塞了,这样就循环了</p>
-</li>
-<li><p>解决:    使用多线程,一个线程取DB,另一个线程监控前一个线程是否取回来,如果回来就更新锁时间</p>
-</li>
-</ul>
-<h2 id="redis穿透"><a href="#redis穿透" class="headerlink" title="redis穿透"></a>redis穿透</h2><h3 id="概念-1"><a href="#概念-1" class="headerlink" title="概念"></a>概念</h3><p><a href="https://leoleiv8x.github.io/posts/3ae1.html">redis穿透</a>恶意频繁查询才会对系统造成很大的问题: key缓存并且数据库不存在，所以每次查询都会查询数据库从而导致数据库崩溃</p>
-<p><img data-src="../images/redis%E7%9A%84%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F-%E9%9B%AA%E5%B4%A9%E8%AF%A6%E8%A7%A3.asset/1639636827290.png" alt="1639636827290"></p>
-<h3 id="解决-1"><a href="#解决-1" class="headerlink" title="解决"></a>解决</h3><ul>
-<li><a href="https://leoleiv8x.github.io/posts/3ae1.html">布隆过滤器</a><ol>
-<li>client实现bloom算法,自己承载bitmap</li>
-<li>client实现bloom算法,redis实现bitmap</li>
-<li>redis全部集成bloom算法和bitmap</li>
-</ol>
-</li>
-<li>存一个空key,设置过期时间</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//伪代码</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> object <span class="title">GetProductListNew</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> cacheTime = <span class="number">30</span>;</span><br><span class="line">    String cacheKey = <span class="string">&quot;product_list&quot;</span>;</span><br><span class="line"></span><br><span class="line">    String cacheValue = CacheHelper.Get(cacheKey);</span><br><span class="line">    <span class="keyword">if</span> (cacheValue != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> cacheValue;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    cacheValue = CacheHelper.Get(cacheKey);</span><br><span class="line">    <span class="keyword">if</span> (cacheValue != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> cacheValue;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">//数据库查询不到，为空</span></span><br><span class="line">        cacheValue = GetProductListFromDB();</span><br><span class="line">        <span class="keyword">if</span> (cacheValue == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="comment">//如果发现为空，设置个默认值，也缓存起来</span></span><br><span class="line">            cacheValue = string.Empty;</span><br><span class="line">        &#125;</span><br><span class="line">        CacheHelper.Add(cacheKey, cacheValue, cacheTime);</span><br><span class="line">        <span class="keyword">return</span> cacheValue;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="hash代码实现"><a href="#hash代码实现" class="headerlink" title="hash代码实现"></a>hash代码实现</h2><p><a href="https://docs.spring.io/spring-data/redis/docs/current/reference/html/#redis.hashmappers.root">https://docs.spring.io/spring-data/redis/docs/current/reference/html/#redis.hashmappers.root</a></p>
+<h3 id="原hash代码"><a href="#原hash代码" class="headerlink" title="原hash代码"></a>原hash代码</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">HashOperations&lt;String, Object, Object&gt; hash = stringRedisTemplate.opsForHash();</span><br><span class="line">hash.put(<span class="string">&quot;sean&quot;</span>,<span class="string">&quot;name&quot;</span>,<span class="string">&quot;zhouzhilei&quot;</span>);</span><br><span class="line">hash.put(<span class="string">&quot;sean&quot;</span>,<span class="string">&quot;age&quot;</span>,<span class="string">&quot;22&quot;</span>);</span><br><span class="line"></span><br><span class="line">System.out.println(hash.entries(<span class="string">&quot;sean&quot;</span>));</span><br></pre></td></tr></table></figure>
+
+<h4 id="Jackson2HashMapper"><a href="#Jackson2HashMapper" class="headerlink" title="Jackson2HashMapper"></a>Jackson2HashMapper</h4><h5 id="引入依赖"><a href="#引入依赖" class="headerlink" title="引入依赖"></a>引入依赖</h5><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-json<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line">Person p = <span class="keyword">new</span> Person();</span><br><span class="line">p.setName(<span class="string">&quot;zhangsan&quot;</span>);</span><br><span class="line">p.setAge(<span class="number">16</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">//设置序列化类型</span></span><br><span class="line">stringRedisTemplate.setHashValueSerializer(<span class="keyword">new</span> Jackson2JsonRedisSerializer&lt;Object&gt;(Object.class));</span><br><span class="line"></span><br><span class="line">Jackson2HashMapper jm = <span class="keyword">new</span> Jackson2HashMapper(objectMapper, <span class="keyword">false</span>);</span><br><span class="line">stringRedisTemplate.opsForHash().putAll(<span class="string">&quot;sean01&quot;</span>,jm.toHash(p));</span><br><span class="line">Map map = stringRedisTemplate.opsForHash().entries(<span class="string">&quot;sean01&quot;</span>);</span><br><span class="line">Person per = objectMapper.convertValue(map, Person.class);</span><br><span class="line">System.out.println(per.getName());</span><br></pre></td></tr></table></figure>
 
 
 
-<h3 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h3><ul>
-<li>布隆过滤器的精确性不足</li>
-<li>布隆过滤器不能删除key<ul>
-<li>解决:    使用布谷鸟</li>
-</ul>
-</li>
-</ul>
-<h2 id="redis雪崩"><a href="#redis雪崩" class="headerlink" title="redis雪崩"></a>redis雪崩</h2><h3 id="概念-2"><a href="#概念-2" class="headerlink" title="概念"></a>概念</h3><p>雪崩指的是<strong>多个key</strong>查询并且出现<strong>高并发</strong>，缓存中失效或者查不到，然后都去db查询，从而导致db压力突然飙升，从而崩溃。</p>
-<p><img data-src="../images/redis%E7%9A%84%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F-%E9%9B%AA%E5%B4%A9%E8%AF%A6%E8%A7%A3.asset/1639637902057.png" alt="1639637902057"></p>
-<h3 id="解决-2"><a href="#解决-2" class="headerlink" title="解决"></a>解决</h3><ul>
-<li><p>加锁排队</p>
-<p>加锁排队的解决方式分布式环境的并发问题，有可能还要解决分布式锁的问题；线程还会被阻塞，用户体验很差！因此，在真正的高并发场景下很少使用！ </p>
-</li>
-<li><p>如果是跟时点性无关,可以设置随机过期时间</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//伪代码</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> object <span class="title">GetProductListNew</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> cacheTime = <span class="number">30</span>;</span><br><span class="line">    String cacheKey = <span class="string">&quot;product_list&quot;</span>;</span><br><span class="line">    <span class="comment">//缓存标记</span></span><br><span class="line">    String cacheSign = cacheKey + <span class="string">&quot;_sign&quot;</span>;</span><br><span class="line"></span><br><span class="line">    String sign = CacheHelper.Get(cacheSign);</span><br><span class="line">    <span class="comment">//获取缓存值</span></span><br><span class="line">    String cacheValue = CacheHelper.Get(cacheKey);</span><br><span class="line">    <span class="keyword">if</span> (sign != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> cacheValue; <span class="comment">//未过期，直接返回</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        CacheHelper.Add(cacheSign, <span class="string">&quot;1&quot;</span>, cacheTime);</span><br><span class="line">        ThreadPool.QueueUserWorkItem((arg) -&gt; &#123;</span><br><span class="line">      <span class="comment">//这里一般是 sql查询数据</span></span><br><span class="line">            cacheValue = GetProductListFromDB(); </span><br><span class="line">          <span class="comment">//日期设缓存时间的2倍，用于脏读</span></span><br><span class="line">          CacheHelper.Add(cacheKey, cacheValue, cacheTime * <span class="number">2</span>);                 </span><br><span class="line">        &#125;);</span><br><span class="line">        <span class="keyword">return</span> cacheValue;</span><br><span class="line">    &#125;</span><br><span class="line">&#125; </span><br></pre></td></tr></table></figure></li>
-<li><p>如果跟零点有关</p>
-<ol>
-<li>业务层加判断,零点延时</li>
-<li>强依赖击穿方案</li>
-</ol>
-</li>
-</ul>
+<h2 id="自定义template代码实现"><a href="#自定义template代码实现" class="headerlink" title="自定义template代码实现"></a>自定义template代码实现</h2><h3 id="MyTemplate"><a href="#MyTemplate" class="headerlink" title="MyTemplate"></a>MyTemplate</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MyTemplate</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> StringRedisTemplate <span class="title">ooxx</span><span class="params">(RedisConnectionFactory fc)</span></span>&#123;</span><br><span class="line"></span><br><span class="line">        StringRedisTemplate tp = <span class="keyword">new</span> StringRedisTemplate(fc);</span><br><span class="line"></span><br><span class="line">        tp.setHashValueSerializer(<span class="keyword">new</span> Jackson2JsonRedisSerializer&lt;Object&gt;(Object.class));</span><br><span class="line">        <span class="keyword">return</span>  tp ;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="验证-1"><a href="#验证-1" class="headerlink" title="验证"></a>验证</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Autowired</span></span><br><span class="line"><span class="meta">@Qualifier(&quot;ooxx&quot;)</span></span><br><span class="line">StringRedisTemplate  stringRedisTemplate;</span><br><span class="line"></span><br><span class="line">stringRedisTemplate.convertAndSend(<span class="string">&quot;ooxx&quot;</span>,<span class="string">&quot;hello&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="发布订阅代码实现"><a href="#发布订阅代码实现" class="headerlink" title="发布订阅代码实现"></a>发布订阅代码实现</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">//获取连接</span></span><br><span class="line">RedisConnection cc = stringRedisTemplate.getConnectionFactory().getConnection();</span><br><span class="line"><span class="comment">//订阅通道ooxx,新起一个线程进行打印</span></span><br><span class="line">cc.subscribe(<span class="keyword">new</span> MessageListener() &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onMessage</span><span class="params">(Message message, <span class="keyword">byte</span>[] pattern)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">byte</span>[] body = message.getBody();</span><br><span class="line">        System.out.println(<span class="keyword">new</span> String(body));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;, <span class="string">&quot;ooxx&quot;</span>.getBytes());</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//循环发布通道ooxx中的信息</span></span><br><span class="line"><span class="keyword">while</span>(<span class="keyword">true</span>)&#123;</span><br><span class="line">    stringRedisTemplate.convertAndSend(<span class="string">&quot;ooxx&quot;</span>,<span class="string">&quot;hello  from wo zi ji &quot;</span>);</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        Thread.sleep(<span class="number">3000</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
 ]]></content>
       <categories>
         <category>从网络到分布式</category>
       </categories>
       <tags>
-        <tag>redis</tag>
-        <tag>雪崩|击穿|穿透</tag>
+        <tag>redis相关API</tag>
+        <tag>redis代码实现</tag>
       </tags>
   </entry>
   <entry>
@@ -1436,64 +1497,6 @@
       </tags>
   </entry>
   <entry>
-    <title>代理分片机制-twemproxy|predixy实操和redis集群实操</title>
-    <url>/posts/7dc0.html</url>
-    <content><![CDATA[<h2 id="代理分片机制实操"><a href="#代理分片机制实操" class="headerlink" title="代理分片机制实操"></a>代理分片机制实操</h2><p>对于这种开源的项目,我们要养成在github上看文档的习惯,所以这里不会逐一的分析,写个学习看文档的方式</p>
-<h3 id="twemprxy"><a href="#twemprxy" class="headerlink" title="twemprxy"></a>twemprxy</h3><h4 id="下载并配置文件"><a href="#下载并配置文件" class="headerlink" title="下载并配置文件"></a>下载并配置文件</h4><p><a href="https://github.com/twitter/twemproxy">twemprxy</a>的资料都在README.md文件中</p>
-<span id="more"></span>
-
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">git clone git@github.com:twitter/twemproxy.git</span><br><span class="line">cd twemproxy</span><br><span class="line">autoreconf -fvi</span><br><span class="line">./configure --enable-debug=full</span><br><span class="line">make</span><br><span class="line">cd scripts</span><br><span class="line">cp nutcracker.init /etc/init.d/twemproxy</span><br><span class="line">#加执行权限</span><br><span class="line">chmod +x twemproxy</span><br><span class="line">vim /etc/init.d/twemproxy  #查看期望配置文件的位置 OPTIONS=&quot;-d -c /etc/nutcracker/nutcracker.yml</span><br><span class="line">#所以在对应的位置创建文件夹</span><br><span class="line">mkdir /etc/nutcracker</span><br><span class="line">#它已经给你准备好了配置文件在conf目录中</span><br><span class="line">cp /twemproxy/conf/* /etc/nutcracker/</span><br><span class="line">#在src下有一个make之后的可执行程序nutcracker,把它放到 /usr/bin 则可以全局使用这个命令</span><br><span class="line">cp nutcracker /usr/bin</span><br><span class="line">#编辑配置文件</span><br><span class="line">vim /etc/nutcracker/nutcracker.yml</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215215646634.png" alt="image-20211215215646634"></p>
-<h4 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#通过客户端关闭service</span><br><span class="line">redis-cli -p 6379 shutdown</span><br><span class="line"></span><br><span class="line">#开启服务</span><br><span class="line">redis-server --port 6379</span><br><span class="line">redis-server --port 6380</span><br><span class="line"></span><br><span class="line">#开启twemprxy分片代理</span><br><span class="line">service twemproxy start</span><br><span class="line"></span><br><span class="line">#进入twemprxy进行操作</span><br><span class="line">redis-cli -p 22121</span><br><span class="line">#在之后执行命令,会根据算法分配到对应的库中</span><br><span class="line"></span><br><span class="line">#因为数据已经分支了,所以在代理层调用一下命令是不支持的</span><br><span class="line">keys *</span><br><span class="line">watch k1</span><br><span class="line">multi</span><br></pre></td></tr></table></figure>
-
-<h3 id="predixy"><a href="#predixy" class="headerlink" title="predixy"></a>predixy</h3><p><a href="https://github.com/joyieldInc/predixy/releases">predixy</a></p>
-<h4 id="下载并配置文件-1"><a href="#下载并配置文件-1" class="headerlink" title="下载并配置文件"></a>下载并配置文件</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">mkdir predixy</span><br><span class="line">wget https://github.com/joyieldInc/predixy/releases/download/1.0.5/predixy-1.0.5-bin-amd64-linux.tar.gz</span><br><span class="line">vim predixy.conf </span><br><span class="line">	-#开启哨兵配置文件	Include sentinel.conf</span><br><span class="line">vim sentinel.conf #见下图配置</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215230230542.png" alt="image-20211215230230542"></p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#配置哨兵配置文件</span><br><span class="line">vim 26379.conf</span><br><span class="line">vim 26380.conf</span><br><span class="line">vim 26381.conf</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215230938246.png" alt="image-20211215230938246"></p>
-<h4 id="验证-1"><a href="#验证-1" class="headerlink" title="验证"></a>验证</h4><h5 id="启动哨兵"><a href="#启动哨兵" class="headerlink" title="启动哨兵"></a>启动哨兵</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">redis-server 26379.conf --sentinel</span><br><span class="line">redis-server 26380.conf --sentinel</span><br><span class="line">redis-server 26381.conf --sentinel</span><br></pre></td></tr></table></figure>
-
-<h5 id="启动主从"><a href="#启动主从" class="headerlink" title="启动主从"></a>启动主从</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">mkdir 36379</span><br><span class="line">mkdir 36380</span><br><span class="line">mkdir 46379</span><br><span class="line">mkdir 36380</span><br><span class="line">cd 36379</span><br><span class="line">redis-server --port 36379</span><br><span class="line">cd 36380</span><br><span class="line">redis-server --port 36380 --replicaof 127.0.0.1 36379</span><br><span class="line"></span><br><span class="line">cd 46379</span><br><span class="line">redis-server --port 46379</span><br><span class="line">cd 46380</span><br><span class="line">redis-server --port 46380 --replicaof 127.0.0.1 46379</span><br></pre></td></tr></table></figure>
-
-<h5 id="启动predixy"><a href="#启动predixy" class="headerlink" title="启动predixy"></a>启动predixy</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">./predixy ../conf/predixy.conf</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215232319988.png" alt="image-20211215232319988"></p>
-<h5 id="操作验证"><a href="#操作验证" class="headerlink" title="操作验证"></a>操作验证</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#代理上进行简单添加操作</span><br><span class="line">redi-cli -p 7617</span><br><span class="line">set k1 sadad</span><br><span class="line">set k2 asca</span><br><span class="line">set k3 214sd</span><br><span class="line"></span><br><span class="line">#在36379上查找数据</span><br><span class="line">redi-cli -p 36379</span><br><span class="line">key *</span><br><span class="line">   --&quot;k1&quot;</span><br><span class="line">   --&quot;k3&quot;</span><br><span class="line">   </span><br><span class="line">#在46379上查找数据</span><br><span class="line">redi-cli -p 46379</span><br><span class="line">key *</span><br><span class="line">   --&quot;k2&quot;</span><br><span class="line"></span><br><span class="line">#代理上进行含逻辑名key的添加操作</span><br><span class="line">redi-cli -p 7617</span><br><span class="line">set &#123;oo&#125;k1 sadad</span><br><span class="line">set &#123;oo&#125;k2 ascaasfasf</span><br><span class="line">#最终会发现设置的两者在同一个主机上</span><br><span class="line"></span><br><span class="line">#代理上进行watch等事务操作</span><br><span class="line">watch &#123;oo&#125;k2</span><br><span class="line">multi</span><br><span class="line">#结果会发现不支持,原因:peidixy支持事务但是支持在单个标签的时候</span><br><span class="line">#解决: 删除sentinel.conf中的一组xxoo</span><br><span class="line">#结果: 数据将只会在ooxx中写,相当于降级了,有两套但只写到一套里面</span><br><span class="line">#修改之后重新启动predixy,执行以下命令</span><br><span class="line">watch k1</span><br><span class="line">multi</span><br><span class="line">get k1 </span><br><span class="line">set k2 asdasd</span><br><span class="line">exec</span><br><span class="line">#结果:可以执行</span><br></pre></td></tr></table></figure>
-
-<h2 id="redis集群实操"><a href="#redis集群实操" class="headerlink" title="redis集群实操"></a>redis集群实操</h2><p><a href="http://redis.cn/topics/cluster-tutorial.html">redis集群</a></p>
-<h3 id="快速入门"><a href="#快速入门" class="headerlink" title="快速入门"></a>快速入门</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#redis中提供了一个创建集群的脚本,详情可看该文件夹中的README文件</span><br><span class="line">cd /utils/create-cluster</span><br><span class="line">vim create-cluster</span><br><span class="line">	--NODES=6  #服务数量</span><br><span class="line">	--REPLICAS=1 #副本数量</span><br><span class="line">	#这里其实启动6台机器,6/(1+1)=3台主机,3台从机</span><br><span class="line"></span><br><span class="line">./create-cluster start</span><br><span class="line">./create-cluster create </span><br></pre></td></tr></table></figure>
-
-<p>启动后的效果如下:</p>
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639623932939.png" alt="1639623932939"></p>
-<ul>
-<li>问题: 在30001开启了事务multi,但执行一些命令之后跳转到30003,最后在30003执行EXEC,最终执行事务失败</li>
-</ul>
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639624412919.png" alt="1639624412919"></p>
-<ul>
-<li><p>解决</p>
-<p>通过人为设置值来控制</p>
-</li>
-</ul>
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639624898095.png" alt="1639624898095"></p>
-<h3 id="分布式启动"><a href="#分布式启动" class="headerlink" title="分布式启动"></a>分布式启动</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#通过文档自学</span><br><span class="line">redis-cli --cluster help</span><br><span class="line">#分布式启动</span><br><span class="line">redis-cli --cluster  create 127.0.0.1:30001 127.0.0.1:30002 127.0.0.1:30003 127.0.0.1:30004 127.0.0.1:30005 127.0.0.1:30006  --cluster-replicas 1</span><br><span class="line">#自定义分配槽位(可以解决数据倾斜问题)</span><br><span class="line">redis-cli --cluster reshard 127.0.0.1:30001</span><br><span class="line">#看集群中的服务信息</span><br><span class="line">redis-cli --cluster check 127.0.0.1:30001</span><br><span class="line">redis-cli --cluster info 127.0.0.1:30001</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639625216058-1639665162378.png" alt="1639625216058"></p>
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639626265073-1639665162379.png" alt="1639626265073"></p>
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639626489398.png" alt="1639626489398"></p>
-]]></content>
-      <categories>
-        <category>从网络到分布式</category>
-      </categories>
-      <tags>
-        <tag>redis</tag>
-        <tag>redis集群</tag>
-        <tag>redis实操</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>二分法</title>
     <url>/posts/db6.html</url>
     <content><![CDATA[<h2 id="二分法"><a href="#二分法" class="headerlink" title="二分法"></a>二分法</h2><ul>
@@ -1593,6 +1596,64 @@
       </categories>
       <tags>
         <tag>基础排序</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>代理分片机制-twemproxy|predixy实操和redis集群实操</title>
+    <url>/posts/7dc0.html</url>
+    <content><![CDATA[<h2 id="代理分片机制实操"><a href="#代理分片机制实操" class="headerlink" title="代理分片机制实操"></a>代理分片机制实操</h2><p>对于这种开源的项目,我们要养成在github上看文档的习惯,所以这里不会逐一的分析,写个学习看文档的方式</p>
+<h3 id="twemprxy"><a href="#twemprxy" class="headerlink" title="twemprxy"></a>twemprxy</h3><h4 id="下载并配置文件"><a href="#下载并配置文件" class="headerlink" title="下载并配置文件"></a>下载并配置文件</h4><p><a href="https://github.com/twitter/twemproxy">twemprxy</a>的资料都在README.md文件中</p>
+<span id="more"></span>
+
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">git clone git@github.com:twitter/twemproxy.git</span><br><span class="line">cd twemproxy</span><br><span class="line">autoreconf -fvi</span><br><span class="line">./configure --enable-debug=full</span><br><span class="line">make</span><br><span class="line">cd scripts</span><br><span class="line">cp nutcracker.init /etc/init.d/twemproxy</span><br><span class="line">#加执行权限</span><br><span class="line">chmod +x twemproxy</span><br><span class="line">vim /etc/init.d/twemproxy  #查看期望配置文件的位置 OPTIONS=&quot;-d -c /etc/nutcracker/nutcracker.yml</span><br><span class="line">#所以在对应的位置创建文件夹</span><br><span class="line">mkdir /etc/nutcracker</span><br><span class="line">#它已经给你准备好了配置文件在conf目录中</span><br><span class="line">cp /twemproxy/conf/* /etc/nutcracker/</span><br><span class="line">#在src下有一个make之后的可执行程序nutcracker,把它放到 /usr/bin 则可以全局使用这个命令</span><br><span class="line">cp nutcracker /usr/bin</span><br><span class="line">#编辑配置文件</span><br><span class="line">vim /etc/nutcracker/nutcracker.yml</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215215646634.png" alt="image-20211215215646634"></p>
+<h4 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#通过客户端关闭service</span><br><span class="line">redis-cli -p 6379 shutdown</span><br><span class="line"></span><br><span class="line">#开启服务</span><br><span class="line">redis-server --port 6379</span><br><span class="line">redis-server --port 6380</span><br><span class="line"></span><br><span class="line">#开启twemprxy分片代理</span><br><span class="line">service twemproxy start</span><br><span class="line"></span><br><span class="line">#进入twemprxy进行操作</span><br><span class="line">redis-cli -p 22121</span><br><span class="line">#在之后执行命令,会根据算法分配到对应的库中</span><br><span class="line"></span><br><span class="line">#因为数据已经分支了,所以在代理层调用一下命令是不支持的</span><br><span class="line">keys *</span><br><span class="line">watch k1</span><br><span class="line">multi</span><br></pre></td></tr></table></figure>
+
+<h3 id="predixy"><a href="#predixy" class="headerlink" title="predixy"></a>predixy</h3><p><a href="https://github.com/joyieldInc/predixy/releases">predixy</a></p>
+<h4 id="下载并配置文件-1"><a href="#下载并配置文件-1" class="headerlink" title="下载并配置文件"></a>下载并配置文件</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">mkdir predixy</span><br><span class="line">wget https://github.com/joyieldInc/predixy/releases/download/1.0.5/predixy-1.0.5-bin-amd64-linux.tar.gz</span><br><span class="line">vim predixy.conf </span><br><span class="line">	-#开启哨兵配置文件	Include sentinel.conf</span><br><span class="line">vim sentinel.conf #见下图配置</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215230230542.png" alt="image-20211215230230542"></p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#配置哨兵配置文件</span><br><span class="line">vim 26379.conf</span><br><span class="line">vim 26380.conf</span><br><span class="line">vim 26381.conf</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215230938246.png" alt="image-20211215230938246"></p>
+<h4 id="验证-1"><a href="#验证-1" class="headerlink" title="验证"></a>验证</h4><h5 id="启动哨兵"><a href="#启动哨兵" class="headerlink" title="启动哨兵"></a>启动哨兵</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">redis-server 26379.conf --sentinel</span><br><span class="line">redis-server 26380.conf --sentinel</span><br><span class="line">redis-server 26381.conf --sentinel</span><br></pre></td></tr></table></figure>
+
+<h5 id="启动主从"><a href="#启动主从" class="headerlink" title="启动主从"></a>启动主从</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">mkdir 36379</span><br><span class="line">mkdir 36380</span><br><span class="line">mkdir 46379</span><br><span class="line">mkdir 36380</span><br><span class="line">cd 36379</span><br><span class="line">redis-server --port 36379</span><br><span class="line">cd 36380</span><br><span class="line">redis-server --port 36380 --replicaof 127.0.0.1 36379</span><br><span class="line"></span><br><span class="line">cd 46379</span><br><span class="line">redis-server --port 46379</span><br><span class="line">cd 46380</span><br><span class="line">redis-server --port 46380 --replicaof 127.0.0.1 46379</span><br></pre></td></tr></table></figure>
+
+<h5 id="启动predixy"><a href="#启动predixy" class="headerlink" title="启动predixy"></a>启动predixy</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">./predixy ../conf/predixy.conf</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215232319988.png" alt="image-20211215232319988"></p>
+<h5 id="操作验证"><a href="#操作验证" class="headerlink" title="操作验证"></a>操作验证</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#代理上进行简单添加操作</span><br><span class="line">redi-cli -p 7617</span><br><span class="line">set k1 sadad</span><br><span class="line">set k2 asca</span><br><span class="line">set k3 214sd</span><br><span class="line"></span><br><span class="line">#在36379上查找数据</span><br><span class="line">redi-cli -p 36379</span><br><span class="line">key *</span><br><span class="line">   --&quot;k1&quot;</span><br><span class="line">   --&quot;k3&quot;</span><br><span class="line">   </span><br><span class="line">#在46379上查找数据</span><br><span class="line">redi-cli -p 46379</span><br><span class="line">key *</span><br><span class="line">   --&quot;k2&quot;</span><br><span class="line"></span><br><span class="line">#代理上进行含逻辑名key的添加操作</span><br><span class="line">redi-cli -p 7617</span><br><span class="line">set &#123;oo&#125;k1 sadad</span><br><span class="line">set &#123;oo&#125;k2 ascaasfasf</span><br><span class="line">#最终会发现设置的两者在同一个主机上</span><br><span class="line"></span><br><span class="line">#代理上进行watch等事务操作</span><br><span class="line">watch &#123;oo&#125;k2</span><br><span class="line">multi</span><br><span class="line">#结果会发现不支持,原因:peidixy支持事务但是支持在单个标签的时候</span><br><span class="line">#解决: 删除sentinel.conf中的一组xxoo</span><br><span class="line">#结果: 数据将只会在ooxx中写,相当于降级了,有两套但只写到一套里面</span><br><span class="line">#修改之后重新启动predixy,执行以下命令</span><br><span class="line">watch k1</span><br><span class="line">multi</span><br><span class="line">get k1 </span><br><span class="line">set k2 asdasd</span><br><span class="line">exec</span><br><span class="line">#结果:可以执行</span><br></pre></td></tr></table></figure>
+
+<h2 id="redis集群实操"><a href="#redis集群实操" class="headerlink" title="redis集群实操"></a>redis集群实操</h2><p><a href="http://redis.cn/topics/cluster-tutorial.html">redis集群</a></p>
+<h3 id="快速入门"><a href="#快速入门" class="headerlink" title="快速入门"></a>快速入门</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#redis中提供了一个创建集群的脚本,详情可看该文件夹中的README文件</span><br><span class="line">cd /utils/create-cluster</span><br><span class="line">vim create-cluster</span><br><span class="line">	--NODES=6  #服务数量</span><br><span class="line">	--REPLICAS=1 #副本数量</span><br><span class="line">	#这里其实启动6台机器,6/(1+1)=3台主机,3台从机</span><br><span class="line"></span><br><span class="line">./create-cluster start</span><br><span class="line">./create-cluster create </span><br></pre></td></tr></table></figure>
+
+<p>启动后的效果如下:</p>
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639623932939.png" alt="1639623932939"></p>
+<ul>
+<li>问题: 在30001开启了事务multi,但执行一些命令之后跳转到30003,最后在30003执行EXEC,最终执行事务失败</li>
+</ul>
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639624412919.png" alt="1639624412919"></p>
+<ul>
+<li><p>解决</p>
+<p>通过人为设置值来控制</p>
+</li>
+</ul>
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639624898095.png" alt="1639624898095"></p>
+<h3 id="分布式启动"><a href="#分布式启动" class="headerlink" title="分布式启动"></a>分布式启动</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#通过文档自学</span><br><span class="line">redis-cli --cluster help</span><br><span class="line">#分布式启动</span><br><span class="line">redis-cli --cluster  create 127.0.0.1:30001 127.0.0.1:30002 127.0.0.1:30003 127.0.0.1:30004 127.0.0.1:30005 127.0.0.1:30006  --cluster-replicas 1</span><br><span class="line">#自定义分配槽位(可以解决数据倾斜问题)</span><br><span class="line">redis-cli --cluster reshard 127.0.0.1:30001</span><br><span class="line">#看集群中的服务信息</span><br><span class="line">redis-cli --cluster check 127.0.0.1:30001</span><br><span class="line">redis-cli --cluster info 127.0.0.1:30001</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639625216058-1639665162378.png" alt="1639625216058"></p>
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639626265073-1639665162379.png" alt="1639626265073"></p>
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639626489398.png" alt="1639626489398"></p>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>redis</tag>
+        <tag>redis集群</tag>
+        <tag>redis实操</tag>
       </tags>
   </entry>
   <entry>

@@ -21,24 +21,22 @@
     var CONFIG = {"hostname":"leoleiv8x.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":true,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="LVS一、简介 概念 LVS（Linux Virtual Server）即Linux虚拟服务器，是由章文嵩博士主导的开源负载均衡项目，目前LVS已经被集成到Linux内核模块中  特点  数据包转发级别(特别快)  不会和客户端握手  后端服务器必须是镜像的  负载均衡服务器拥有偷窥能力并且记录,3次握手连接+1，四次挥手连接-1">
+  <meta name="description" content="redis的分布式锁 setnx 过期时间 多线程(守护线程)延长过期  现在没有学zookeeper,所以了解不深,可以参考 redis分布式锁">
 <meta property="og:type" content="article">
-<meta property="og:title" content="LVS及LVS_DR模型实践">
-<meta property="og:url" content="https://leoleiv8x.github.io/posts/2036.html">
+<meta property="og:title" content="redis分布式锁介绍">
+<meta property="og:url" content="https://leoleiv8x.github.io/posts/331a.html">
 <meta property="og:site_name" content="LENO">
-<meta property="og:description" content="LVS一、简介 概念 LVS（Linux Virtual Server）即Linux虚拟服务器，是由章文嵩博士主导的开源负载均衡项目，目前LVS已经被集成到Linux内核模块中  特点  数据包转发级别(特别快)  不会和客户端握手  后端服务器必须是镜像的  负载均衡服务器拥有偷窥能力并且记录,3次握手连接+1，四次挥手连接-1">
+<meta property="og:description" content="redis的分布式锁 setnx 过期时间 多线程(守护线程)延长过期  现在没有学zookeeper,所以了解不深,可以参考 redis分布式锁">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://leoleiv8x.github.io/images/LVS%E5%8F%8ALVS-DR%E6%A8%A1%E5%9E%8B%E5%AE%9E%E8%B7%B5.asset/1637723796676.png">
-<meta property="og:image" content="https://leoleiv8x.github.io/images/LVS%E5%8F%8ALVS-DR%E6%A8%A1%E5%9E%8B%E5%AE%9E%E8%B7%B5.asset/1637733236890.png">
-<meta property="og:image" content="https://leoleiv8x.github.io/images/LVS%E5%8F%8ALVS-DR%E6%A8%A1%E5%9E%8B%E5%AE%9E%E8%B7%B5.asset/1637733360419.png">
-<meta property="article:published_time" content="2021-12-12T07:53:28.000Z">
-<meta property="article:modified_time" content="2021-12-12T11:58:05.259Z">
+<meta property="article:published_time" content="2021-12-16T14:48:53.000Z">
+<meta property="article:modified_time" content="2021-12-16T15:00:52.159Z">
 <meta property="article:author" content="Lei">
-<meta property="article:tag" content="高并发和负载均衡">
+<meta property="article:tag" content="redis">
+<meta property="article:tag" content="redis集群">
+<meta property="article:tag" content="分布式锁">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://leoleiv8x.github.io/images/LVS%E5%8F%8ALVS-DR%E6%A8%A1%E5%9E%8B%E5%AE%9E%E8%B7%B5.asset/1637723796676.png">
 
-<link rel="canonical" href="https://leoleiv8x.github.io/posts/2036.html">
+<link rel="canonical" href="https://leoleiv8x.github.io/posts/331a.html">
 
 
 <script id="page-configurations">
@@ -51,7 +49,7 @@
   };
 </script>
 
-  <title>LVS及LVS_DR模型实践 | LENO</title>
+  <title>redis分布式锁介绍 | LENO</title>
   
 
 
@@ -197,7 +195,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/2036.html">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/331a.html">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.jpg">
@@ -210,7 +208,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          LVS及LVS_DR模型实践
+          redis分布式锁介绍
         </h1>
 
         <div class="post-meta">
@@ -221,7 +219,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2021-12-12 15:53:28 / 修改时间：19:58:05" itemprop="dateCreated datePublished" datetime="2021-12-12T15:53:28+08:00">2021-12-12</time>
+              <time title="创建时间：2021-12-16 22:48:53 / 修改时间：23:00:52" itemprop="dateCreated datePublished" datetime="2021-12-16T22:48:53+08:00">2021-12-16</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -239,14 +237,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>2.6k</span>
+              <span>67</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>2 分钟</span>
+              <span>1 分钟</span>
             </span>
 
         </div>
@@ -258,139 +256,13 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <h2 id="LVS"><a href="#LVS" class="headerlink" title="LVS"></a>LVS</h2><h3 id="一、简介"><a href="#一、简介" class="headerlink" title="一、简介"></a>一、简介</h3><ul>
-<li><p>概念</p>
-<p>LVS（<a target="_blank" rel="noopener" href="https://so.csdn.net/so/search?from=pc_blog_highlight&q=Linux">Linux</a> Virtual Server）即Linux虚拟服务器，是由章文嵩博士主导的开源负载均衡项目，目前LVS已经被集成到Linux内核模块中</p>
-</li>
-<li><p>特点</p>
-<ol>
-<li><p>数据包转发级别(特别快)</p>
-</li>
-<li><p>不会和客户端握手</p>
-</li>
-<li><p>后端服务器必须是镜像的</p>
-</li>
-<li><p>负载均衡服务器拥有偷窥能力并且记录,3次握手连接+1，四次挥手连接-1</p>
-<span id="more"></span></li>
+        <h2 id="redis的分布式锁"><a href="#redis的分布式锁" class="headerlink" title="redis的分布式锁"></a>redis的分布式锁</h2><ol>
+<li>setnx</li>
+<li>过期时间</li>
+<li>多线程(守护线程)延长过期</li>
 </ol>
-</li>
-<li><p>比较</p>
-<ol>
-<li>LVS-用于hold住流量(只要网速够快，就没有上限)</li>
-<li>nginx 用于hold 住握手(7层,但有负载上线)</li>
-</ol>
-</li>
-<li><p>工作模式</p>
-<ol>
-<li>NAT模式</li>
-<li>DR模式</li>
-<li>TUN模式</li>
-</ol>
-<p>详情见<a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_43583755/article/details/121504437?spm=1001.2014.3001.5501">https://blog.csdn.net/qq_43583755/article/details/121504437?spm=1001.2014.3001.5501</a></p>
-</li>
-</ul>
-<h3 id="二、隐藏VIP方法"><a href="#二、隐藏VIP方法" class="headerlink" title="二、隐藏VIP方法"></a>二、隐藏VIP方法</h3><ul>
-<li><p>特点</p>
-<p>对外隐藏,对内可见</p>
-</li>
-<li><p>kernel parameter</p>
-<p>目标mac地址为全F,交换机触发广播</p>
-<p>在linux系统中一切皆文件,在该目录**/proc/sys/net/ipv4/conf/<em>IF</em>/**可以修改内核设置,但不能直接vi修改,只能通过echo修改</p>
-<ol>
-<li>arp_ignore<ul>
-<li>0：只要本地配置的有相应地址，就给予响应</li>
-<li>1：仅在请求的目标(MAC)地址配置请求到达接口上的时候，才给予响应</li>
-</ul>
-</li>
-<li>arp_announce<ul>
-<li>0：将本地任何接口上的任何地址向外通告</li>
-<li>1：试图仅向目标网络通告与其网络匹配的地址</li>
-<li>2：仅向与本地接口上地址匹配的网络进行通告</li>
-</ul>
-</li>
-</ol>
-<blockquote>
-<p>为了方便理解,举一个例子:<br><img data-src="../images/LVS%E5%8F%8ALVS-DR%E6%A8%A1%E5%9E%8B%E5%AE%9E%E8%B7%B5.asset/1637723796676.png" alt="1637723796676"></p>
-<p>情景:</p>
-<ol>
-<li><p>arp_ignore(响应-被动)</p>
-<ul>
-<li>0   某人问我爱人电话号码-告诉他</li>
-<li>1   某人问我爱人电话号码-不告诉他</li>
-</ul>
-</li>
-<li><p>arp_announce(通告-主动)</p>
-<p>一个网卡上可以有多个ip地址也就是一个人可以有多个手机号(公用,私用)</p>
-<ul>
-<li>0    电话都告诉某人</li>
-<li>1    只告诉某人公用的(网络号不同)</li>
-<li>2    都不告诉</li>
-</ul>
-</li>
-</ol>
-<p><strong>结论</strong>:<strong>如果要配隐藏VIP,那么就要配arp设置和添加虚拟ip到环回接口上</strong></p>
-</blockquote>
-</li>
-<li><p>调度算法</p>
-<ol>
-<li>静态<ul>
-<li>rr 轮询</li>
-<li>wrr 加权轮询</li>
-<li>dh 目标地址散列调度</li>
-<li>sh 源地址散列调度</li>
-</ul>
-</li>
-<li>动态<ul>
-<li>Ic：最少连接</li>
-<li>Wic：加权最少连接</li>
-<li>sed：最短期望延迟</li>
-<li>nq：never queue</li>
-<li>dblc：基于本地的最少连接</li>
-<li>DH 目标地址散列调度</li>
-<li>LBLCR：基于本地的带复制功能的最少连接</li>
-</ul>
-</li>
-</ol>
-<blockquote>
-<p><strong>问题引入:</strong></p>
-<p>​    <strong>负载均衡服务器如何知道最少连接的是哪台服务器,如何知道它连接的服务器的信息?</strong></p>
-<p>​       负载均衡服务器拥有偷窥能力并且记录</p>
-<p>client发送sync数据包,经过负载均衡服务器,该服务器会看sync中的信息(ip,port)并记录,当client或者server发送ack确认的时候,会在server上握手连接+1,这里四次挥手连接-1同理</p>
-<p><strong>TIP:</strong></p>
-<p>​     如果我们要操作lvs内核设置,需要安装一个ipvs内核模块 ipvsadm(对于大多数程序来说)</p>
-<p>下图为可能用到的命令,在实践的时候会进行详细的说明.</p>
-</blockquote>
-</li>
-</ul>
-<p><img data-src="../images/LVS%E5%8F%8ALVS-DR%E6%A8%A1%E5%9E%8B%E5%AE%9E%E8%B7%B5.asset/1637733236890.png" alt="1637733236890"></p>
-<h3 id="三、DR模型-LVS-实践"><a href="#三、DR模型-LVS-实践" class="headerlink" title="三、DR模型(LVS)实践"></a>三、DR模型(LVS)实践</h3><p><img data-src="../images/LVS%E5%8F%8ALVS-DR%E6%A8%A1%E5%9E%8B%E5%AE%9E%E8%B7%B5.asset/1637733360419.png" alt="1637733360419"></p>
-<blockquote>
-<p>在准备服务器的时候会遇到一些问题:</p>
-<ul>
-<li><p>配置三台node服务器</p>
-<p><a target="_blank" rel="noopener" href="https://www.jb51.net/article/115686.html">https://www.jb51.net/article/115686.html</a></p>
-</li>
-<li><p>Centos 6无法使用yum解决办法</p>
-<p><a target="_blank" rel="noopener" href="https://www.xmpan.com/944.html">https://www.xmpan.com/944.html</a></p>
-</li>
-</ul>
-</blockquote>
-<h4 id="1-LVS"><a href="#1-LVS" class="headerlink" title="1.LVS"></a>1.LVS</h4><figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">node01:</span><br><span class="line"><span class="code">	添加网卡-ifconfig  eth0:8 192.168.188.100/24 (这里的24代表255.255.255.0)</span></span><br><span class="line"><span class="code">	补充:如果要删除网卡 - ifconfig  eth0:8 down</span></span><br><span class="line"><span class="code">node02~node03:</span></span><br><span class="line"><span class="code">	1)修改内核：</span></span><br><span class="line"><span class="code">		echo 1  &gt;  /proc/sys/net/ipv4/conf/eth0/arp_ignore </span></span><br><span class="line"><span class="code">		echo 1  &gt;  /proc/sys/net/ipv4/conf/all/arp_ignore </span></span><br><span class="line"><span class="code">		echo 2  &gt;   /proc/sys/net/ipv4/conf/eth0/arp_announce </span></span><br><span class="line"><span class="code">		echo 2  &gt;   /proc/sys/net/ipv4/conf/all/arp_announce </span></span><br><span class="line"><span class="code">	2）设置隐藏的vip：</span></span><br><span class="line"><span class="code">		ifconfig  lo:3  192.168.188.100  netmask 255.255.255.255</span></span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<p><strong>问题:</strong><br>    1.为什么添加lo:2时,子网掩码是255.255.255.255而不是255.255.255.0?<br>        如果是255.255.255.0,它的IP和MASK进行与运算和eth0走的是同一个网络号,又因为物理网卡(eth0)和虚拟网卡(lo:2)之间虚拟网卡更近,所以会优选虚拟网卡,换回接口将数据又发给自己,这样就死循环了,数据就发不出去了所以会出现如下情况:</p>
-<ol>
-<li>若 ping 192.168.188.1, 则数据会发不出去(因为如果是255.255.255.255那么它会先将IP和MASK进行与运算,获得网络号192.168.188.100)</li>
-<li>若 ping 192.168.188.1, 则走eth0,数据能发出去    </li>
-</ol>
-</blockquote>
-<h4 id="2-RS中的服务"><a href="#2-RS中的服务" class="headerlink" title="2.RS中的服务"></a>2.RS中的服务</h4><figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">node02~node03:</span><br><span class="line"><span class="code">	yum install httpd -y</span></span><br><span class="line"><span class="code">	service httpd start</span></span><br><span class="line"><span class="code">	vi   /var/www/html/index.html</span></span><br><span class="line"><span class="code">		from 192.168.188.1x</span></span><br><span class="line"><span class="code">	这里主要是看效果,所以写的不一样</span></span><br></pre></td></tr></table></figure>
-
-<h4 id="3-LVS服务配置"><a href="#3-LVS服务配置" class="headerlink" title="3.LVS服务配置"></a>3.LVS服务配置</h4><figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">如果我们要操作lvs内核设置,需要安装一个ipvs内核模块 ipvsadm(对于大多数程序来说)</span><br><span class="line">node01:</span><br><span class="line"><span class="code">		yum install ipvsadm </span></span><br><span class="line"><span class="code">	ipvsadm -A  -t  192.168.188.100:80  -s rr</span></span><br><span class="line"><span class="code">	ipvsadm -a  -t 192.168.188.100:80  -r  192.168.188.102 -g -w 1</span></span><br><span class="line"><span class="code">	ipvsadm -a  -t 192.168.188.100:80  -r  192.168.188.103 -g -w 1</span></span><br><span class="line"><span class="code">	ipvsadm -ln</span></span><br></pre></td></tr></table></figure>
-
-<h4 id="4-验证"><a href="#4-验证" class="headerlink" title="4.验证"></a>4.验证</h4><figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">验证：</span><br><span class="line"><span class="code">	浏览器访问  192.168.150.100   看到负载  疯狂F5</span></span><br><span class="line"><span class="code">	node01：</span></span><br><span class="line"><span class="code">		netstat -natp   结论看不到socket连接</span></span><br><span class="line"><span class="code">	node02~node03:</span></span><br><span class="line"><span class="code">		netstat -natp   结论看到很多的socket连接</span></span><br><span class="line"><span class="code">	node01:</span></span><br><span class="line"><span class="code">		ipvsadm -lnc    查看偷窥记录本</span></span><br><span class="line"><span class="code">		TCP 00:57  FIN_WAIT    192.168.150.1:51587 192.168.150.100:80 192.168.150.12:80</span></span><br><span class="line"><span class="code">		FIN_WAIT： 连接过，偷窥了所有的包</span></span><br><span class="line"><span class="code">		SYN_RECV： 基本上lvs都记录了，证明lvs没事，一定是后边网络层出问题</span></span><br></pre></td></tr></table></figure>
-
-
+<p>现在没有学zookeeper,所以了解不深,可以参考 <a target="_blank" rel="noopener" href="http://redis.cn/topics/distlock.html">redis分布式锁</a></p>
+<span id="more"></span>
     </div>
 
     
@@ -400,7 +272,129 @@
       <footer class="post-footer">
           <div class="post-tags">
              <div class="post-tags">
-              <a href="/tags/%E9%AB%98%E5%B9%B6%E5%8F%91%E5%92%8C%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/" rel="tag"><i class="fa fa-tag"></i> 高并发和负载均衡</a>
+              <a href="/tags/redis/" rel="tag"><i class="fa fa-tag"></i> redis</a>
+              <a href="/tags/redis%E9%9B%86%E7%BE%A4/" rel="tag"><i class="fa fa-tag"></i> redis集群</a>
+              <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/" rel="tag"><i class="fa fa-tag"></i> 分布式锁</a>
+          </div>
+          <script type="text/javascript">
+            var tagsall=document.getElementsByClassName("post-tags")
+            for (var i = tagsall.length - 1; i >= 0; i--){
+                var tags=tagsall[i].getElementsByTagName("a");
+                for (var j = tags.length - 1; j >= 0; j--) {
+                    var golden_ratio = 0.618033988749895;
+                    var s = 0.5;
+                    var v = 0.999;
+                    var h = golden_ratio + Math.random()*0.8 - 0.5;
+                    var h_i = parseInt(h * 6);
+                    var f = h * 6 - h_i;
+                    var p = v * (1 - s);
+                    var q = v * (1 - f * s);
+                    var t = v * (1 - (1 - f) * s);
+                    var r, g, b;
+                    switch (h_i) {
+                        case 0:
+                            r = v;
+                            g = t;
+                            b = p;
+                            break;
+                        case 1:
+                            r = q;
+                            g = v;
+                            b = p;
+                            break;
+                        case 2:
+                            r = p;
+                            g = v;
+                            b = t;
+                            break;
+                        case 3 :
+                            r = p;
+                            g = q;
+                            b = v;
+                            break;
+                        case 4:
+                            r = t;
+                            g = p;
+                            b = v;
+                            break;
+                        case 5:
+                            r = v;
+                            g = p;
+                            b = q;
+                            break;
+                        default:
+                            r = 1;
+                            g = 1;
+                            b = 1;
+                      }
+                    tags[j].style.background = "rgba("+parseInt(r*255)+","+parseInt(g*255)+","+parseInt(b*255)+","+0.5+")";
+                }
+            }                        
+            </script>
+             <div class="post-tags">
+              <a href="/tags/redis/" rel="tag"><i class="fa fa-tag"></i> redis</a>
+              <a href="/tags/redis%E9%9B%86%E7%BE%A4/" rel="tag"><i class="fa fa-tag"></i> redis集群</a>
+              <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/" rel="tag"><i class="fa fa-tag"></i> 分布式锁</a>
+          </div>
+          <script type="text/javascript">
+            var tagsall=document.getElementsByClassName("post-tags")
+            for (var i = tagsall.length - 1; i >= 0; i--){
+                var tags=tagsall[i].getElementsByTagName("a");
+                for (var j = tags.length - 1; j >= 0; j--) {
+                    var golden_ratio = 0.618033988749895;
+                    var s = 0.5;
+                    var v = 0.999;
+                    var h = golden_ratio + Math.random()*0.8 - 0.5;
+                    var h_i = parseInt(h * 6);
+                    var f = h * 6 - h_i;
+                    var p = v * (1 - s);
+                    var q = v * (1 - f * s);
+                    var t = v * (1 - (1 - f) * s);
+                    var r, g, b;
+                    switch (h_i) {
+                        case 0:
+                            r = v;
+                            g = t;
+                            b = p;
+                            break;
+                        case 1:
+                            r = q;
+                            g = v;
+                            b = p;
+                            break;
+                        case 2:
+                            r = p;
+                            g = v;
+                            b = t;
+                            break;
+                        case 3 :
+                            r = p;
+                            g = q;
+                            b = v;
+                            break;
+                        case 4:
+                            r = t;
+                            g = p;
+                            b = v;
+                            break;
+                        case 5:
+                            r = v;
+                            g = p;
+                            b = q;
+                            break;
+                        default:
+                            r = 1;
+                            g = 1;
+                            b = 1;
+                      }
+                    tags[j].style.background = "rgba("+parseInt(r*255)+","+parseInt(g*255)+","+parseInt(b*255)+","+0.5+")";
+                }
+            }                        
+            </script>
+             <div class="post-tags">
+              <a href="/tags/redis/" rel="tag"><i class="fa fa-tag"></i> redis</a>
+              <a href="/tags/redis%E9%9B%86%E7%BE%A4/" rel="tag"><i class="fa fa-tag"></i> redis集群</a>
+              <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/" rel="tag"><i class="fa fa-tag"></i> 分布式锁</a>
           </div>
           <script type="text/javascript">
             var tagsall=document.getElementsByClassName("post-tags")
@@ -465,12 +459,12 @@
         
     <div class="post-nav">
       <div class="post-nav-item">
-    <a href="/posts/ea2e.html" rel="prev" title="redis中的AFK原理和CAP理论">
-      <i class="fa fa-chevron-left"></i> redis中的AFK原理和CAP理论
+    <a href="/posts/37a4.html" rel="prev" title="corn表达式">
+      <i class="fa fa-chevron-left"></i> corn表达式
     </a></div>
       <div class="post-nav-item">
-    <a href="/posts/552f.html" rel="next" title="负载均衡模型与实现">
-      负载均衡模型与实现 <i class="fa fa-chevron-right"></i>
+    <a href="/posts/6a1c.html" rel="next" title="redis相关API代码实现">
+      redis相关API代码实现 <i class="fa fa-chevron-right"></i>
     </a></div>
     </div>
       </footer>
@@ -530,7 +524,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#LVS"><span class="nav-number">1.</span> <span class="nav-text">LVS</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E7%AE%80%E4%BB%8B"><span class="nav-number">1.1.</span> <span class="nav-text">一、简介</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E9%9A%90%E8%97%8FVIP%E6%96%B9%E6%B3%95"><span class="nav-number">1.2.</span> <span class="nav-text">二、隐藏VIP方法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89%E3%80%81DR%E6%A8%A1%E5%9E%8B-LVS-%E5%AE%9E%E8%B7%B5"><span class="nav-number">1.3.</span> <span class="nav-text">三、DR模型(LVS)实践</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-LVS"><span class="nav-number">1.3.1.</span> <span class="nav-text">1.LVS</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-RS%E4%B8%AD%E7%9A%84%E6%9C%8D%E5%8A%A1"><span class="nav-number">1.3.2.</span> <span class="nav-text">2.RS中的服务</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-LVS%E6%9C%8D%E5%8A%A1%E9%85%8D%E7%BD%AE"><span class="nav-number">1.3.3.</span> <span class="nav-text">3.LVS服务配置</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-%E9%AA%8C%E8%AF%81"><span class="nav-number">1.3.4.</span> <span class="nav-text">4.验证</span></a></li></ol></li></ol></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#redis%E7%9A%84%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81"><span class="nav-number">1.</span> <span class="nav-text">redis的分布式锁</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 

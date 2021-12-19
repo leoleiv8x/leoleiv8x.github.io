@@ -21,33 +21,21 @@
     var CONFIG = {"hostname":"leoleiv8x.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":true,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="一、Spring官网学习推荐:通过Spring官网学习,读文档有更好的效果">
+  <meta name="description" content="API介绍大多数api其实是见名知意,所以可以回顾原来的redis的value类型讲解那块儿. 这里我们是在本地windows连接云服务器,有几个坑  服务器上启动的conf文件绑定的bind注释调 springboot配置的properties文件地址为外网地址 systemctl status firewalld 和iptables -L  查看防火墙 systemctl stop firew">
 <meta property="og:type" content="article">
-<meta property="og:title" content="sharding和cluster引入和redis代理的使用">
-<meta property="og:url" content="https://leoleiv8x.github.io/posts/493e.html">
+<meta property="og:title" content="redis相关API代码实现">
+<meta property="og:url" content="https://leoleiv8x.github.io/posts/6a1c.html">
 <meta property="og:site_name" content="LENO">
-<meta property="og:description" content="一、Spring官网学习推荐:通过Spring官网学习,读文档有更好的效果">
+<meta property="og:description" content="API介绍大多数api其实是见名知意,所以可以回顾原来的redis的value类型讲解那块儿. 这里我们是在本地windows连接云服务器,有几个坑  服务器上启动的conf文件绑定的bind注释调 springboot配置的properties文件地址为外网地址 systemctl status firewalld 和iptables -L  查看防火墙 systemctl stop firew">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://leoleiv8x.github.io/images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213164018696.png">
-<meta property="og:image" content="https://leoleiv8x.github.io/images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213171019206.png">
-<meta property="og:image" content="https://leoleiv8x.github.io/images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213171444504.png">
-<meta property="og:image" content="https://leoleiv8x.github.io/images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213171552606.png">
-<meta property="og:image" content="https://leoleiv8x.github.io/images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213172139652.png">
-<meta property="og:image" content="https://leoleiv8x.github.io/images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213172340150.png">
-<meta property="og:image" content="https://leoleiv8x.github.io/images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213180317262.png">
-<meta property="og:image" content="https://leoleiv8x.github.io/images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213180408342.png">
-<meta property="og:image" content="https://leoleiv8x.github.io/images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213180938727.png">
-<meta property="og:image" content="https://leoleiv8x.github.io/images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213181329476.png">
-<meta property="article:published_time" content="2021-12-13T08:38:23.000Z">
-<meta property="article:modified_time" content="2021-12-13T11:15:23.117Z">
+<meta property="article:published_time" content="2021-12-16T14:53:02.000Z">
+<meta property="article:modified_time" content="2021-12-18T12:09:46.000Z">
 <meta property="article:author" content="Lei">
-<meta property="article:tag" content="redis">
-<meta property="article:tag" content="redis集群">
-<meta property="article:tag" content="redis的分片和代理">
+<meta property="article:tag" content="redis相关API">
+<meta property="article:tag" content="redis代码实现">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://leoleiv8x.github.io/images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213164018696.png">
 
-<link rel="canonical" href="https://leoleiv8x.github.io/posts/493e.html">
+<link rel="canonical" href="https://leoleiv8x.github.io/posts/6a1c.html">
 
 
 <script id="page-configurations">
@@ -60,7 +48,7 @@
   };
 </script>
 
-  <title>sharding和cluster引入和redis代理的使用 | LENO</title>
+  <title>redis相关API代码实现 | LENO</title>
   
 
 
@@ -206,7 +194,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/493e.html">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/6a1c.html">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.jpg">
@@ -219,7 +207,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          sharding和cluster引入和redis代理的使用
+          redis相关API代码实现
         </h1>
 
         <div class="post-meta">
@@ -228,10 +216,16 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2021-12-13 16:38:23 / 修改时间：19:15:23" itemprop="dateCreated datePublished" datetime="2021-12-13T16:38:23+08:00">2021-12-13</time>
+              <time title="创建时间：2021-12-16 22:53:02" itemprop="dateCreated datePublished" datetime="2021-12-16T22:53:02+08:00">2021-12-16</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-18 20:09:46" itemprop="dateModified" datetime="2021-12-18T20:09:46+08:00">2021-12-18</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -248,14 +242,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>1.4k</span>
+              <span>2.7k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>1 分钟</span>
+              <span>2 分钟</span>
             </span>
 
         </div>
@@ -267,82 +261,36 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <h2 id="一、Spring官网学习"><a href="#一、Spring官网学习" class="headerlink" title="一、Spring官网学习"></a>一、Spring官网学习</h2><p>推荐:通过<a target="_blank" rel="noopener" href="https://spring.io/">Spring官网</a>学习,读文档有更好的效果</p>
-<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213164018696.png" alt="image-20211213164018696"></p>
+        <h2 id="API介绍"><a href="#API介绍" class="headerlink" title="API介绍"></a>API介绍</h2><p>大多数api其实是见名知意,所以可以回顾原来的<a href="https://leoleiv8x.github.io/posts/1575.html">redis的value类型</a>讲解那块儿.</p>
+<p><strong>这里我们是在本地windows连接云服务器,有几个坑</strong></p>
+<ul>
+<li>服务器上启动的conf文件绑定的bind注释调</li>
+<li>springboot配置的properties文件地址为外网地址</li>
+<li>systemctl status firewalld 和iptables -L  查看防火墙</li>
+<li>systemctl stop firewalld 关闭防火墙</li>
+<li>防火墙关闭也有可能被拦截 iptables -F  清除规则</li>
+</ul>
 <span id="more"></span>
 
-<h2 id="二、redis的sharding引入"><a href="#二、redis的sharding引入" class="headerlink" title="二、redis的sharding引入"></a>二、redis的sharding引入</h2><h3 id="1-问题引入"><a href="#1-问题引入" class="headerlink" title="1. 问题引入"></a>1. 问题引入</h3><p>通过AKF理论,我们知道单节点出现的<strong>容量问题</strong>,为了保证其<strong>可用性</strong>所以我们要对数据进行分类存库中</p>
-<h3 id="2-数据处理"><a href="#2-数据处理" class="headerlink" title="2.数据处理"></a>2.数据处理</h3><p>根据不同的情况我们可以有不同的处理方式,具体如下:</p>
-<h4 id="1-逻辑业务拆分"><a href="#1-逻辑业务拆分" class="headerlink" title="(1)逻辑业务拆分"></a>(1)逻辑业务拆分</h4><p>如果数据可以分类，交集不多,可以进行业务的拆分</p>
-<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213171019206.png" alt="image-20211213171019206"></p>
-<h4 id="2-hash-取模-modula"><a href="#2-hash-取模-modula" class="headerlink" title="(2)hash+取模(modula)"></a>(2)hash+取模(modula)</h4><ul>
-<li>弊端<ol>
-<li>取模的数必须固定(%3,%4%,10)</li>
-<li>影响分布式下的扩展性</li>
-</ol>
-</li>
-</ul>
-<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213171444504.png" alt="image-20211213171444504"></p>
-<h4 id="3-random"><a href="#3-random" class="headerlink" title="(3)random"></a>(3)random</h4><ul>
-<li><p>弊端</p>
-<p>如果我们随机取值的话,那么我们也不知道到底存的是哪个库,这样set进去的那个库就取不到值</p>
-</li>
-<li><p>常用场景</p>
-<p>消息队列(kafka),其中ooxx则是topic和partition</p>
-<p>我们通过random放到(lpush)一个list里面,虽然我们取不到值,但是可以用另外一个客户端直接消费(rpop)</p>
-</li>
-</ul>
-<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213171552606.png" alt="image-20211213171552606"></p>
-<h4 id="4-一致性哈希-kemata"><a href="#4-一致性哈希-kemata" class="headerlink" title="(4)一致性哈希(kemata)"></a>(4)一致性哈希(kemata)</h4><ul>
-<li>特点<ol>
-<li>没有取模,采用映射算法(hash,,crc16,crc32,fnv,md5)</li>
-</ol>
-</li>
-</ul>
-<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213172139652.png" alt="image-20211213172139652"></p>
-<h3 id="3-一致性哈希详细分析"><a href="#3-一致性哈希详细分析" class="headerlink" title="3.    一致性哈希详细分析"></a>3.    一致性哈希详细分析</h3><p>首先一致性哈希会规划一个哈希环,环上都是虚拟节点(0~2^32)</p>
-<h4 id="1-概念"><a href="#1-概念" class="headerlink" title="(1)概念"></a>(1)概念</h4><ul>
-<li>对于node服务器来说通过hash映射后的节点是物理的,它会放到一个treeMap之类的集中管理</li>
-<li>对于数据keydata来说,通过hash映射后到一个虚拟点上,然后他会找一个物理节点,为了避免数据倾斜问题,所以我们一般找的是离它最近的物理点,通过该物理点可以知道是node服务器,最终就知道了datakey应该存入到哪个服务器.如下图所示datakey找到了node2的物理节点,所以这个数据会存在node2上</li>
-</ul>
-<h4 id="2-优点"><a href="#2-优点" class="headerlink" title="(2)优点"></a>(2)优点</h4><p>如果对节点进行扩展的话,可以分担其他节点的压力,不会造成全局洗牌</p>
-<h4 id="3-缺点"><a href="#3-缺点" class="headerlink" title="(3)缺点"></a>(3)缺点</h4><p>在datakey设置到node2之后,新增节点node3,如果直接要获取datakey中的数据那么第一时间找的是node3(最近),但node3中是没有数据的,所以会造成redis的击穿问题</p>
-<ul>
-<li><p>解决</p>
-<p>取最近的两个点,如果node3没有就去看node2,而不是直接去mysql数据库中取</p>
-</li>
-</ul>
-<h4 id="4-使用场景"><a href="#4-使用场景" class="headerlink" title="(4)使用场景"></a>(4)使用场景</h4><p><strong>从缺点上也可以看出一致性哈希更适合用于redis当缓冲的场景且node2还可以通过redis的缓存淘汰机制来进行优化,而不是数据库</strong></p>
-<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213172340150.png" alt="image-20211213172340150"></p>
-<blockquote>
-<p>补充:</p>
-<p>​    1.虚拟节点间接解决了数据倾斜的问题</p>
-<p>场景:</p>
-<ol>
-<li><p>如果想上述那样会出现node1没数据,node2有数据</p>
-</li>
-<li><p>如果我们node01,node02原来是通过ip直接进行hash取值,而现在通过ip分别拼接0-10的数字,这样就会有在环上有10各个地方的对应node1的物理节点,从而解决了数据倾斜问题</p>
-</li>
-</ol>
-</blockquote>
-<h2 id="三、redis代理的使用"><a href="#三、redis代理的使用" class="headerlink" title="三、redis代理的使用"></a>三、redis代理的使用</h2><h3 id="1-问题引入-1"><a href="#1-问题引入-1" class="headerlink" title="1.问题引入"></a>1.问题引入</h3><p>对于高并发的情况下,一个redis服务可能有多个客户端访问,而一个客户可能访问多个redis,因为有分片的处理,这样就导致了redis的连接成本很高,对server端造成的,如下图所示.</p>
-<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213180317262.png" alt="image-20211213180317262"></p>
-<ul>
-<li><p>解决1:通过代理</p>
-<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213180408342.png" alt="image-20211213180408342"></p>
-<ul>
-<li>问题1:proxy可能顶不住,也宕机了,所以要提高proxy的高可用</li>
-<li>问题2:为了让客户端访问同一ip,方便管理,引入lvs</li>
-<li>防止lvs宕机,提高可用,引进备用lvs并使用keepalived做主备故障切换</li>
-</ul>
-<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213180938727.png" alt="image-20211213180938727"></p>
-</li>
-</ul>
-<blockquote>
-<p>总结:</p>
-<p>​    不要因为技术而技术,最终redis<strong>为了追求性能</strong>,所以使用了,下图代理,并在代理层做逻辑实现    (modula,random,kemata),最终我们使用<a target="_blank" rel="noopener" href="https://github.com/twitter/twemproxy">twemproxy</a>,后续会对它进行详细实操</p>
-<p><img data-src="../images/sharding%E5%92%8Ccluster%E5%BC%95%E5%85%A5%E5%92%8Credis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8.asset/image-20211213181329476.png" alt="image-20211213181329476"></p>
-</blockquote>
+<h2 id="高低阶API代码实现"><a href="#高低阶API代码实现" class="headerlink" title="高低阶API代码实现"></a>高低阶API代码实现</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Test</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">lowAndHighRedisApiTest</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      <span class="comment">//高阶API</span></span><br><span class="line">      stringRedisTemplate.opsForValue().set(<span class="string">&quot;k1&quot;</span>, <span class="string">&quot;hello&quot;</span>);</span><br><span class="line">      System.out.println(stringRedisTemplate.opsForValue().get(<span class="string">&quot;k1&quot;</span>));</span><br><span class="line"></span><br><span class="line">      <span class="comment">//低阶API(二进制安全)</span></span><br><span class="line">      RedisConnection conn = redisTemplate.getConnectionFactory().getConnection();</span><br><span class="line">      conn.set(<span class="string">&quot;name&quot;</span>.getBytes(), <span class="string">&quot;jack&quot;</span>.getBytes());</span><br><span class="line">      System.out.println(<span class="keyword">new</span> String(conn.get(<span class="string">&quot;name&quot;</span>.getBytes())));</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="hash代码实现"><a href="#hash代码实现" class="headerlink" title="hash代码实现"></a>hash代码实现</h2><p><a target="_blank" rel="noopener" href="https://docs.spring.io/spring-data/redis/docs/current/reference/html/#redis.hashmappers.root">https://docs.spring.io/spring-data/redis/docs/current/reference/html/#redis.hashmappers.root</a></p>
+<h3 id="原hash代码"><a href="#原hash代码" class="headerlink" title="原hash代码"></a>原hash代码</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">HashOperations&lt;String, Object, Object&gt; hash = stringRedisTemplate.opsForHash();</span><br><span class="line">hash.put(<span class="string">&quot;sean&quot;</span>,<span class="string">&quot;name&quot;</span>,<span class="string">&quot;zhouzhilei&quot;</span>);</span><br><span class="line">hash.put(<span class="string">&quot;sean&quot;</span>,<span class="string">&quot;age&quot;</span>,<span class="string">&quot;22&quot;</span>);</span><br><span class="line"></span><br><span class="line">System.out.println(hash.entries(<span class="string">&quot;sean&quot;</span>));</span><br></pre></td></tr></table></figure>
+
+<h4 id="Jackson2HashMapper"><a href="#Jackson2HashMapper" class="headerlink" title="Jackson2HashMapper"></a>Jackson2HashMapper</h4><h5 id="引入依赖"><a href="#引入依赖" class="headerlink" title="引入依赖"></a>引入依赖</h5><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-json<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">Person p = <span class="keyword">new</span> Person();</span><br><span class="line">p.setName(<span class="string">&quot;zhangsan&quot;</span>);</span><br><span class="line">p.setAge(<span class="number">16</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">//设置序列化类型</span></span><br><span class="line">stringRedisTemplate.setHashValueSerializer(<span class="keyword">new</span> Jackson2JsonRedisSerializer&lt;Object&gt;(Object.class));</span><br><span class="line"></span><br><span class="line">Jackson2HashMapper jm = <span class="keyword">new</span> Jackson2HashMapper(objectMapper, <span class="keyword">false</span>);</span><br><span class="line">stringRedisTemplate.opsForHash().putAll(<span class="string">&quot;sean01&quot;</span>,jm.toHash(p));</span><br><span class="line">Map map = stringRedisTemplate.opsForHash().entries(<span class="string">&quot;sean01&quot;</span>);</span><br><span class="line">Person per = objectMapper.convertValue(map, Person.class);</span><br><span class="line">System.out.println(per.getName());</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="自定义template代码实现"><a href="#自定义template代码实现" class="headerlink" title="自定义template代码实现"></a>自定义template代码实现</h2><h3 id="MyTemplate"><a href="#MyTemplate" class="headerlink" title="MyTemplate"></a>MyTemplate</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MyTemplate</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> StringRedisTemplate <span class="title">ooxx</span><span class="params">(RedisConnectionFactory fc)</span></span>&#123;</span><br><span class="line"></span><br><span class="line">        StringRedisTemplate tp = <span class="keyword">new</span> StringRedisTemplate(fc);</span><br><span class="line"></span><br><span class="line">        tp.setHashValueSerializer(<span class="keyword">new</span> Jackson2JsonRedisSerializer&lt;Object&gt;(Object.class));</span><br><span class="line">        <span class="keyword">return</span>  tp ;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="验证-1"><a href="#验证-1" class="headerlink" title="验证"></a>验证</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Autowired</span></span><br><span class="line"><span class="meta">@Qualifier(&quot;ooxx&quot;)</span></span><br><span class="line">StringRedisTemplate  stringRedisTemplate;</span><br><span class="line"></span><br><span class="line">stringRedisTemplate.convertAndSend(<span class="string">&quot;ooxx&quot;</span>,<span class="string">&quot;hello&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="发布订阅代码实现"><a href="#发布订阅代码实现" class="headerlink" title="发布订阅代码实现"></a>发布订阅代码实现</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">//获取连接</span></span><br><span class="line">RedisConnection cc = stringRedisTemplate.getConnectionFactory().getConnection();</span><br><span class="line"><span class="comment">//订阅通道ooxx,新起一个线程进行打印</span></span><br><span class="line">cc.subscribe(<span class="keyword">new</span> MessageListener() &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onMessage</span><span class="params">(Message message, <span class="keyword">byte</span>[] pattern)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">byte</span>[] body = message.getBody();</span><br><span class="line">        System.out.println(<span class="keyword">new</span> String(body));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;, <span class="string">&quot;ooxx&quot;</span>.getBytes());</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//循环发布通道ooxx中的信息</span></span><br><span class="line"><span class="keyword">while</span>(<span class="keyword">true</span>)&#123;</span><br><span class="line">    stringRedisTemplate.convertAndSend(<span class="string">&quot;ooxx&quot;</span>,<span class="string">&quot;hello  from wo zi ji &quot;</span>);</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        Thread.sleep(<span class="number">3000</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
 
     </div>
 
@@ -353,9 +301,8 @@
       <footer class="post-footer">
           <div class="post-tags">
              <div class="post-tags">
-              <a href="/tags/redis/" rel="tag"><i class="fa fa-tag"></i> redis</a>
-              <a href="/tags/redis%E9%9B%86%E7%BE%A4/" rel="tag"><i class="fa fa-tag"></i> redis集群</a>
-              <a href="/tags/redis%E7%9A%84%E5%88%86%E7%89%87%E5%92%8C%E4%BB%A3%E7%90%86/" rel="tag"><i class="fa fa-tag"></i> redis的分片和代理</a>
+              <a href="/tags/redis%E7%9B%B8%E5%85%B3API/" rel="tag"><i class="fa fa-tag"></i> redis相关API</a>
+              <a href="/tags/redis%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0/" rel="tag"><i class="fa fa-tag"></i> redis代码实现</a>
           </div>
           <script type="text/javascript">
             var tagsall=document.getElementsByClassName("post-tags")
@@ -413,69 +360,8 @@
             }                        
             </script>
              <div class="post-tags">
-              <a href="/tags/redis/" rel="tag"><i class="fa fa-tag"></i> redis</a>
-              <a href="/tags/redis%E9%9B%86%E7%BE%A4/" rel="tag"><i class="fa fa-tag"></i> redis集群</a>
-              <a href="/tags/redis%E7%9A%84%E5%88%86%E7%89%87%E5%92%8C%E4%BB%A3%E7%90%86/" rel="tag"><i class="fa fa-tag"></i> redis的分片和代理</a>
-          </div>
-          <script type="text/javascript">
-            var tagsall=document.getElementsByClassName("post-tags")
-            for (var i = tagsall.length - 1; i >= 0; i--){
-                var tags=tagsall[i].getElementsByTagName("a");
-                for (var j = tags.length - 1; j >= 0; j--) {
-                    var golden_ratio = 0.618033988749895;
-                    var s = 0.5;
-                    var v = 0.999;
-                    var h = golden_ratio + Math.random()*0.8 - 0.5;
-                    var h_i = parseInt(h * 6);
-                    var f = h * 6 - h_i;
-                    var p = v * (1 - s);
-                    var q = v * (1 - f * s);
-                    var t = v * (1 - (1 - f) * s);
-                    var r, g, b;
-                    switch (h_i) {
-                        case 0:
-                            r = v;
-                            g = t;
-                            b = p;
-                            break;
-                        case 1:
-                            r = q;
-                            g = v;
-                            b = p;
-                            break;
-                        case 2:
-                            r = p;
-                            g = v;
-                            b = t;
-                            break;
-                        case 3 :
-                            r = p;
-                            g = q;
-                            b = v;
-                            break;
-                        case 4:
-                            r = t;
-                            g = p;
-                            b = v;
-                            break;
-                        case 5:
-                            r = v;
-                            g = p;
-                            b = q;
-                            break;
-                        default:
-                            r = 1;
-                            g = 1;
-                            b = 1;
-                      }
-                    tags[j].style.background = "rgba("+parseInt(r*255)+","+parseInt(g*255)+","+parseInt(b*255)+","+0.5+")";
-                }
-            }                        
-            </script>
-             <div class="post-tags">
-              <a href="/tags/redis/" rel="tag"><i class="fa fa-tag"></i> redis</a>
-              <a href="/tags/redis%E9%9B%86%E7%BE%A4/" rel="tag"><i class="fa fa-tag"></i> redis集群</a>
-              <a href="/tags/redis%E7%9A%84%E5%88%86%E7%89%87%E5%92%8C%E4%BB%A3%E7%90%86/" rel="tag"><i class="fa fa-tag"></i> redis的分片和代理</a>
+              <a href="/tags/redis%E7%9B%B8%E5%85%B3API/" rel="tag"><i class="fa fa-tag"></i> redis相关API</a>
+              <a href="/tags/redis%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0/" rel="tag"><i class="fa fa-tag"></i> redis代码实现</a>
           </div>
           <script type="text/javascript">
             var tagsall=document.getElementsByClassName("post-tags")
@@ -540,13 +426,10 @@
         
     <div class="post-nav">
       <div class="post-nav-item">
-    <a href="/posts/ba25.html" rel="prev" title="归并排序及相关题目">
-      <i class="fa fa-chevron-left"></i> 归并排序及相关题目
+    <a href="/posts/331a.html" rel="prev" title="redis分布式锁介绍">
+      <i class="fa fa-chevron-left"></i> redis分布式锁介绍
     </a></div>
-      <div class="post-nav-item">
-    <a href="/posts/e17a.html" rel="next" title="redis集群理论">
-      redis集群理论 <i class="fa fa-chevron-right"></i>
-    </a></div>
+      <div class="post-nav-item"></div>
     </div>
       </footer>
     
@@ -605,7 +488,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81Spring%E5%AE%98%E7%BD%91%E5%AD%A6%E4%B9%A0"><span class="nav-number">1.</span> <span class="nav-text">一、Spring官网学习</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81redis%E7%9A%84sharding%E5%BC%95%E5%85%A5"><span class="nav-number">2.</span> <span class="nav-text">二、redis的sharding引入</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E9%97%AE%E9%A2%98%E5%BC%95%E5%85%A5"><span class="nav-number">2.1.</span> <span class="nav-text">1. 问题引入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E6%95%B0%E6%8D%AE%E5%A4%84%E7%90%86"><span class="nav-number">2.2.</span> <span class="nav-text">2.数据处理</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E9%80%BB%E8%BE%91%E4%B8%9A%E5%8A%A1%E6%8B%86%E5%88%86"><span class="nav-number">2.2.1.</span> <span class="nav-text">(1)逻辑业务拆分</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-hash-%E5%8F%96%E6%A8%A1-modula"><span class="nav-number">2.2.2.</span> <span class="nav-text">(2)hash+取模(modula)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-random"><span class="nav-number">2.2.3.</span> <span class="nav-text">(3)random</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-%E4%B8%80%E8%87%B4%E6%80%A7%E5%93%88%E5%B8%8C-kemata"><span class="nav-number">2.2.4.</span> <span class="nav-text">(4)一致性哈希(kemata)</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E4%B8%80%E8%87%B4%E6%80%A7%E5%93%88%E5%B8%8C%E8%AF%A6%E7%BB%86%E5%88%86%E6%9E%90"><span class="nav-number">2.3.</span> <span class="nav-text">3.    一致性哈希详细分析</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E6%A6%82%E5%BF%B5"><span class="nav-number">2.3.1.</span> <span class="nav-text">(1)概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E4%BC%98%E7%82%B9"><span class="nav-number">2.3.2.</span> <span class="nav-text">(2)优点</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E7%BC%BA%E7%82%B9"><span class="nav-number">2.3.3.</span> <span class="nav-text">(3)缺点</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-number">2.3.4.</span> <span class="nav-text">(4)使用场景</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81redis%E4%BB%A3%E7%90%86%E7%9A%84%E4%BD%BF%E7%94%A8"><span class="nav-number">3.</span> <span class="nav-text">三、redis代理的使用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E9%97%AE%E9%A2%98%E5%BC%95%E5%85%A5-1"><span class="nav-number">3.1.</span> <span class="nav-text">1.问题引入</span></a></li></ol></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#API%E4%BB%8B%E7%BB%8D"><span class="nav-number">1.</span> <span class="nav-text">API介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%AB%98%E4%BD%8E%E9%98%B6API%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="nav-number">2.</span> <span class="nav-text">高低阶API代码实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#hash%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.</span> <span class="nav-text">hash代码实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8E%9Fhash%E4%BB%A3%E7%A0%81"><span class="nav-number">3.1.</span> <span class="nav-text">原hash代码</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Jackson2HashMapper"><span class="nav-number">3.1.1.</span> <span class="nav-text">Jackson2HashMapper</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%BC%95%E5%85%A5%E4%BE%9D%E8%B5%96"><span class="nav-number">3.1.1.1.</span> <span class="nav-text">引入依赖</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E9%AA%8C%E8%AF%81"><span class="nav-number">3.1.1.2.</span> <span class="nav-text">验证</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%87%AA%E5%AE%9A%E4%B9%89template%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="nav-number">4.</span> <span class="nav-text">自定义template代码实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#MyTemplate"><span class="nav-number">4.1.</span> <span class="nav-text">MyTemplate</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%AA%8C%E8%AF%81-1"><span class="nav-number">4.2.</span> <span class="nav-text">验证</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="nav-number">5.</span> <span class="nav-text">发布订阅代码实现</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
