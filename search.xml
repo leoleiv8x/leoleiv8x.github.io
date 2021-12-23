@@ -370,42 +370,576 @@
       </tags>
   </entry>
   <entry>
-    <title>corn表达式</title>
-    <url>/posts/37a4.html</url>
-    <content><![CDATA[<h2 id="Corn表达式详解"><a href="#Corn表达式详解" class="headerlink" title="Corn表达式详解"></a>Corn表达式详解</h2><h3 id="一、简介"><a href="#一、简介" class="headerlink" title="一、简介"></a>一、简介</h3><p>Cron表达式是一个字符串，字符串以5或6个空格隔开，分为6或7个域，每一个域代表一个含义，Cron有如下两种语法格式：</p>
-<p>　　（1）<em>Seconds Minutes Hours DayofMonth Month DayofWeek Year</em></p>
-<p>　　（2）<em>Seconds Minutes Hours DayofMonth Month DayofWeek</em></p>
-<p>从左往右分别是：<br>    秒 分 小时 月份中的日期 月份 星期中的日期 年份 </p>
-<span id="more"></span>
+    <title>ZK的ACL和Session原理</title>
+    <url>/posts/dc83.html</url>
+    <content><![CDATA[<span id="more"></span>
 
-<h3 id="二、常用表达式"><a href="#二、常用表达式" class="headerlink" title="二、常用表达式"></a>二、常用表达式</h3><p>（1）<strong>0 0 2 1 * ?</strong> 表示在每月的1日的凌晨2点调整任务</p>
-<p>（2）<strong>0 15 10 ? * MON-FRI</strong> 表示周一到周五每天上午10:15执行作业</p>
-<p>（3）<strong>0 15 10 ? 6L 2002-2006</strong> 表示2002-2006年的每个月的最后一个星期五上午10:15执行作</p>
-<p>（4）<strong>0 0 10,14,16 * * ?</strong> 每天上午10点，下午2点，4点</p>
-<p>（5）<strong>0 0/30 9-17 * * ?</strong> 朝九晚五工作时间内每半小时</p>
-<p>（6）<strong>0 0 12 ? * WED</strong> 表示每个星期三中午12点</p>
-<p>（7）<strong>0 0 12 * * ?</strong> 每天中午12点触发</p>
-<p>（8）**0 15 10 ? * *** 每天上午10:15触发</p>
-<p>（9）<strong>0 15 10 * * ?</strong> 每天上午10:15触发</p>
-<p>（10）<strong>0 15 10 * * ?</strong> 每天上午10:15触发</p>
-<p>（11）<strong>0 15 10 * * ? 2005</strong> 2005年的每天上午10:15触发</p>
-<p>（12）<strong>0 * 14 * * ?</strong> 在每天下午2点到下午2:59期间的每1分钟触发</p>
-<p>（13）<strong>0 0/5 14 * * ?</strong> 在每天下午2点到下午2:55期间的每5分钟触发</p>
-<p>（14）<strong>0 0/5 14,18 * * ?</strong> 在每天下午2点到2:55期间和下午6点到6:55期间的每5分钟触发</p>
-<p>（15）<strong>0 0-5 14 * * ?</strong> 在每天下午2点到下午2:05期间的每1分钟触发</p>
-<p>（16）<strong>0 10,44 14 ? 3 WED</strong> 每年三月的星期三的下午2:10和2:44触发</p>
-<p>（17）<strong>0 15 10 ? * MON-FRI</strong> 周一至周五的上午10:15触发</p>
-<p>（18）<strong>0 15 10 15 * ?</strong> 每月15日上午10:15触发</p>
-<p>（19）<strong>0 15 10 L * ?</strong> 每月最后一日的上午10:15触发</p>
-<p>（20）<strong>0 15 10 ? * 6L</strong> 每月的最后一个星期五上午10:15触发</p>
-<p>（21）<strong>0 15 10 ? * 6L 2002-2005</strong> 2002年至2005年的每月的最后一个星期五上午10:15触发</p>
-<p>（22）<strong>0 15 10 ? * 6#3</strong> 每月的第三个星期五上午10:15触发</p>
+<p>根据ZK的API我们知道有参数<strong>WATCH,ACL</strong>等参数和<strong>单个Session</strong>的概念,所以我们对其进行详细的讲解</p>
+<h2 id="ACL"><a href="#ACL" class="headerlink" title="ACL"></a>ACL</h2><p>zookeeper 的 ACL（Access Control List，访问控制表）权限在生产环境是特别重要的，所以本章节特别介绍一下。</p>
+<p>ACL 权限可以针对节点设置相关读写等权限，保障数据安全性。</p>
+<p>permissions 可以指定不同的权限范围及角色。</p>
+<h3 id="ACL-命令行"><a href="#ACL-命令行" class="headerlink" title="ACL 命令行"></a>ACL 命令行</h3><ul>
+<li><strong>getAcl 命令</strong>：获取某个节点的 acl 权限信息。</li>
+<li><strong>setAcl 命令</strong>：设置某个节点的 acl 权限信息。</li>
+<li><strong>addauth 命令</strong>：输入认证授权信息，注册时输入明文密码，加密形式保存。</li>
+</ul>
+<h3 id="ACL-构成"><a href="#ACL-构成" class="headerlink" title="ACL 构成"></a>ACL 构成</h3><p>zookeeper 的 acl 通过 <strong>[scheme:id:permissions]</strong> 来构成权限列表。</p>
+<ul>
+<li>1、<strong>scheme</strong>：代表采用的某种权限机制，包括 world、auth、digest、ip、super 几种。</li>
+<li>2、<strong>id</strong>：代表允许访问的用户。</li>
+<li>3、<strong>permissions</strong>：权限组合字符串，由 cdrwa 组成，其中每个字母代表支持不同权限， 创建权限 create(c)、删除权限 delete(d)、读权限 read(r)、写权限 write(w)、管理权限admin(a)。</li>
+</ul>
+<h3 id="world-实例"><a href="#world-实例" class="headerlink" title="world 实例"></a>world 实例</h3><p>查看默认节点权限，再更新节点 permissions 权限部分为 crwa，结果删除节点失败。其中 world 代表开放式权限。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ getAcl /runoob/child</span><br><span class="line">$ setAcl /runoob/child world:anyone:crwa</span><br><span class="line">$ delete /runoob/child</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/zk-acl-01.png" alt="img"></p>
+<h3 id="auth-实例"><a href="#auth-实例" class="headerlink" title="auth 实例"></a>auth 实例</h3><p>auth 用于授予权限，注意需要先创建用户。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ setAcl /runoob/child auth:user1:123456:cdrwa</span><br><span class="line">$ addauth digest user1:123456</span><br><span class="line">$ setAcl /runoob/child auth:user1:123456:cdrwa</span><br><span class="line">$ getAcl /runoob/child</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/zk-acl-02.png" alt="img"></p>
+<h3 id="digest-实例"><a href="#digest-实例" class="headerlink" title="digest 实例"></a>digest 实例</h3><p>退出当前用户，重新连接终端，digest 可用于账号密码登录和验证。。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ ls /runoob</span><br><span class="line">$ create /runoob/child01 runoob</span><br><span class="line">$ getAcl /runoob/child01</span><br><span class="line">$ setAcl /runoob/child01 digest:user1:HYGa7IZRm2PUBFiFFu8xY2pPP/s=:cdra</span><br><span class="line">$ getAcl /runoob/child01</span><br><span class="line">$ addauth digest user1:123456</span><br><span class="line">$ getAcl /runoob/child01</span><br></pre></td></tr></table></figure>
+
+<p><strong>提示：</strong>加密密码是上一步创建的。</p>
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/zk-acl-03.png" alt="img"></p>
+<h3 id="IP-实例"><a href="#IP-实例" class="headerlink" title="IP 实例"></a>IP 实例</h3><p>限制 IP 地址的访问权限，把权限设置给 IP 地址为 192.168.3.7 后，IP 为 192.168.3.38 已经没有访问权限。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ create /runoob/ip 0</span><br><span class="line">$ getAcl /runoob/ip</span><br><span class="line">$ setAcl /runoob/ip ip:192.168.3.7:cdrwa</span><br><span class="line">$ get /runoob/ip</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/zk-acl-04.png" alt="img"></p>
+<h2 id="Session原理"><a href="#Session原理" class="headerlink" title="Session原理"></a>Session原理</h2><p>客户端与服务端之间的连接是基于 TCP 长连接，client 端连接 server 端默认的 2181 端口，也就是 session 会话。</p>
+<p>从第一次连接建立开始，客户端开始会话的生命周期，客户端向服务端的ping包请求，每个会话都可以设置一个超时时间。</p>
+<h3 id="Session-的创建"><a href="#Session-的创建" class="headerlink" title="Session 的创建"></a>Session 的创建</h3><p><strong>sessionID</strong>: 会话ID，用来唯一标识一个会话，每次客户端创建会话的时候，zookeeper 都会为其分配一个全局唯一的 sessionID。zookeeper 创建 sessionID 类 SessionTrackerImpl 中的源码。</p>
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/session01.png" alt="img"></p>
+<p><strong>Timeout</strong>：会话超时时间。客户端在构造 Zookeeper 实例时候，向服务端发送配置的超时时间，server 端会根据自己的超时时间限制最终确认会话的超时时间。</p>
+<p><strong>TickTime</strong>：下次会话超时时间点，默认 2000 毫秒。可在 zoo.cfg 配置文件中配置，便于 server 端对 session 会话实行<strong>分桶策略管理</strong>。</p>
+<p><strong>isClosing</strong>：该属性标记一个会话是否已经被关闭，当 server 端检测到会话已经超时失效，该会话标记为”已关闭”，不再处理该会话的新请求。</p>
+<h3 id="Session-的状态"><a href="#Session-的状态" class="headerlink" title="Session 的状态"></a>Session 的状态</h3><p>下面介绍几个重要的状态：</p>
+<ul>
+<li><strong>connecting</strong>：连接中，session 一旦建立，状态就是 connecting 状态，时间很短。</li>
+<li><strong>connected</strong>：已连接，连接成功之后的状态。</li>
+<li><strong>closed</strong>：已关闭，发生在 session 过期，一般由于网络故障客户端重连失败，服务器宕机或者客户端主动断开。</li>
+</ul>
+<h3 id="会话超时管理（分桶策略-会话激活）"><a href="#会话超时管理（分桶策略-会话激活）" class="headerlink" title="会话超时管理（分桶策略+会话激活）"></a>会话超时管理（分桶策略+会话激活）</h3><p>zookeeper 的 leader 服务器再运行期间定时进行会话超时检查，时间间隔是 ExpirationInterval，单位是毫秒，默认值是 tickTime，每隔 tickTime 进行一次会话超时检查。</p>
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/session02.png" alt="img"></p>
+<p>ExpirationTime 的计算方式:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">ExpirationTime = CurrentTime + SessionTimeout;</span><br><span class="line">ExpirationTime = (ExpirationTime / ExpirationInterval + 1) * ExpirationInterval;</span><br></pre></td></tr></table></figure>
+
+<p>在 zookeeper 运行过程中，客户端会在会话超时过期范围内向服务器发送请求（包括读和写）或者 ping 请求，俗称<strong>心跳检测</strong>完成会话激活，从而来保持会话的有效性。</p>
+<p>会话激活流程：</p>
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/session03.png" alt="img"></p>
+<p>激活后进行迁移会话的过程，然后开始新一轮：</p>
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/session04.png" alt="img"></p>
 ]]></content>
       <categories>
-        <category>工具</category>
+        <category>从网络到分布式</category>
       </categories>
       <tags>
-        <tag>corn表达式</tag>
+        <tag>zookeeper</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ZooKeeper原理</title>
+    <url>/posts/5c4.html</url>
+    <content><![CDATA[<p>我们已经知道ZooKeeper是一个分布式的协调框架,它具有以下特点</p>
+<ul>
+<li>扩展</li>
+<li>可靠性</li>
+<li>时序性</li>
+<li>快速</li>
+</ul>
+<p>下面我们从扩展性和可靠性两个方面来分析</p>
+<span id="more"></span>
+
+<p><img data-src="../images/ZooKeeper%E5%8E%9F%E7%90%86.asset/image-20211223223329532.png" alt="image-20211223223329532"></p>
+<h2 id="扩展性"><a href="#扩展性" class="headerlink" title="扩展性"></a>扩展性</h2><p>Zookeeper有着不同的角色,他们各有对应的职责,分别是</p>
+<ul>
+<li><p>leader    - &gt; 参与写操作</p>
+</li>
+<li><p>follower - &gt; 参与选举</p>
+</li>
+<li><p>observer -&gt; 放大查询能力</p>
+<p>observer配置如下图:</p>
+</li>
+</ul>
+<p><img data-src="../images/ZooKeeper%E5%8E%9F%E7%90%86.asset/image-20211223223337745.png" alt="image-20211223223337745"></p>
+<h2 id="可靠性"><a href="#可靠性" class="headerlink" title="可靠性"></a>可靠性</h2><p>zookeeper的可靠性在于两个方面</p>
+<ul>
+<li><p>快速恢复Leader</p>
+</li>
+<li><p>数据 可靠 可用  一致性</p>
+<ol>
+<li>采用最终一致性(过程中，节点对外不提供服务)</li>
+<li>分布式<ul>
+<li>类似paxos算法</li>
+<li>ZAB协议(作用在可用状态有Leader时)</li>
+</ul>
+</li>
+</ol>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>zookeeper</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>分布式配置注册发现</title>
+    <url>/posts/8278.html</url>
+    <content><![CDATA[<span id="more"></span>]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>zookeeper</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>分布式锁</title>
+    <url>/posts/47b6.html</url>
+    <content><![CDATA[<span id="more"></span>]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>zookeeper</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ZooKeeper安装验证和简单使用</title>
+    <url>/posts/7fb0.html</url>
+    <content><![CDATA[<h2 id="安装配置"><a href="#安装配置" class="headerlink" title="安装配置"></a>安装配置</h2><h3 id="zookeeper安装"><a href="#zookeeper安装" class="headerlink" title="zookeeper安装"></a><a href="https://www.runoob.com/w3cnote/zookeeper-setup.html">zookeeper安装</a></h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#准备 node01~node04	安装JDK,并配置JAVA_HOME</span><br><span class="line">wget https://mirror.bit.edu.cn/apache/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz</span><br><span class="line">tar -zxvf zookeeper-3.4.14.tar.gz</span><br><span class="line">mkdir /opt/lei</span><br><span class="line">mv  zookeeper  /opt/lei</span><br><span class="line">vi /etc/profile</span><br><span class="line">	export ZOOKEEPER_HOME=/opt/mashibing/zookeeper-3.4.6       </span><br><span class="line">	export PATH=$PATH:$ZOOKEEPER_HOME/bin</span><br><span class="line">cd zookeeper/conf</span><br><span class="line">cp zoo_sample.cfg zoo.cfg</span><br><span class="line">vi zoo.cfg</span><br><span class="line">	dataDir=/var/lei/zk     </span><br><span class="line">	server.1=node01:2888:3888</span><br><span class="line">echo 1 &gt;  /var/lei/zk/myid</span><br><span class="line">#远程拷贝</span><br><span class="line">cd /opt  &amp;&amp;  scp -r ./lei/  node02:`pwd`</span><br><span class="line">#同理node02~node04   创建 myid</span><br></pre></td></tr></table></figure>
+
+<span id="more"></span>
+
+<h3 id="启动"><a href="#启动" class="headerlink" title="启动"></a>启动</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#启动顺序  1，2，3，4</span><br><span class="line">#前台阻塞启动</span><br><span class="line">zkServer.sh   start-foreground</span><br><span class="line">#查看服务器状态</span><br><span class="line">zkServer.sh status</span><br><span class="line">#启动客户端</span><br><span class="line">zkCli.sh</span><br></pre></td></tr></table></figure>
+
+<h3 id="帮助命令"><a href="#帮助命令" class="headerlink" title="帮助命令"></a>帮助命令</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">ZooKeeper -server host:port cmd args</span><br><span class="line">        stat path [watch]</span><br><span class="line">        set path data [version]</span><br><span class="line">        ls path [watch]</span><br><span class="line">        delquota [-n|-b] path</span><br><span class="line">        ls2 path [watch]</span><br><span class="line">        setAcl path acl</span><br><span class="line">        setquota -n|-b val path</span><br><span class="line">        history </span><br><span class="line">        redo cmdno</span><br><span class="line">        printwatches on|off</span><br><span class="line">        delete path [version]</span><br><span class="line">        sync path</span><br><span class="line">        listquota path</span><br><span class="line">        rmr path</span><br><span class="line">        get path [watch]</span><br><span class="line">        create [-s] [-e] path data acl</span><br><span class="line">        addauth scheme auth</span><br><span class="line">        quit </span><br><span class="line">        getAcl path</span><br><span class="line">        close </span><br><span class="line">        connect host:port</span><br></pre></td></tr></table></figure>
+
+<h2 id="应用"><a href="#应用" class="headerlink" title="应用"></a>应用</h2><h3 id="Zookeeper-客户端基础命令使用"><a href="#Zookeeper-客户端基础命令使用" class="headerlink" title="Zookeeper 客户端基础命令使用"></a><a href="https://www.runoob.com/w3cnote/zookeeper-bs-command.html">Zookeeper 客户端基础命令使用</a></h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#启动zk客户端</span><br><span class="line">zkCli.sh</span><br><span class="line">#通过help指令自主学习</span><br><span class="line">help</span><br><span class="line"></span><br><span class="line">create  /k1  &quot;&quot;</span><br><span class="line">#查看某个路径下目录列表</span><br><span class="line">ls /  </span><br><span class="line">#更详细信息</span><br><span class="line">ls2 / </span><br><span class="line">create  /ooxx  &quot;&quot;   </span><br><span class="line">create -s /abc/aaa  </span><br><span class="line">create -e /ooxx/xxoo   </span><br><span class="line">create -s -e /ooxx/xoxo </span><br><span class="line">#获取节点数据和状态信息</span><br><span class="line">get /ooxx	</span><br><span class="line"></span><br><span class="line">#验证zk的通信过程</span><br><span class="line">netstat -natp   |   egrep  &#x27;(2888|3888)&#x27; </span><br></pre></td></tr></table></figure>
+<h3 id="Zookeeper-四字命令"><a href="#Zookeeper-四字命令" class="headerlink" title="Zookeeper 四字命令"></a><a href="https://www.runoob.com/w3cnote/zookeeper-sc-4lw.html">Zookeeper 四字命令</a></h3><p>zookeeper 支持某些特定的四字命令与其交互，用户获取 zookeeper 服务的当前状态及相关信息，用户在客户端可以通过 telenet 或者 nc（netcat） 向 zookeeper 提交相应的命令 </p>
+<ul>
+<li><p>安装</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">yum install nc                # centos</span><br><span class="line">sudo apt install netcat     # ubuntu</span><br></pre></td></tr></table></figure></li>
+<li><p>命令格式</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">echo [command] | nc [ip] [port]</span><br></pre></td></tr></table></figure></li>
+<li><p>使用</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#查看 zk 的状态信息</span><br><span class="line">echo stat | nc 192.168.3.38 2181</span><br><span class="line"></span><br><span class="line">#查看当前 zkserver 是否启动，若返回 imok 表示正常</span><br><span class="line">echo ruok | nc 192.168.3.38 2181</span><br><span class="line"></span><br><span class="line">#列出未经处理的会话和临时节点</span><br><span class="line">echo dump | nc 192.168.3.38 2181</span><br><span class="line"></span><br><span class="line">#查看服务器配置</span><br><span class="line">echo conf | nc 192.168.3.38 2181</span><br><span class="line"></span><br><span class="line">#展示连接到服务器的客户端信息</span><br><span class="line">echo cons | nc 192.168.3.38 2181</span><br><span class="line"></span><br><span class="line">#查看环境变量</span><br><span class="line">echo envi | nc 192.168.3.38 2181</span><br></pre></td></tr></table></figure></li>
+</ul>
+<blockquote>
+<p>扩展:zookeeper 的三个端口作用</p>
+<p> zoo.cfg 配置信息中</p>
+<ul>
+<li>2181 : 对 client 端提供服务</li>
+<li>2888 : 集群内机器通信使用</li>
+<li>3888 : 选举 leader 使用</li>
+</ul>
+<p>问题: 为什么要选用4台机器搭建zk集群?</p>
+<ul>
+<li><p>查看通信信息</p>
+<p>netstat -natp   |   egrep  ‘(2888|3888)’ </p>
+</li>
+<li><p>结论</p>
+<p><strong>每个服务都是互通的,这也是为什么能统一镜像的原因</strong></p>
+</li>
+</ul>
+<p><img data-src="../images/ZooKeeper%E5%AE%89%E8%A3%85%E5%8F%8A%E5%BA%94%E7%94%A8.asset/image-20211223222335157.png" alt="image-20211223222335157"></p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>zookeeper</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ZooKeeper的API详解</title>
+    <url>/posts/fdaf.html</url>
+    <content><![CDATA[<h2 id="原生API"><a href="#原生API" class="headerlink" title="原生API"></a>原生API</h2><h4 id="创建会话"><a href="#创建会话" class="headerlink" title="创建会话"></a>创建会话</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">createZkSession</span><span class="params">()</span></span>&#123;</span><br><span class="line">      	<span class="comment">//zk是有session概念的，没有连接池的概念</span></span><br><span class="line">        <span class="comment">//watch:观察，回调</span></span><br><span class="line">        <span class="comment">//watch的注册值发生在 读类型调用，get，exites。。。</span></span><br><span class="line">        <span class="comment">//第一类：new zk 时候，传入的watch，这个watch，session级别的，跟path 、node没有关系。</span></span><br><span class="line">        <span class="keyword">final</span> CountDownLatch cd = <span class="keyword">new</span> CountDownLatch(<span class="number">1</span>);</span><br><span class="line">        ZooKeeper zk = <span class="keyword">new</span> ZooKeeper(<span class="string">&quot;192.168.150.11:2181,192.168.150.12:2181,192.168.150.13:2181,192.168.150.14:2181&quot;</span>,</span><br><span class="line">                <span class="number">3000</span>, <span class="keyword">new</span> Watcher() &#123;</span><br><span class="line">            <span class="comment">//Watch 的回调方法！</span></span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">process</span><span class="params">(WatchedEvent event)</span> </span>&#123;</span><br><span class="line">                Event.KeeperState state = event.getState();</span><br><span class="line">                <span class="keyword">switch</span> (state) &#123;</span><br><span class="line">                    <span class="keyword">case</span> Disconnected:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> SyncConnected:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> AuthFailed:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> ConnectedReadOnly:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> SaslAuthenticated:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> Expired:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                &lt;!--more--&gt;</span><br><span class="line">                Event.EventType type = event.getType();</span><br><span class="line">                <span class="keyword">switch</span> (type) &#123;</span><br><span class="line">                    <span class="keyword">case</span> None:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> NodeCreated:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> NodeDeleted:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> NodeDataChanged:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> NodeChildrenChanged:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                String path = event.getPath();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">        cd.await();</span><br><span class="line">        <span class="comment">//CONNECTED</span></span><br><span class="line">        ZooKeeper.States state = zk.getState();</span><br><span class="line">        <span class="keyword">switch</span> (state) &#123;</span><br><span class="line">            <span class="keyword">case</span> CONNECTING:</span><br><span class="line">                System.out.println(<span class="string">&quot;CONNECTING......&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> ASSOCIATING:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> CONNECTED:</span><br><span class="line">                System.out.println(<span class="string">&quot;CONNECTED........&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> CONNECTEDREADONLY:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> CLOSED:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> AUTH_FAILED:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> NOT_CONNECTED:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="创建数据节点"><a href="#创建数据节点" class="headerlink" title="创建数据节点"></a>创建数据节点</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//创建znode(二进制安全)</span></span><br><span class="line">       zk.create(<span class="string">&quot;/lei&quot;</span>, <span class="string">&quot;oldData&quot;</span>.getBytes(StandardCharsets.UTF_8), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);</span><br></pre></td></tr></table></figure>
+
+<h4 id="读取数据节点"><a href="#读取数据节点" class="headerlink" title="读取数据节点"></a>读取数据节点</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//获取znode数据</span></span><br><span class="line">        Stat stat = <span class="keyword">new</span> Stat();</span><br><span class="line">        <span class="keyword">byte</span>[] node = zk.getData(<span class="string">&quot;/lei&quot;</span>, <span class="keyword">new</span> Watcher() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="comment">//wacher一次性</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">process</span><span class="params">(WatchedEvent event)</span> </span>&#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;getData watch: &quot;</span> + event.toString());</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    <span class="comment">//true   default Watch  被重新注册   new zk的那个watch</span></span><br><span class="line">                    zk.getData(<span class="string">&quot;/ooxx&quot;</span>, <span class="keyword">this</span>, stat);</span><br><span class="line">                &#125; <span class="keyword">catch</span> (KeeperException e) &#123;</span><br><span class="line">                    e.printStackTrace();</span><br><span class="line">                &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">                    e.printStackTrace();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;, stat);</span><br><span class="line">        System.out.println(<span class="keyword">new</span> String(node));</span><br><span class="line"></span><br><span class="line">		<span class="comment">//触发回调</span></span><br><span class="line">        Stat stat1 = zk.setData(<span class="string">&quot;/ooxx&quot;</span>, <span class="string">&quot;newdata&quot;</span>.getBytes(), <span class="number">0</span>);</span><br><span class="line">        <span class="comment">//还会触发吗？</span></span><br><span class="line">        Stat stat2 = zk.setData(<span class="string">&quot;/ooxx&quot;</span>, <span class="string">&quot;newdata01&quot;</span>.getBytes(), stat1.getVersion());</span><br></pre></td></tr></table></figure>
+
+<h4 id="异步回调"><a href="#异步回调" class="headerlink" title="异步回调"></a>异步回调</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">System.out.println(<span class="string">&quot;-------async start----------&quot;</span>);</span><br><span class="line">       zk.getData(<span class="string">&quot;/ooxx&quot;</span>, <span class="keyword">false</span>, <span class="keyword">new</span> AsyncCallback.DataCallback() &#123;</span><br><span class="line">           <span class="meta">@Override</span></span><br><span class="line">           <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">processResult</span><span class="params">(<span class="keyword">int</span> rc, String path, Object ctx, <span class="keyword">byte</span>[] data, Stat stat)</span> </span>&#123;</span><br><span class="line">               System.out.println(<span class="string">&quot;-------async call back----------&quot;</span>);</span><br><span class="line">               System.out.println(ctx.toString());</span><br><span class="line">               System.out.println(<span class="keyword">new</span> String(data));</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;,<span class="string">&quot;abc&quot;</span>);</span><br><span class="line">       System.out.println(<span class="string">&quot;-------async over----------&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="Curator"><a href="#Curator" class="headerlink" title="Curator"></a>Curator</h2><h3 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h3><p>Curator是Netflix公司开源的一套zookeeper客户端框架，解决了很多Zookeeper客户端非常底层的细节开发工作，包括连接重连、反复注册Watcher和NodeExistsException异常等等。</p>
+<p><a href="https://www.jianshu.com/p/db65b64f38aa">curator基本使用</a></p>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>zookeeper</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ZooKeeper数据模型和znode详解</title>
+    <url>/posts/9aad.html</url>
+    <content><![CDATA[<h2 id="数据模型"><a href="#数据模型" class="headerlink" title="数据模型"></a>数据模型</h2><p>在 zookeeper 中，可以说 zookeeper 中的所有存储的数据是由 znode 组成的，节点也称为 znode，并以 key/value 形式存储数据。</p>
+<p>整体结构类似于 linux 文件系统的模式以树形结构存储。其中根路径以 / 开头。</p>
+<p>进入 zookeeper 安装的 bin 目录，通过sh zkCli.sh打开命令行终端，执行 “ls /“ 命令显示：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">ls /</span><br><span class="line">ls /zookeeper</span><br><span class="line">ls /zookeeper/quota</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZooKeeper%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E5%92%8Cznode%E8%AF%A6%E8%A7%A3.asset/1640227249608.png" alt="1640227249608"></p>
+<span id="more"></span>
+
+<p>我们直观的看到此时存储的数据在根目录下存在 runoob 和 zookeeper 两个节点，zookeeper 节点下存在 quota 这个节点 <img data-src="../images/ZooKeeper%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E5%92%8Cznode%E8%AF%A6%E8%A7%A3.asset/1640227281253.png" alt="1640227281253"></p>
+<h2 id="Znode-的状态属性"><a href="#Znode-的状态属性" class="headerlink" title="Znode 的状态属性"></a>Znode 的状态属性</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">/runoob</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZooKeeper%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E5%92%8Cznode%E8%AF%A6%E8%A7%A3.asset/1640227358558.png" alt="1640227358558"></p>
+<p>其中第一行显示的 0 是该节点的 value 值</p>
+<table>
+<thead>
+<tr>
+<th>cZxid</th>
+<th>创建节点时的事务ID</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ctime</td>
+<td>创建节点时的时间</td>
+</tr>
+<tr>
+<td>mZxid</td>
+<td>最后修改节点时的事务ID</td>
+</tr>
+<tr>
+<td>mtime</td>
+<td>最后修改节点时的时间</td>
+</tr>
+<tr>
+<td>pZxid</td>
+<td>表示该节点的子节点列表最后一次修改的事务ID，添加子节点或删除子节点就会影响子节点列表，但是修改子节点的数据内容则不影响该ID<strong>（注意，只有子节点列表变更了才会变更pzxid，子节点内容变更不会影响pzxid）</strong></td>
+</tr>
+<tr>
+<td>cversion</td>
+<td>子节点版本号，子节点每次修改版本号加1</td>
+</tr>
+<tr>
+<td>dataversion</td>
+<td>数据版本号，数据每次修改该版本号加1</td>
+</tr>
+<tr>
+<td>aclversion</td>
+<td>权限版本号，权限每次修改该版本号加1</td>
+</tr>
+<tr>
+<td>ephemeralOwner</td>
+<td>创建该临时节点的会话的sessionID。**（**<strong>如果该节点是持久节点，那么这个属性值为0）</strong></td>
+</tr>
+<tr>
+<td>dataLength</td>
+<td>该节点的数据长度</td>
+</tr>
+<tr>
+<td>numChildren</td>
+<td>该节点拥有子节点的数量<strong>（只统计直接子节点的数量）</strong></td>
+</tr>
+</tbody></table>
+<p>对 <strong>/runoob</strong> 节点做一次修改，执行命令 set /runoob 1 </p>
+<p> 如下图所示: </p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">set /runoob 1</span><br><span class="line">#mZxid、mtime、dataVersion 都发生了变化</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZooKeeper%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E5%92%8Cznode%E8%AF%A6%E8%A7%A3.asset/1640227408966.png" alt="1640227408966"></p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">create -e  /runoob/child  0</span><br><span class="line">get /runoob</span><br><span class="line">#pZxid、cversion、numChildren发生变化</span><br><span class="line">#cversion 0-&gt;3?</span><br><span class="line">#原因:创建目录+1  临时节点+1  创建数据+1 </span><br></pre></td></tr></table></figure>
+
+<h2 id="Znode-特性"><a href="#Znode-特性" class="headerlink" title="Znode 特性"></a>Znode 特性</h2><p>本章节介绍一下 zookeeper 的节点特性和简单使用场景，正是由于这些节点特性的存在使 zookeeper 开发出不同的场景应用。</p>
+<h3 id="1、同一级节点-key-名称是唯一的"><a href="#1、同一级节点-key-名称是唯一的" class="headerlink" title="1、同一级节点 key 名称是唯一的"></a>1、同一级节点 key 名称是唯一的</h3><p>实例：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ ls /</span><br><span class="line">$ create /runoob 2</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZooKeeper%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E5%92%8Cznode%E8%AF%A6%E8%A7%A3.asset/node-t-01.png" alt="img"></p>
+<p>已存在 <strong>/runoob</strong> 节点，再次创建会提示已经存在。</p>
+<h3 id="2、创建节点时，必须要带上全路径"><a href="#2、创建节点时，必须要带上全路径" class="headerlink" title="2、创建节点时，必须要带上全路径"></a>2、创建节点时，必须要带上全路径</h3><p>实例：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ ls /runoob</span><br><span class="line">$ create /runoob/child 0</span><br><span class="line">$ create /runoob/child/ch01 0</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZooKeeper%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E5%92%8Cznode%E8%AF%A6%E8%A7%A3.asset/node-t-02.png" alt="img"></p>
+<h3 id="3、session-关闭，临时节点清除"><a href="#3、session-关闭，临时节点清除" class="headerlink" title="3、session 关闭，临时节点清除"></a>3、session 关闭，临时节点清除</h3><p>实例：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ ls /runoob</span><br><span class="line">$ create -e /runoob/echild 0</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZooKeeper%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E5%92%8Cznode%E8%AF%A6%E8%A7%A3.asset/node-t-03.png" alt="img"></p>
+<p>同时终端二查看该节点:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ ls /runoob</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZooKeeper%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E5%92%8Cznode%E8%AF%A6%E8%A7%A3.asset/node-t-04.png" alt="img"></p>
+<p>ctrl+c 关闭终端一连接后，查询终端二 <strong>/runoob/echild</strong> 节点消失。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ ls /runoob</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZooKeeper%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E5%92%8Cznode%E8%AF%A6%E8%A7%A3.asset/node-t-05.png" alt="img"></p>
+<h3 id="4、自动创建顺序节点"><a href="#4、自动创建顺序节点" class="headerlink" title="4、自动创建顺序节点"></a>4、自动创建顺序节点</h3><p>实例：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ create -s -e /runoob 0</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZooKeeper%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E5%92%8Cznode%E8%AF%A6%E8%A7%A3.asset/node-t-06.png" alt="img"></p>
+<h3 id="5、watch-机制，监听节点变化"><a href="#5、watch-机制，监听节点变化" class="headerlink" title="5、watch 机制，监听节点变化"></a>5、watch 机制，监听节点变化</h3><p>事件监听机制类似于观察者模式，watch 流程是客户端向服务端某个节点路径上注册一个 watcher，同时客户端也会存储特定的 watcher，<strong>当节点数据或子节点发生变化时，服务端通知客户端，客户端进行回调处理</strong>。特别注意：监听事件被<strong>单次触发后，事件就失效了</strong>。</p>
+<p><strong>提示：</strong>参考常用命令章节 get 命令监听 watch 使用，后面章节将详细介绍 watch 实现原理。</p>
+<h3 id="6、delete-命令只能一层一层删除"><a href="#6、delete-命令只能一层一层删除" class="headerlink" title="6、delete 命令只能一层一层删除"></a>6、delete 命令只能一层一层删除</h3><p>实例：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">$ ls /</span><br><span class="line">$ delete /runoob</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZooKeeper%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E5%92%8Cznode%E8%AF%A6%E8%A7%A3.asset/node-t-07.png" alt="img"></p>
+<p><strong>提示</strong>：新版本可以通过 deleteall 命令递归删除。</p>
+<p>有了上述众多节点特性，使得 zookeeper 能开发不出不同的经典应用场景，比如：</p>
+<ul>
+<li>数据发布/订阅</li>
+<li>负载均衡</li>
+<li>分布式协调/通知</li>
+<li>集群管理</li>
+<li>master 管理</li>
+<li>分布式锁</li>
+<li>分布式队列</li>
+</ul>
+<blockquote>
+<p>扩展:</p>
+<p>由zookeeper的节点特性可以推出一下几个场景</p>
+<ul>
+<li><p>节点存储最多1M数据 -&gt; 统一配置管理</p>
+</li>
+<li><p>path结构  -&gt; 分组管理</p>
+</li>
+<li><p>sequential -&gt; 统一命名 </p>
+</li>
+<li><p>临时节点 -&gt; 同步 </p>
+<p><img data-src="../images/ZooKeeper%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E5%92%8Cznode%E8%AF%A6%E8%A7%A3.asset/image-20211223222658131.png" alt="image-20211223222658131"></p>
+</li>
+</ul>
+</blockquote>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>zookeeper</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ZooKeeper的Watch机制</title>
+    <url>/posts/49ea.html</url>
+    <content><![CDATA[<h2 id="wathcer事件机制原理"><a href="#wathcer事件机制原理" class="headerlink" title="wathcer事件机制原理"></a>wathcer事件机制原理</h2><p>zk是有统一的视图的,所以怎么保证这个视图呢?</p>
+<ul>
+<li><p>方式一</p>
+<p>我们可以通过自己写心跳验证来实现</p>
+<p><strong>缺点</strong></p>
+<ul>
+<li><p>get客户端每次发送心跳给set的客户端(方向性)</p>
+</li>
+<li><p>发送心跳是由一个时间间隔的,在这个时间间隔可能会出意外,无法监控到(时效性)</p>
+</li>
+</ul>
+</li>
+<li><p>方式二</p>
+<p>ZK中的watch机制,解决了方式一的问题</p>
+<span id="more"></span></li>
+</ul>
+<p>步骤如下:</p>
+<ol>
+<li>set了一个基于session的临时节点</li>
+<li>get节点的同时watch这个节点</li>
+<li>如果会话断开,那么就会瞬间触发实践,然后回调客户端</li>
+</ol>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/image-20211223224618213.png" alt="image-20211223224618213"></p>
+<p>zookeeper 的 watcher 机制，可以分为四个过程：</p>
+<ul>
+<li>客户端注册 watcher。</li>
+<li>服务端处理 watcher。</li>
+<li>服务端触发 watcher 事件。</li>
+<li>客户端回调 watcher。</li>
+</ul>
+<p>其中客户端注册 watcher 有三种方式，调用客户端 API 可以分别通过 getData、exists、getChildren 实现，利用前面章节创建的 maven 工程，新建 WatcherDemo 类，以 exists 方法举例说明其原理。</p>
+<h2 id="实例"><a href="#实例" class="headerlink" title="实例"></a>实例</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">WatcherDemo</span> <span class="keyword">implements</span> <span class="title">Watcher</span> </span>&#123;</span><br><span class="line">    <span class="keyword">static</span> ZooKeeper zooKeeper;</span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            zooKeeper = <span class="keyword">new</span> ZooKeeper(<span class="string">&quot;192.168.3.39:2181&quot;</span>, <span class="number">4000</span>,<span class="keyword">new</span> WatcherDemo());</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">process</span><span class="params">(WatchedEvent event)</span> </span>&#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;eventType:&quot;</span>+event.getType());</span><br><span class="line">        <span class="keyword">if</span>(event.getType()==Event.EventType.NodeDataChanged)&#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                zooKeeper.exists(event.getPath(),<span class="keyword">true</span>);</span><br><span class="line">            &#125; <span class="keyword">catch</span> (KeeperException e) &#123;</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">            &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> IOException, KeeperException, InterruptedException </span>&#123;</span><br><span class="line">        String path=<span class="string">&quot;/watcher&quot;</span>;</span><br><span class="line">        <span class="keyword">if</span>(zooKeeper.exists(path,<span class="keyword">false</span>)==<span class="keyword">null</span>) &#123;</span><br><span class="line">            zooKeeper.create(<span class="string">&quot;/watcher&quot;</span>, <span class="string">&quot;0&quot;</span>.getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);</span><br><span class="line">        &#125;</span><br><span class="line">        Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">        System.out.println(<span class="string">&quot;-----------&quot;</span>);</span><br><span class="line">        <span class="comment">//true表示使用zookeeper实例中配置的watcher</span></span><br><span class="line">        Stat stat=zooKeeper.exists(path,<span class="keyword">true</span>);</span><br><span class="line">        System.in.read();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>运行完程序，控制台显示:</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/watcher-01.png" alt="img"></p>
+<p>此时启动 zookeeper 命令行终端，查看并且删除 <strong>watcher</strong> 节点：</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/watcher-02.png" alt="img"></p>
+<p>IDE 控制台输出，触发了节点删除事件：</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/watcher-03.png" alt="img"></p>
+<p>客户端发送请求给服务端是通过 TCP 长连接建立网络通道，底层默认是通过 java 的 NIO 方式，也可以配置 netty 实现方式。</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/watcher-04.png" alt="img"></p>
+<p>注册 watcher 监听事件流程图：</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/watcher-05.png" alt="img"></p>
+<h3 id="1、客户端发送事件通知请求"><a href="#1、客户端发送事件通知请求" class="headerlink" title="1、客户端发送事件通知请求"></a>1、客户端发送事件通知请求</h3><p>在 Zookeeper 类调用 exists 方法时候，把创建事件监听封装到 request 对象中，watch 属性设置为 true，待服务端返回 response 后把监听事件封装到客户端的 ZKWatchManager 类中。</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/watcher-06.png" alt="img"></p>
+<h3 id="2、服务端处理-watcher-事件的请求"><a href="#2、服务端处理-watcher-事件的请求" class="headerlink" title="2、服务端处理 watcher 事件的请求"></a>2、服务端处理 watcher 事件的请求</h3><p>服务端 NIOServerCnxn 类用来处理客户端发送过来的请求，最终调用到 FinalRequestProcessor，其中有一段源码添加客户端发送过来的 watcher 事件：</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/watcher-07.png" alt="img"></p>
+<p>然后进入 statNode 方法，在 DataTree 类方法中添加 watcher 事件，并保存至 WatchManager 的 watchTable 与 watchTable 中。</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/watcher-08.png" alt="img"></p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/watcher-09.png" alt="img"></p>
+<h3 id="3、服务端触发-watcher-事件流程："><a href="#3、服务端触发-watcher-事件流程：" class="headerlink" title="3、服务端触发 watcher 事件流程："></a>3、服务端触发 watcher 事件流程：</h3><p>若服务端某个被监听的节点发生事务请求，服务端处理请求过程中调用 FinalRequestProcessor 类 processRequest 方法中的代码如下所示：</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/watcher-10.png" alt="img"></p>
+<p>删除调用链最终到 DataTree 类中删除节点分支的触发代码段:</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/watcher-11.png" alt="img"></p>
+<p>进入 WatchManager 类的 triggerWatch 方法:</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/watcher-12.png" alt="img"></p>
+<p>继续跟踪进入 NIOServerCnxn，构建了一个 xid 为 -1，zxid 为 -1 的 ReplyHeader 对象，然后再调用 sendResonpe 方法。</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/watcher-13.png" alt="img"></p>
+<h3 id="4、客户端回调-watcher-事件"><a href="#4、客户端回调-watcher-事件" class="headerlink" title="4、客户端回调 watcher 事件"></a>4、客户端回调 watcher 事件</h3><p>客户端 SendThread 类 readResponse 方法接收服务端触发的事件通知，进入 xid 为 -1 流程，处理 Event 事件。</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/watcher-14.png" alt="img"></p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84Watch%E6%9C%BA%E5%88%B6.asset/watcher-15.png" alt="img"></p>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>zookeeper</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ZooKeeper的数据同步流程和Leader选举原理</title>
+    <url>/posts/7a93.html</url>
+    <content><![CDATA[<span id="more"></span>
+
+<p>ZK的核心就是paxos,可以参考该资料<a href="https://www.douban.com/note/208430424/">zk灵魂-paxos</a></p>
+<h2 id="前置知识"><a href="#前置知识" class="headerlink" title="前置知识"></a>前置知识</h2><h3 id="相关-CAP-理论"><a href="#相关-CAP-理论" class="headerlink" title="相关 CAP 理论"></a>相关 CAP 理论</h3><p>CAP 理论指出对于一个分布式计算系统来说，不可能同时满足以下三点：</p>
+<ul>
+<li><strong>一致性</strong>：在分布式环境中，一致性是指数据在多个副本之间是否能够保持一致的特性，等同于所有节点访问同一份最新的数据副本。在一致性的需求下，当一个系统在数据一致的状态下执行更新操作后，应该保证系统的数据仍然处于一致的状态。</li>
+<li><strong>可用性：</strong>每次请求都能获取到正确的响应，但是不保证获取的数据为最新数据。</li>
+<li><strong>分区容错性：</strong>分布式系统在遇到任何网络分区故障的时候，仍然需要能够保证对外提供满足一致性和可用性的服务，除非是整个网络环境都发生了故障。</li>
+</ul>
+<p>一个分布式系统最多只能同时满足一致性（Consistency）、可用性（Availability）和分区容错性（Partition tolerance）这三项中的两项。</p>
+<p>在这三个基本需求中，最多只能同时满足其中的两项，P 是必须的，因此只能在 CP 和 AP 中选择，zookeeper 保证的是 CP，对比 spring cloud 系统中的注册中心 eruka 实现的是 AP。</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/image-20211223232310773.png" alt="image-20211223232310773"></p>
+<h3 id="BASE-理论"><a href="#BASE-理论" class="headerlink" title="BASE 理论"></a>BASE 理论</h3><p>BASE 是 Basically Available(基本可用)、Soft-state(软状态) 和 Eventually Consistent(最终一致性) 三个短语的缩写。</p>
+<ul>
+<li><strong>基本可用：</strong>在分布式系统出现故障，允许损失部分可用性（服务降级、页面降级）。</li>
+<li><strong>软状态：</strong>允许分布式系统出现中间状态。而且中间状态不影响系统的可用性。这里的中间状态是指不同的 data replication（数据备份节点）之间的数据更新可以出现延时的最终一致性。</li>
+<li><strong>最终一致性：</strong>data replications 经过一段时间达到一致性。</li>
+</ul>
+<p>BASE 理论是对 CAP 中的一致性和可用性进行一个权衡的结果，理论的核心思想就是：我们无法做到强一致，但每个应用都可以根据自身的业务特点，采用适当的方式来使系统达到最终一致性。</p>
+<h2 id="Zookeeper-数据同步流程-ZAB有主"><a href="#Zookeeper-数据同步流程-ZAB有主" class="headerlink" title="Zookeeper 数据同步流程(ZAB有主)"></a>Zookeeper 数据同步流程(ZAB有主)</h2><p>在 Zookeeper 中，主要依赖 ZAB 协议来实现分布式数据一致性。</p>
+<p>ZAB 协议分为两部分：</p>
+<ul>
+<li>消息广播</li>
+<li>崩溃恢复</li>
+</ul>
+<h3 id="消息广播"><a href="#消息广播" class="headerlink" title="消息广播"></a>消息广播</h3><p>Zookeeper 使用单一的主进程 Leader 来接收和处理客户端所有事务请求，并采用 <strong>ZAB 协议的原子广播协议</strong>，<strong>将事务请求以 Proposal 提议广播到所有 Follower 节点，当集群中有过半的Follower 服务器进行正确的 ACK 反馈，那么Leader就会再次向所有的 Follower 服务器发送commit 消息，将此次提案进行提交。这个过程可以简称为 2pc 事务</strong>提交，整个流程可以参考下图，注意 <strong>Observer 节点只负责同步 Leader 数据，不参与 2PC 数据同步过程。</strong></p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/zk-data-stream-async.png" alt="img"></p>
+<h3 id="崩溃恢复"><a href="#崩溃恢复" class="headerlink" title="崩溃恢复"></a>崩溃恢复</h3><p>在正常情况消息广播情况下能运行良好，但是一旦 Leader 服务器出现崩溃，或者由于网络原理导致 Leader 服务器失去了与过半 Follower 的通信，那么就会进入崩溃恢复模式，需要选举出一个新的 Leader 服务器。在这个过程中可能会出现两种数据不一致性的隐患，需要 ZAB 协议的特性进行避免。</p>
+<ul>
+<li>1、Leader 服务器将消息 commit 发出后，立即崩溃</li>
+<li>2、Leader 服务器刚提出 proposal 后，立即崩溃</li>
+</ul>
+<p>ZAB 协议的恢复模式使用了以下策略：</p>
+<ul>
+<li>1、选举 zxid 最大的节点作为新的 leader</li>
+<li>2、新 leader 将事务日志中尚未提交的消息进行处理</li>
+</ul>
+<h3 id="详细步骤分析"><a href="#详细步骤分析" class="headerlink" title="详细步骤分析"></a>详细步骤分析</h3><p>上述提到了<strong>ZAB的原子广播协议</strong></p>
+<ul>
+<li><p>原子</p>
+<p>要么成功,要么失败,没有中间状态(队列+2PC)</p>
+</li>
+<li><p>广播</p>
+<p>分布式多节点使用,全部都知道数据(过半)</p>
+</li>
+</ul>
+<blockquote>
+<p>注意:</p>
+<p>ZK的数据状态是在内存中的,这也是它为什么速度快的原因之一</p>
+</blockquote>
+<p>步骤详细:</p>
+<ol>
+<li>客户端create一个节点</li>
+<li>follower接受</li>
+<li>follower向leader提出create节点</li>
+<li>leader向所有folloewer广播,**分发日志(磁盘)**给每个follower</li>
+<li>各个follower返回结果给leader</li>
+<li>若follower返回的结果过半通过,那么leader就会create节点到各个follower的<strong>内存中</strong></li>
+<li>leader返回提出创建节点的follower创建OK的信息</li>
+<li>follower返回给客户端创建OK</li>
+</ol>
+<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/image-20211223230118238.png" alt="image-20211223230118238"></p>
+<ul>
+<li><p>问题</p>
+<p>可能会出现leader判断过半之后就将所有foolwer内存中写数据,但是log还没有同步到follower上</p>
+<p>如果还有其他client获取该节点数据,可能会出现数据不一致的情况</p>
+</li>
+<li><p>解决</p>
+<p>通过ZK提供的sync方法来同步leader然后再返回client</p>
+</li>
+</ul>
+<h2 id="Zookeeper-Leader-选举原理-ZAB无主"><a href="#Zookeeper-Leader-选举原理-ZAB无主" class="headerlink" title="Zookeeper Leader 选举原理(ZAB无主)"></a>Zookeeper Leader 选举原理(ZAB无主)</h2>]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>zookeeper</tag>
+        <tag>ZK的数据同步流程</tag>
+        <tag>ZK的Leader选举原理</tag>
+        <tag>paxos算法</tag>
+        <tag>ZAB协议</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ZooKeeper</title>
+    <url>/posts/1cac.html</url>
+    <content><![CDATA[<h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><p>针对官方文档进行的翻译和着重,也可以参照<a href="https://www.runoob.com/w3cnote/zookeeper-tutorial.html">菜鸟教程-zookeeper</a></p>
+<h3 id="ZooKeeper-针对分布式应用的分布式协调服务"><a href="#ZooKeeper-针对分布式应用的分布式协调服务" class="headerlink" title="ZooKeeper:针对分布式应用的分布式协调服务"></a><a href="https://zookeeper.apache.org/doc/r3.7.0/zookeeperOver.html">ZooKeeper</a>:针对分布式应用的分布式协调服务</h3><p><a href="https://zookeeper.apache.org/doc/r3.7.0/zookeeperOver.html">ZooKeeper</a>是一个<strong>分布式、开源的分布式应用协调服务</strong>。它公开了一组简单的原语，分布式应用程序可以在此基础上构建，以实现同步、配置维护、组和命名等更高级别的服务。它的设计是易于编程的，并使用了一个数据模型，其样式类似于熟悉的文件系统的目录树结构。它在Java中运行，并且有Java和C的绑定。众所周知，协调服务很难做好。它们特别容易出现竞争条件和死锁等错误</p>
+<span id="more"></span>
+
+<h3 id="设计目的-特点"><a href="#设计目的-特点" class="headerlink" title="设计目的(特点)"></a>设计目的(特点)</h3><h4 id="simple"><a href="#simple" class="headerlink" title="simple"></a><strong>simple</strong></h4><p>ZooKeeper允许分布式进程<strong>通过一个共享的层次命名空间相互协调</strong>，这个命名空间的组织方式类似于标准的文件系统。命名空间由数据寄存器组成——用ZooKeeper的话说叫做<strong>znode——它们类似于文件和目录</strong>。与典型的存储文件系统不同，<strong>ZooKeeper的数据保存在内存中</strong>，这意味着ZooKeeper可以实现高吞吐量和低时延 </p>
+<p>ZooKeeper的实现<strong>注重高性能、高可用性和严格的有序访问</strong>。ZooKeeper的性能方面意味着它可以在大型分布式系统中使用。可靠性方面使它不会成为单点故障。严格的顺序意味着复杂的同步原语可以在客户机上实现 </p>
+<h4 id="replicated"><a href="#replicated" class="headerlink" title="replicated"></a><strong>replicated</strong></h4><p>就像它所协调的分布式进程一样，ZooKeeper本身也被复制到一组称为集合的主机上**(主从复制)**</p>
+<p><strong>组成ZooKeeper服务的服务器必须互相了解</strong>。它们维护内存中的状态映像、事务日志和持久化存储中的快照。<strong>只要大多数服务器可用，ZooKeeper服务就可用</strong>。</p>
+<p>客户端连接到单个ZooKeeper服务器。<strong>客户机维护一个TCP连接，通过该连接发送请求、获取响应、监视事件和发送心跳</strong>。如果到服务器的TCP连接断开，客户端将连接到另一个服务器</p>
+<h4 id="ordered"><a href="#ordered" class="headerlink" title="ordered"></a><strong>ordered</strong></h4><p>ZooKeeper会给每个更新戳一个数字，这个数字<strong>反映了所有ZooKeeper事务的顺序</strong>。后续操作可以使用该顺序来实现更高级的抽象，比如同步原语。 </p>
+<h4 id="fast"><a href="#fast" class="headerlink" title="fast"></a><strong>fast</strong></h4><p>在“读为主”的工作负载中，它的<strong>速度尤其快</strong>。ZooKeeper应用程序运行在数千台机器上，<strong>当读比写更常见时，它的性能最好，比率约为10:1。</strong> </p>
+<h3 id="数据模型和分层名称空间"><a href="#数据模型和分层名称空间" class="headerlink" title="数据模型和分层名称空间"></a>数据模型和分层名称空间</h3><p>ZooKeeper提供的命名空间<strong>很像标准文件系统的命名空间</strong>。名称是一个由斜杠(/)分隔的路径元素序列。ZooKeeper命名空间中的每个节点都有一个路径来标识。 </p>
+<p><img data-src="../images/ZooKeeper.asset/1640069286990.png" alt="1640069286990"></p>
+<h3 id="节点和临时节点"><a href="#节点和临时节点" class="headerlink" title="节点和临时节点"></a>节点和临时节点</h3><p>与标准的文件系统不同，ZooKeeper名称空间中的<strong>每个节点都可以有与其关联的数据以及子节点</strong>。这就像拥有一个允许文件同时也是目录的文件系统。(ZooKeeper是用来<strong>存储协调数据的:状态信息、配置信息、位置信息</strong>等，所以每个节点存储的<strong>数据通常很小</strong>，在字节到千字节之间。)我们使用<strong>术语znode</strong>来说明我们谈论的是ZooKeeper数据节点。 </p>
+<p>znode维护一个统计结构，其中包括<strong>数据更改的版本号、ACL更改和时间戳</strong>，以允许缓存验证和协调更新。znode的数据<strong>每次更改，版本号就会增加</strong>。例如，每当客户端检索数据时，它也会接收到数据的版本。 </p>
+<p>存储在名称空间中的每个znode上的数据是原子式读写的。<strong>读获取与znode关联的所有数据字节，写则替换所有数据</strong>。每个节点都有一个访问控制列表(Access Control List, ACL)来限制谁可以做什么。 </p>
+<p>ZooKeeper也有<strong>临时节点</strong>的概念。<strong>只要创建znode的会话处于活动状态，这些znode就会存在。当会话结束时，删除znode。</strong> </p>
+<ul>
+<li>持久节点</li>
+<li>临时节点(session)</li>
+<li>序列节点</li>
+</ul>
+<p><img data-src="../images/ZooKeeper.asset/image-20211221224838094.png" alt="image-20211221224838094"></p>
+<h3 id="条件更新和监视"><a href="#条件更新和监视" class="headerlink" title="条件更新和监视"></a>条件更新和监视</h3><p>ZooKeeper支持watch的概念。<strong>客户端可以在znode上设置监视。当znode发生变化时，将触发并删除一个watch</strong>。当<strong>一个监视被触发时，客户端收到一个数据包，说znode已经改变了</strong>。如果客户端与其中一个ZooKeeper服务器的连接<strong>断开，客户端会收到本地的通知。</strong></p>
+<p>3.6.0新功能:客户端还可以在znode上设置<strong>永久的递归监视</strong>，这些监视在被触发时不会被删除，并且会触发已注册的znode以及任何子znode的变化。</p>
+<h3 id="担保"><a href="#担保" class="headerlink" title="担保"></a>担保</h3><p>ZooKeeper非常快速和简单。但是，由于它的目标是作为构建更复杂服务(如同步)的基础，因此它提供了一组保证。这些都是:</p>
+<h4 id="顺序一致性"><a href="#顺序一致性" class="headerlink" title="顺序一致性"></a>顺序一致性</h4><p>客户端的更新将按照发送的顺序进行。</p>
+<h4 id="原子性"><a href="#原子性" class="headerlink" title="原子性"></a>原子性</h4><p>更新成功或失败没有部分结果。</p>
+<h4 id="单系统映像"><a href="#单系统映像" class="headerlink" title="单系统映像"></a>单系统映像</h4><p>客户机将看到相同的服务视图，而不管它连接到哪个服务器。也就是说，客户端永远不会看到系统的旧视图，即使客户端使用相同的会话故障转移到不同的服务器。</p>
+<h4 id="可靠性"><a href="#可靠性" class="headerlink" title="可靠性"></a>可靠性</h4><p>一旦应用了更新，它将从那时起持续存在，直到客户端覆盖更新。</p>
+<h4 id="及时性"><a href="#及时性" class="headerlink" title="及时性"></a>及时性</h4><p>保证系统的客户端视图在一定的时间范围内是最新的。</p>
+<p><img data-src="../images/ZooKeeper.asset/image-20211221223038840.png" alt="image-20211221223038840"></p>
+<h3 id="简单的API"><a href="#简单的API" class="headerlink" title="简单的API"></a>简单的API</h3><p>ZooKeeper的设计目标之一是提供一个非常简单的编程接口。因此，它只支持以下操作:</p>
+<ul>
+<li><em>create</em> : creates a node at a location in the tree</li>
+<li><em>delete</em> : deletes a node</li>
+<li><em>exists</em> : tests if a node exists at a location</li>
+<li><em>get data</em> : reads the data from a node</li>
+<li><em>set data</em> : writes data to a node</li>
+<li><em>get children</em> : retrieves a list of children of a node</li>
+<li><em>sync</em> : waits for data to be propagated</li>
+</ul>
+<h3 id="实施"><a href="#实施" class="headerlink" title="实施"></a>实施</h3><p>ZooKeeper组件展示了ZooKeeper服务的高级组件。除了请求处理器之外，<strong>每个组成ZooKeeper服务的服务器都会复制自己的组件副本</strong>。</p>
+<p>复制的数据库是包含整个数据树的内存数据库。<strong>更新被记录到磁盘以实现可恢复性，写操作在应用到内存数据库之前被序列化到磁盘</strong>。</p>
+<p><strong>每个ZooKeeper服务器都为客户端提供服务</strong>。客户端连接到一个服务器来提交请求。读取请求由每个服务器数据库的本地副本提供服务。改变服务状态的请求(写请求)由协议协议处理。</p>
+<p>作为协议的一部分，<strong>所有来自客户端的写请求都被转发到一个称为leader的服务器上</strong>。<strong>剩下的ZooKeeper服务器，称为follower，接收来自leader的消息提议，并同意消息传递</strong>。<strong>消息层负责在失败时替换领导者，并将追随者与领导者同步</strong>。</p>
+<p>ZooKeeper使用自定义的原子消息传递协议。由于消息层是原子的，<strong>ZooKeeper可以保证本地副本不会发散</strong>。当leader收到写请求时，它会计算出系统的状态，并将其转换为一个事务来捕获这个新状态。</p>
+<ul>
+<li><p>follower    读</p>
+</li>
+<li><p>leader      读写</p>
+</li>
+<li><p>临时节点有session</p>
+</li>
+<li><p>znode存的数据很小,目的是不要把zookeeper当数据库用</p>
+</li>
+</ul>
+<p> <img data-src="../images/ZooKeeper.asset/image-20211221222638446.png" alt="image-20211221222638446"></p>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>zookeeper简介</tag>
       </tags>
   </entry>
   <entry>
@@ -545,115 +1079,42 @@
       </tags>
   </entry>
   <entry>
-    <title>redis中的AFK原理和CAP理论</title>
-    <url>/posts/ea2e.html</url>
-    <content><![CDATA[<h2 id="一、AFK原理"><a href="#一、AFK原理" class="headerlink" title="一、AFK原理"></a>一、AFK原理</h2><blockquote>
-<p>问题引入:</p>
-<p>redis是单机单进程的,它有什么缺陷呢?</p>
-<ol>
-<li>单点故障</li>
-<li>容量有限</li>
-<li>压力</li>
-</ol>
-<p>​    <img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208213841058.png" alt="image-20211208213841058"></p>
-</blockquote>
+    <title>corn表达式</title>
+    <url>/posts/37a4.html</url>
+    <content><![CDATA[<h2 id="Corn表达式详解"><a href="#Corn表达式详解" class="headerlink" title="Corn表达式详解"></a>Corn表达式详解</h2><h3 id="一、简介"><a href="#一、简介" class="headerlink" title="一、简介"></a>一、简介</h3><p>Cron表达式是一个字符串，字符串以5或6个空格隔开，分为6或7个域，每一个域代表一个含义，Cron有如下两种语法格式：</p>
+<p>　　（1）<em>Seconds Minutes Hours DayofMonth Month DayofWeek Year</em></p>
+<p>　　（2）<em>Seconds Minutes Hours DayofMonth Month DayofWeek</em></p>
+<p>从左往右分别是：<br>    秒 分 小时 月份中的日期 月份 星期中的日期 年份 </p>
 <span id="more"></span>
 
-<p>AKF 立方体也叫做scala cube，它在《The Art of Scalability》一书中被首次提出，旨在提供一个系统化的扩展思路。AKF 把系统扩展分为以下三个维度：</p>
-<ul>
-<li>X 轴：直接水平复制应用进程来扩展系统(全量,镜像)</li>
-<li>Y 轴：将功能拆分出来扩展系统(业务,功能)</li>
-<li>Z 轴：基于用户信息扩展系统(优先级,逻辑拆分,对Y上的业务功能进行逻辑拆分)</li>
-</ul>
-<p>如下图所示：</p>
-<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208213822477.png" alt="image-20211208213822477"></p>
-<p><strong>注意:通过AKF,我们可以解决单机的问题,但同时也引来的新的问题!!</strong></p>
-<ul>
-<li><p>问题:</p>
-<p><strong>数据一致性</strong></p>
-</li>
-<li><p>解决</p>
-<p>所有节点阻塞直到数据全部一致(强一致性)</p>
-</li>
-<li><p>新的问题</p>
-<p>因为强一致性,破坏了可用性!但是我们一变多的目的就是为了解决可用性</p>
-<p>所以我们不能最好不要强一致性</p>
-</li>
-<li><p>解决</p>
-<p>通过异步的方式,<strong>容忍数据丢失一部分</strong></p>
-</li>
-</ul>
-<p>由上所述,我们可以得出以下三种模型:</p>
-<ol>
-<li>强一致性</li>
-</ol>
-<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208214911987.png" alt="image-20211208214911987"></p>
-<ol start="2">
-<li>弱一致性</li>
-</ol>
-<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208214920721.png" alt="image-20211208214920721"></p>
-<p>3.最终数据一致性</p>
-<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208214929314.png" alt="image-20211208214929314"></p>
-<h2 id="二、CAP理论"><a href="#二、CAP理论" class="headerlink" title="二、CAP理论"></a>二、CAP理论</h2><p>CAP理论在互联网界有着广泛的知名度，知识稍微宽泛一点的工程师都会把其作为衡量系统设计的准则。大家都非常清楚地理解了CAP：任何分布式系统在可用性、一致性、分区容错性方面，不能兼得，最多只能得其二，因此，任何分布式系统的设计只是在三者中的不同取舍而已。</p>
-<ul>
-<li><strong>C</strong>onsistency（一致性）：所有的节点上的数据时刻保持同步</li>
-<li><strong>A</strong>vailability（可用性）：每个请求都能接受到一个响应，无论响应成功或失败</li>
-<li><strong>P</strong>artition tolerance（分区容错）：系统应该能持续提供服务，即使系统内部有消息丢失（分区）</li>
-</ul>
-<p>最多满足其中的两个特性。也就是下图所描述的。分布式系统要么满足CA,要么CP，要么AP。无法同时满足CAP</p>
-<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211212191055432.png" alt="image-20211212191055432"></p>
-<p>这些理论都是推导出来的,所以我们也跟着思路来分析一下:</p>
-<ol>
-<li><p>只要是单点机都具有单点故障的一系列问题,所以我们要通过主备或者主从赋值来解决</p>
-<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211212193247476.png" alt="image-20211212193247476"></p>
-</li>
-<li><p>但是无论是主从,还是主备都有主,所以我们还要对主做HA高可用性</p>
-<ul>
-<li>对于用户来说是透明的,如果主出现了故障,那么我们应该手动的把主变为另外一台好的机器</li>
-<li>通过技术,我们用程序来实现单点故障转移,但是又引来了新的问题(只要是一个程序都有点单故障问题),最终我们应该是一变多,搭建集群</li>
-</ul>
-</li>
-<li><p>如何知道主发生了故障了呢?所以我们应该用一个集群来监控它,反过来其实就是一个主来向外发送信息自己是健康的,没有宕机.</p>
-</li>
-</ol>
-<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211212193817325.png" alt="image-20211212193817325"></p>
-<ol start="4">
-<li><p>每个监控服务都知道了主的健康状态,但是最终的结果应该是怎样的呢?</p>
-<p>猜想:</p>
-<ol>
-<li>都给出OK(强一致性)</li>
-<li>一部分给出OK,另外一部分不算数</li>
-</ol>
-</li>
-</ol>
-<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211212194904618.png" alt="image-20211212194904618"></p>
-<blockquote>
-<p>问题:     一部分指的是多少呢?</p>
-<p>推导:</p>
-<ul>
-<li><p>统计不准确,不够势力范围</p>
-<p>问题:网络分区导致<strong>脑裂</strong></p>
-</li>
-<li><p>2在3个节点成功解决脑裂问题</p>
-</li>
-<li><p>3 在4个节点成功解决脑力问题</p>
-</li>
-<li><p>3 在5个节点成功解决脑力问题</p>
-</li>
-</ul>
-<p>注意:</p>
-<p>​    并不是必须要3个节点就要用2台给出OK才算一致,因为可能多个监控,只需要拿到其中一个数据即可,这就是<strong>分区容忍行</strong></p>
-<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211212194926896.png" alt="image-20211212194926896"></p>
-<p>结论:<br>    n/2+1  过半！ 使用奇数台！</p>
-<p>使用奇数台的原因很简单,一个是成本越多越贵,二个是多一台达到同样的效果增加多的宕机的可能</p>
-</blockquote>
+<h3 id="二、常用表达式"><a href="#二、常用表达式" class="headerlink" title="二、常用表达式"></a>二、常用表达式</h3><p>（1）<strong>0 0 2 1 * ?</strong> 表示在每月的1日的凌晨2点调整任务</p>
+<p>（2）<strong>0 15 10 ? * MON-FRI</strong> 表示周一到周五每天上午10:15执行作业</p>
+<p>（3）<strong>0 15 10 ? 6L 2002-2006</strong> 表示2002-2006年的每个月的最后一个星期五上午10:15执行作</p>
+<p>（4）<strong>0 0 10,14,16 * * ?</strong> 每天上午10点，下午2点，4点</p>
+<p>（5）<strong>0 0/30 9-17 * * ?</strong> 朝九晚五工作时间内每半小时</p>
+<p>（6）<strong>0 0 12 ? * WED</strong> 表示每个星期三中午12点</p>
+<p>（7）<strong>0 0 12 * * ?</strong> 每天中午12点触发</p>
+<p>（8）**0 15 10 ? * *** 每天上午10:15触发</p>
+<p>（9）<strong>0 15 10 * * ?</strong> 每天上午10:15触发</p>
+<p>（10）<strong>0 15 10 * * ?</strong> 每天上午10:15触发</p>
+<p>（11）<strong>0 15 10 * * ? 2005</strong> 2005年的每天上午10:15触发</p>
+<p>（12）<strong>0 * 14 * * ?</strong> 在每天下午2点到下午2:59期间的每1分钟触发</p>
+<p>（13）<strong>0 0/5 14 * * ?</strong> 在每天下午2点到下午2:55期间的每5分钟触发</p>
+<p>（14）<strong>0 0/5 14,18 * * ?</strong> 在每天下午2点到2:55期间和下午6点到6:55期间的每5分钟触发</p>
+<p>（15）<strong>0 0-5 14 * * ?</strong> 在每天下午2点到下午2:05期间的每1分钟触发</p>
+<p>（16）<strong>0 10,44 14 ? 3 WED</strong> 每年三月的星期三的下午2:10和2:44触发</p>
+<p>（17）<strong>0 15 10 ? * MON-FRI</strong> 周一至周五的上午10:15触发</p>
+<p>（18）<strong>0 15 10 15 * ?</strong> 每月15日上午10:15触发</p>
+<p>（19）<strong>0 15 10 L * ?</strong> 每月最后一日的上午10:15触发</p>
+<p>（20）<strong>0 15 10 ? * 6L</strong> 每月的最后一个星期五上午10:15触发</p>
+<p>（21）<strong>0 15 10 ? * 6L 2002-2005</strong> 2002年至2005年的每月的最后一个星期五上午10:15触发</p>
+<p>（22）<strong>0 15 10 ? * 6#3</strong> 每月的第三个星期五上午10:15触发</p>
 ]]></content>
       <categories>
-        <category>从网络到分布式</category>
+        <category>工具</category>
       </categories>
       <tags>
-        <tag>redis</tag>
-        <tag>redis集群</tag>
+        <tag>corn表达式</tag>
       </tags>
   </entry>
   <entry>
@@ -665,14 +1126,61 @@
 <li>多线程(守护线程)延长过期</li>
 </ol>
 <p>现在没有学zookeeper,所以了解不深,可以参考 <a href="http://redis.cn/topics/distlock.html">redis分布式锁</a></p>
-<span id="more"></span>]]></content>
+<span id="more"></span>
+
+<h3 id="为什么基于故障转移的实现还不够"><a href="#为什么基于故障转移的实现还不够" class="headerlink" title="为什么基于故障转移的实现还不够"></a>为什么基于故障转移的实现还不够</h3><p>故障转移不能解决几个客户端使用的一把锁,无法保证安全性:</p>
+<ol>
+<li>客户端A从master获取到锁</li>
+<li>在master将锁同步到slave之前，master宕掉了。</li>
+<li>slave节点被晋级为master节点</li>
+<li>客户端B取得了同一个资源被客户端A已经获取到的另外一个锁。安全失效！</li>
+</ol>
+<h3 id="单Redis实例实现分布式锁"><a href="#单Redis实例实现分布式锁" class="headerlink" title="单Redis实例实现分布式锁"></a>单Redis实例实现分布式锁</h3><h4 id="创建锁"><a href="#创建锁" class="headerlink" title="创建锁"></a>创建锁</h4><p> SET resource_name my_random_value NX PX 30000</p>
+<ul>
+<li>不存在key的时候才能被执行成功（NX选项）</li>
+<li>key有一个30秒的自动失效时间（PX属性)</li>
+<li>my_random_value    唯一,随机(安全)</li>
+</ul>
+<h4 id="释放锁"><a href="#释放锁" class="headerlink" title="释放锁"></a>释放锁</h4><p>只有key存在并且存储的值和我指定的值一样才能告诉我删除成功(Lua脚本实现)</p>
+<ul>
+<li><p>原因</p>
+<p>避免删除别的客户端获取成功的锁</p>
+<blockquote>
+<p>例子:</p>
+<p>A -&gt; set lock  -&gt; block -&gt; delete lock<br>b -&gt; get lock -&gt;….</p>
+<p>在b获取到锁的时候A删除掉锁</p>
+</blockquote>
+</li>
+</ul>
+<h3 id="分布式环境实现分布式锁"><a href="#分布式环境实现分布式锁" class="headerlink" title="分布式环境实现分布式锁"></a>分布式环境实现分布式锁</h3><h4 id="创建锁-1"><a href="#创建锁-1" class="headerlink" title="创建锁"></a>创建锁</h4><ol>
+<li><p>获取当前Unix时间，以毫秒为单位</p>
+</li>
+<li><p>依次尝试从N个实例，使用相同的key和随机值获取锁</p>
+</li>
+<li><p>Redis设置锁时,设置一个网络连接和响应超时时间,这个超时时间应该小于锁的失效时间</p>
+<p>例如你的锁自动失效时间为10秒，则超时时间应该在5-50毫秒之间。这样可以避免服务器端Redis已经挂掉的情况下，客户端还在死死地等待响应结果。如果服务器端没有在规定时间内响应，客户端应该尽快尝试另外一个Redis实例</p>
+</li>
+</ol>
+<h4 id="获取锁"><a href="#获取锁" class="headerlink" title="获取锁"></a>获取锁</h4><ol>
+<li><p>获取锁使用的时间</p>
+<p>客户端使用当前时间减去开始获取锁时间（步骤1记录的时间）就得到获取锁使用的时间</p>
+</li>
+<li><p>当且仅当从大多数的Redis节点都取到锁,并且使用的时间小于锁失效时间时,锁才算获取成功</p>
+</li>
+<li><p>如果取到了锁，key的真正有效时间等于有效时间减去获取锁所使用的时间（步骤3计算的结果）</p>
+</li>
+<li><p>如果因为某些原因，获取锁失败（没有在至少N/2+1个Redis实例取到锁或者取锁时间已经超过了有效时间），客户端应该在所有的Redis实例上进行解锁（即便某些Redis实例根本就没有加锁成功）</p>
+</li>
+</ol>
+<h4 id="释放锁-1"><a href="#释放锁-1" class="headerlink" title="释放锁"></a>释放锁</h4><p>​    释放锁比较简单，向所有的Redis实例发送释放锁命令即可，不用关心之前有没有从Redis实例成功获取到锁.</p>
+]]></content>
       <categories>
         <category>从网络到分布式</category>
       </categories>
       <tags>
         <tag>redis</tag>
-        <tag>redis集群</tag>
         <tag>分布式锁</tag>
+        <tag>redis集群</tag>
       </tags>
   </entry>
   <entry>
@@ -860,6 +1368,118 @@
       </categories>
       <tags>
         <tag>redis</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>redis中的AFK原理和CAP理论</title>
+    <url>/posts/ea2e.html</url>
+    <content><![CDATA[<h2 id="一、AFK原理"><a href="#一、AFK原理" class="headerlink" title="一、AFK原理"></a>一、AFK原理</h2><blockquote>
+<p>问题引入:</p>
+<p>redis是单机单进程的,它有什么缺陷呢?</p>
+<ol>
+<li>单点故障</li>
+<li>容量有限</li>
+<li>压力</li>
+</ol>
+<p>​    <img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208213841058.png" alt="image-20211208213841058"></p>
+</blockquote>
+<span id="more"></span>
+
+<p>AKF 立方体也叫做scala cube，它在《The Art of Scalability》一书中被首次提出，旨在提供一个系统化的扩展思路。AKF 把系统扩展分为以下三个维度：</p>
+<ul>
+<li>X 轴：直接水平复制应用进程来扩展系统(全量,镜像)</li>
+<li>Y 轴：将功能拆分出来扩展系统(业务,功能)</li>
+<li>Z 轴：基于用户信息扩展系统(优先级,逻辑拆分,对Y上的业务功能进行逻辑拆分)</li>
+</ul>
+<p>如下图所示：</p>
+<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208213822477.png" alt="image-20211208213822477"></p>
+<p><strong>注意:通过AKF,我们可以解决单机的问题,但同时也引来的新的问题!!</strong></p>
+<ul>
+<li><p>问题:</p>
+<p><strong>数据一致性</strong></p>
+</li>
+<li><p>解决</p>
+<p>所有节点阻塞直到数据全部一致(强一致性)</p>
+</li>
+<li><p>新的问题</p>
+<p>因为强一致性,破坏了可用性!但是我们一变多的目的就是为了解决可用性</p>
+<p>所以我们不能最好不要强一致性</p>
+</li>
+<li><p>解决</p>
+<p>通过异步的方式,<strong>容忍数据丢失一部分</strong></p>
+</li>
+</ul>
+<p>由上所述,我们可以得出以下三种模型:</p>
+<ol>
+<li>强一致性</li>
+</ol>
+<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208214911987.png" alt="image-20211208214911987"></p>
+<ol start="2">
+<li>弱一致性</li>
+</ol>
+<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208214920721.png" alt="image-20211208214920721"></p>
+<p>3.最终数据一致性</p>
+<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208214929314.png" alt="image-20211208214929314"></p>
+<h2 id="二、CAP理论"><a href="#二、CAP理论" class="headerlink" title="二、CAP理论"></a>二、CAP理论</h2><p>CAP理论在互联网界有着广泛的知名度，知识稍微宽泛一点的工程师都会把其作为衡量系统设计的准则。大家都非常清楚地理解了CAP：任何分布式系统在可用性、一致性、分区容错性方面，不能兼得，最多只能得其二，因此，任何分布式系统的设计只是在三者中的不同取舍而已。</p>
+<ul>
+<li><strong>C</strong>onsistency（一致性）：所有的节点上的数据时刻保持同步</li>
+<li><strong>A</strong>vailability（可用性）：每个请求都能接受到一个响应，无论响应成功或失败</li>
+<li><strong>P</strong>artition tolerance（分区容错）：系统应该能持续提供服务，即使系统内部有消息丢失（分区）</li>
+</ul>
+<p>最多满足其中的两个特性。也就是下图所描述的。分布式系统要么满足CA,要么CP，要么AP。无法同时满足CAP</p>
+<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211212191055432.png" alt="image-20211212191055432"></p>
+<p>这些理论都是推导出来的,所以我们也跟着思路来分析一下:</p>
+<ol>
+<li><p>只要是单点机都具有单点故障的一系列问题,所以我们要通过主备或者主从赋值来解决</p>
+<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211212193247476.png" alt="image-20211212193247476"></p>
+</li>
+<li><p>但是无论是主从,还是主备都有主,所以我们还要对主做HA高可用性</p>
+<ul>
+<li>对于用户来说是透明的,如果主出现了故障,那么我们应该手动的把主变为另外一台好的机器</li>
+<li>通过技术,我们用程序来实现单点故障转移,但是又引来了新的问题(只要是一个程序都有点单故障问题),最终我们应该是一变多,搭建集群</li>
+</ul>
+</li>
+<li><p>如何知道主发生了故障了呢?所以我们应该用一个集群来监控它,反过来其实就是一个主来向外发送信息自己是健康的,没有宕机.</p>
+</li>
+</ol>
+<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211212193817325.png" alt="image-20211212193817325"></p>
+<ol start="4">
+<li><p>每个监控服务都知道了主的健康状态,但是最终的结果应该是怎样的呢?</p>
+<p>猜想:</p>
+<ol>
+<li>都给出OK(强一致性)</li>
+<li>一部分给出OK,另外一部分不算数</li>
+</ol>
+</li>
+</ol>
+<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211212194904618.png" alt="image-20211212194904618"></p>
+<blockquote>
+<p>问题:     一部分指的是多少呢?</p>
+<p>推导:</p>
+<ul>
+<li><p>统计不准确,不够势力范围</p>
+<p>问题:网络分区导致<strong>脑裂</strong></p>
+</li>
+<li><p>2在3个节点成功解决脑裂问题</p>
+</li>
+<li><p>3 在4个节点成功解决脑力问题</p>
+</li>
+<li><p>3 在5个节点成功解决脑力问题</p>
+</li>
+</ul>
+<p>注意:</p>
+<p>​    并不是必须要3个节点就要用2台给出OK才算一致,因为可能多个监控,只需要拿到其中一个数据即可,这就是<strong>分区容忍行</strong></p>
+<p><img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211212194926896.png" alt="image-20211212194926896"></p>
+<p>结论:<br>    n/2+1  过半！ 使用奇数台！</p>
+<p>使用奇数台的原因很简单,一个是成本越多越贵,二个是多一台达到同样的效果增加多的宕机的可能</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>redis</tag>
+        <tag>redis集群</tag>
       </tags>
   </entry>
   <entry>
@@ -1161,6 +1781,89 @@
       </tags>
   </entry>
   <entry>
+    <title>redis集群理论</title>
+    <url>/posts/e17a.html</url>
+    <content><![CDATA[<h2 id="一、redis的cluster的引入"><a href="#一、redis的cluster的引入" class="headerlink" title="一、redis的cluster的引入"></a>一、redis的cluster的引入</h2><p>三个模式都不能作为数据库,这里三个模式分别指的是</p>
+<ul>
+<li><p>random</p>
+</li>
+<li><p>hash+modula</p>
+</li>
+<li><p>kemata</p>
+<span id="more"></span></li>
+</ul>
+<h3 id="random分片问题"><a href="#random分片问题" class="headerlink" title="random分片问题"></a>random分片问题</h3><p>为了redis引入中为了采用random来分片导致的部分数据取不到,所以redis中有一个预分区的功能</p>
+<ul>
+<li><p>random分片问题:    添加新的node3,会导致所有的取模数据都不一样了,需要全部rehash,所以涉及到了数据的迁移问题</p>
+</li>
+<li><p>解决:</p>
+<p>在redis服务有一个mapping,标记了自己在哪个hash环的槽位,如果添加了新的node那么就不需要全部rehash,而是对新的node进行预分区处理,然后把数据通过网络传输给redis3</p>
+</li>
+</ul>
+<p><img data-src="../images/redis%E9%9B%86%E7%BE%A4%E7%90%86%E8%AE%BA.asset/image-20211213185538110.png" alt="image-20211213185538110"></p>
+<h3 id="kemata击穿问题"><a href="#kemata击穿问题" class="headerlink" title="kemata击穿问题"></a>kemata击穿问题</h3><ul>
+<li><p>kemata击穿问题 : 新增节点后,访问没有数据的新增节点,导致数据穿透</p>
+</li>
+<li><p>解决</p>
+<p>在每个服务端都会有对应的槽点的映射,如果访问到没有数据的新增节点node3,那么他会进行hash运算然后返回给客户端,客户端在重新请求到对应的卡槽的redis服务</p>
+<p><img data-src="../images/redis%E9%9B%86%E7%BE%A4%E7%90%86%E8%AE%BA.asset/image-20211213190657311.png" alt="image-20211213190657311"></p>
+</li>
+</ul>
+<h2 id="二、redis的集群"><a href="#二、redis的集群" class="headerlink" title="二、redis的集群"></a>二、redis的集群</h2><p><strong>推荐直接看官方文档<a href="https://redis.io/">redis</a></strong>,后续会对<a href="https://github.com/joyieldInc/predixy">Predixy</a>进行实操</p>
+<p>redis在分片的情况是很难做事务和一些交集的聚合操作的,所以一般我们让用户来保证,如下图所示</p>
+<p><img data-src="../images/redis%E9%9B%86%E7%BE%A4%E7%90%86%E8%AE%BA.asset/image-20211213191906811.png" alt="image-20211213191906811"></p>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>redis</tag>
+        <tag>redis集群</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>redis相关API代码实现</title>
+    <url>/posts/6a1c.html</url>
+    <content><![CDATA[<h2 id="API介绍"><a href="#API介绍" class="headerlink" title="API介绍"></a>API介绍</h2><p>大多数api其实是见名知意,所以可以回顾原来的<a href="https://leoleiv8x.github.io/posts/1575.html">redis的value类型</a>讲解那块儿.</p>
+<p><strong>这里我们是在本地windows连接云服务器,有几个坑</strong></p>
+<ul>
+<li>服务器上启动的conf文件绑定的bind注释调</li>
+<li>springboot配置的properties文件地址为外网地址</li>
+<li>systemctl status firewalld 和iptables -L  查看防火墙</li>
+<li>systemctl stop firewalld 关闭防火墙</li>
+<li>防火墙关闭也有可能被拦截 iptables -F  清除规则</li>
+</ul>
+<span id="more"></span>
+
+<h2 id="高低阶API代码实现"><a href="#高低阶API代码实现" class="headerlink" title="高低阶API代码实现"></a>高低阶API代码实现</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Test</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">lowAndHighRedisApiTest</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      <span class="comment">//高阶API</span></span><br><span class="line">      stringRedisTemplate.opsForValue().set(<span class="string">&quot;k1&quot;</span>, <span class="string">&quot;hello&quot;</span>);</span><br><span class="line">      System.out.println(stringRedisTemplate.opsForValue().get(<span class="string">&quot;k1&quot;</span>));</span><br><span class="line"></span><br><span class="line">      <span class="comment">//低阶API(二进制安全)</span></span><br><span class="line">      RedisConnection conn = redisTemplate.getConnectionFactory().getConnection();</span><br><span class="line">      conn.set(<span class="string">&quot;name&quot;</span>.getBytes(), <span class="string">&quot;jack&quot;</span>.getBytes());</span><br><span class="line">      System.out.println(<span class="keyword">new</span> String(conn.get(<span class="string">&quot;name&quot;</span>.getBytes())));</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="hash代码实现"><a href="#hash代码实现" class="headerlink" title="hash代码实现"></a>hash代码实现</h2><p><a href="https://docs.spring.io/spring-data/redis/docs/current/reference/html/#redis.hashmappers.root">https://docs.spring.io/spring-data/redis/docs/current/reference/html/#redis.hashmappers.root</a></p>
+<h3 id="原hash代码"><a href="#原hash代码" class="headerlink" title="原hash代码"></a>原hash代码</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">HashOperations&lt;String, Object, Object&gt; hash = stringRedisTemplate.opsForHash();</span><br><span class="line">hash.put(<span class="string">&quot;sean&quot;</span>,<span class="string">&quot;name&quot;</span>,<span class="string">&quot;zhouzhilei&quot;</span>);</span><br><span class="line">hash.put(<span class="string">&quot;sean&quot;</span>,<span class="string">&quot;age&quot;</span>,<span class="string">&quot;22&quot;</span>);</span><br><span class="line"></span><br><span class="line">System.out.println(hash.entries(<span class="string">&quot;sean&quot;</span>));</span><br></pre></td></tr></table></figure>
+
+<h4 id="Jackson2HashMapper"><a href="#Jackson2HashMapper" class="headerlink" title="Jackson2HashMapper"></a>Jackson2HashMapper</h4><h5 id="引入依赖"><a href="#引入依赖" class="headerlink" title="引入依赖"></a>引入依赖</h5><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-json<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line">Person p = <span class="keyword">new</span> Person();</span><br><span class="line">p.setName(<span class="string">&quot;zhangsan&quot;</span>);</span><br><span class="line">p.setAge(<span class="number">16</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">//设置序列化类型</span></span><br><span class="line">stringRedisTemplate.setHashValueSerializer(<span class="keyword">new</span> Jackson2JsonRedisSerializer&lt;Object&gt;(Object.class));</span><br><span class="line"></span><br><span class="line">Jackson2HashMapper jm = <span class="keyword">new</span> Jackson2HashMapper(objectMapper, <span class="keyword">false</span>);</span><br><span class="line">stringRedisTemplate.opsForHash().putAll(<span class="string">&quot;sean01&quot;</span>,jm.toHash(p));</span><br><span class="line">Map map = stringRedisTemplate.opsForHash().entries(<span class="string">&quot;sean01&quot;</span>);</span><br><span class="line">Person per = objectMapper.convertValue(map, Person.class);</span><br><span class="line">System.out.println(per.getName());</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="自定义template代码实现"><a href="#自定义template代码实现" class="headerlink" title="自定义template代码实现"></a>自定义template代码实现</h2><h3 id="MyTemplate"><a href="#MyTemplate" class="headerlink" title="MyTemplate"></a>MyTemplate</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MyTemplate</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> StringRedisTemplate <span class="title">ooxx</span><span class="params">(RedisConnectionFactory fc)</span></span>&#123;</span><br><span class="line"></span><br><span class="line">        StringRedisTemplate tp = <span class="keyword">new</span> StringRedisTemplate(fc);</span><br><span class="line"></span><br><span class="line">        tp.setHashValueSerializer(<span class="keyword">new</span> Jackson2JsonRedisSerializer&lt;Object&gt;(Object.class));</span><br><span class="line">        <span class="keyword">return</span>  tp ;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="验证-1"><a href="#验证-1" class="headerlink" title="验证"></a>验证</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Autowired</span></span><br><span class="line"><span class="meta">@Qualifier(&quot;ooxx&quot;)</span></span><br><span class="line">StringRedisTemplate  stringRedisTemplate;</span><br><span class="line"></span><br><span class="line">stringRedisTemplate.convertAndSend(<span class="string">&quot;ooxx&quot;</span>,<span class="string">&quot;hello&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="发布订阅代码实现"><a href="#发布订阅代码实现" class="headerlink" title="发布订阅代码实现"></a>发布订阅代码实现</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">//获取连接</span></span><br><span class="line">RedisConnection cc = stringRedisTemplate.getConnectionFactory().getConnection();</span><br><span class="line"><span class="comment">//订阅通道ooxx,新起一个线程进行打印</span></span><br><span class="line">cc.subscribe(<span class="keyword">new</span> MessageListener() &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onMessage</span><span class="params">(Message message, <span class="keyword">byte</span>[] pattern)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">byte</span>[] body = message.getBody();</span><br><span class="line">        System.out.println(<span class="keyword">new</span> String(body));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;, <span class="string">&quot;ooxx&quot;</span>.getBytes());</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//循环发布通道ooxx中的信息</span></span><br><span class="line"><span class="keyword">while</span>(<span class="keyword">true</span>)&#123;</span><br><span class="line">    stringRedisTemplate.convertAndSend(<span class="string">&quot;ooxx&quot;</span>,<span class="string">&quot;hello  from wo zi ji &quot;</span>);</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        Thread.sleep(<span class="number">3000</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>redis相关API</tag>
+        <tag>redis代码实现</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>redis的持久化机制RDB和AOF详解</title>
     <url>/posts/5e05.html</url>
     <content><![CDATA[<h2 id="一、前置知识"><a href="#一、前置知识" class="headerlink" title="一、前置知识"></a>一、前置知识</h2><p>资料:    <a href="http://redis.io/topics/persistence">http://redis.io/topics/persistence</a></p>
@@ -1325,86 +2028,59 @@
       </tags>
   </entry>
   <entry>
-    <title>redis相关API代码实现</title>
-    <url>/posts/6a1c.html</url>
-    <content><![CDATA[<h2 id="API介绍"><a href="#API介绍" class="headerlink" title="API介绍"></a>API介绍</h2><p>大多数api其实是见名知意,所以可以回顾原来的<a href="https://leoleiv8x.github.io/posts/1575.html">redis的value类型</a>讲解那块儿.</p>
-<p><strong>这里我们是在本地windows连接云服务器,有几个坑</strong></p>
+    <title>二分法</title>
+    <url>/posts/db6.html</url>
+    <content><![CDATA[<h2 id="二分法"><a href="#二分法" class="headerlink" title="二分法"></a>二分法</h2><ul>
+<li><p>有序数组</p>
 <ul>
-<li>服务器上启动的conf文件绑定的bind注释调</li>
-<li>springboot配置的properties文件地址为外网地址</li>
-<li>systemctl status firewalld 和iptables -L  查看防火墙</li>
-<li>systemctl stop firewalld 关闭防火墙</li>
-<li>防火墙关闭也有可能被拦截 iptables -F  清除规则</li>
+<li><h3 id="有序数组找到指定num"><a href="#有序数组找到指定num" class="headerlink" title="有序数组找到指定num"></a><strong>有序数组找到指定num</strong></h3><p>只要左边界不大于右边界,那么就判断数组中间数的值是否等于指定num</p>
+<ul>
+<li>如果等于则返回true</li>
+<li>如果大于则不要右边</li>
+<li>如果小于则不要左边</li>
 </ul>
 <span id="more"></span>
 
-<h2 id="高低阶API代码实现"><a href="#高低阶API代码实现" class="headerlink" title="高低阶API代码实现"></a>高低阶API代码实现</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Test</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">lowAndHighRedisApiTest</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      <span class="comment">//高阶API</span></span><br><span class="line">      stringRedisTemplate.opsForValue().set(<span class="string">&quot;k1&quot;</span>, <span class="string">&quot;hello&quot;</span>);</span><br><span class="line">      System.out.println(stringRedisTemplate.opsForValue().get(<span class="string">&quot;k1&quot;</span>));</span><br><span class="line"></span><br><span class="line">      <span class="comment">//低阶API(二进制安全)</span></span><br><span class="line">      RedisConnection conn = redisTemplate.getConnectionFactory().getConnection();</span><br><span class="line">      conn.set(<span class="string">&quot;name&quot;</span>.getBytes(), <span class="string">&quot;jack&quot;</span>.getBytes());</span><br><span class="line">      System.out.println(<span class="keyword">new</span> String(conn.get(<span class="string">&quot;name&quot;</span>.getBytes())));</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="hash代码实现"><a href="#hash代码实现" class="headerlink" title="hash代码实现"></a>hash代码实现</h2><p><a href="https://docs.spring.io/spring-data/redis/docs/current/reference/html/#redis.hashmappers.root">https://docs.spring.io/spring-data/redis/docs/current/reference/html/#redis.hashmappers.root</a></p>
-<h3 id="原hash代码"><a href="#原hash代码" class="headerlink" title="原hash代码"></a>原hash代码</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">HashOperations&lt;String, Object, Object&gt; hash = stringRedisTemplate.opsForHash();</span><br><span class="line">hash.put(<span class="string">&quot;sean&quot;</span>,<span class="string">&quot;name&quot;</span>,<span class="string">&quot;zhouzhilei&quot;</span>);</span><br><span class="line">hash.put(<span class="string">&quot;sean&quot;</span>,<span class="string">&quot;age&quot;</span>,<span class="string">&quot;22&quot;</span>);</span><br><span class="line"></span><br><span class="line">System.out.println(hash.entries(<span class="string">&quot;sean&quot;</span>));</span><br></pre></td></tr></table></figure>
-
-<h4 id="Jackson2HashMapper"><a href="#Jackson2HashMapper" class="headerlink" title="Jackson2HashMapper"></a>Jackson2HashMapper</h4><h5 id="引入依赖"><a href="#引入依赖" class="headerlink" title="引入依赖"></a>引入依赖</h5><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-json<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
-
-<h5 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line">Person p = <span class="keyword">new</span> Person();</span><br><span class="line">p.setName(<span class="string">&quot;zhangsan&quot;</span>);</span><br><span class="line">p.setAge(<span class="number">16</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">//设置序列化类型</span></span><br><span class="line">stringRedisTemplate.setHashValueSerializer(<span class="keyword">new</span> Jackson2JsonRedisSerializer&lt;Object&gt;(Object.class));</span><br><span class="line"></span><br><span class="line">Jackson2HashMapper jm = <span class="keyword">new</span> Jackson2HashMapper(objectMapper, <span class="keyword">false</span>);</span><br><span class="line">stringRedisTemplate.opsForHash().putAll(<span class="string">&quot;sean01&quot;</span>,jm.toHash(p));</span><br><span class="line">Map map = stringRedisTemplate.opsForHash().entries(<span class="string">&quot;sean01&quot;</span>);</span><br><span class="line">Person per = objectMapper.convertValue(map, Person.class);</span><br><span class="line">System.out.println(per.getName());</span><br></pre></td></tr></table></figure>
-
-
-
-<h2 id="自定义template代码实现"><a href="#自定义template代码实现" class="headerlink" title="自定义template代码实现"></a>自定义template代码实现</h2><h3 id="MyTemplate"><a href="#MyTemplate" class="headerlink" title="MyTemplate"></a>MyTemplate</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MyTemplate</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> StringRedisTemplate <span class="title">ooxx</span><span class="params">(RedisConnectionFactory fc)</span></span>&#123;</span><br><span class="line"></span><br><span class="line">        StringRedisTemplate tp = <span class="keyword">new</span> StringRedisTemplate(fc);</span><br><span class="line"></span><br><span class="line">        tp.setHashValueSerializer(<span class="keyword">new</span> Jackson2JsonRedisSerializer&lt;Object&gt;(Object.class));</span><br><span class="line">        <span class="keyword">return</span>  tp ;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<h3 id="验证-1"><a href="#验证-1" class="headerlink" title="验证"></a>验证</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Autowired</span></span><br><span class="line"><span class="meta">@Qualifier(&quot;ooxx&quot;)</span></span><br><span class="line">StringRedisTemplate  stringRedisTemplate;</span><br><span class="line"></span><br><span class="line">stringRedisTemplate.convertAndSend(<span class="string">&quot;ooxx&quot;</span>,<span class="string">&quot;hello&quot;</span>);</span><br></pre></td></tr></table></figure>
-
-
-
-<h2 id="发布订阅代码实现"><a href="#发布订阅代码实现" class="headerlink" title="发布订阅代码实现"></a>发布订阅代码实现</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">//获取连接</span></span><br><span class="line">RedisConnection cc = stringRedisTemplate.getConnectionFactory().getConnection();</span><br><span class="line"><span class="comment">//订阅通道ooxx,新起一个线程进行打印</span></span><br><span class="line">cc.subscribe(<span class="keyword">new</span> MessageListener() &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onMessage</span><span class="params">(Message message, <span class="keyword">byte</span>[] pattern)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">byte</span>[] body = message.getBody();</span><br><span class="line">        System.out.println(<span class="keyword">new</span> String(body));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;, <span class="string">&quot;ooxx&quot;</span>.getBytes());</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//循环发布通道ooxx中的信息</span></span><br><span class="line"><span class="keyword">while</span>(<span class="keyword">true</span>)&#123;</span><br><span class="line">    stringRedisTemplate.convertAndSend(<span class="string">&quot;ooxx&quot;</span>,<span class="string">&quot;hello  from wo zi ji &quot;</span>);</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        Thread.sleep(<span class="number">3000</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 有序数组查找指定数字</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">exists</span><span class="params">(<span class="keyword">int</span>[] sortedArr, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (sortedArr == <span class="keyword">null</span> || sortedArr.length == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">int</span> L = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">int</span> R = sortedArr.length - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">int</span> mid = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">// L..R</span></span><br><span class="line">    <span class="keyword">while</span> (L &lt;= R) &#123;</span><br><span class="line">        mid = L + ((R - L) &gt;&gt; <span class="number">1</span>);</span><br><span class="line">        <span class="keyword">if</span> (sortedArr[mid] == num) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (sortedArr[mid] &gt; num) &#123;</span><br><span class="line">            R = mid - <span class="number">1</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            L = mid + <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//对数器</span></span><br><span class="line"><span class="comment">// for test</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">test</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">if</span> (arr == <span class="keyword">null</span> || arr.length == <span class="number">0</span>) &#123;</span><br><span class="line">			<span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">if</span> (arr.length == <span class="number">1</span>) &#123;</span><br><span class="line">			<span class="keyword">return</span> arr[<span class="number">0</span>] == num;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">			<span class="keyword">if</span> (arr[i] == num) &#123;</span><br><span class="line">				<span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// for test</span></span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span>[] generateRandomArr(<span class="keyword">int</span> maxSize, <span class="keyword">int</span> maxValue) &#123;</span><br><span class="line">		<span class="keyword">int</span>[] arr = <span class="keyword">new</span> <span class="keyword">int</span>[(<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random())];</span><br><span class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">			arr[i] = (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random()) - (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random());</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">return</span> arr;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">int</span> testTime = <span class="number">500000</span>;</span><br><span class="line">		<span class="keyword">int</span> maxSize = <span class="number">100</span>;</span><br><span class="line">		<span class="keyword">int</span> maxValue = <span class="number">1000</span>;</span><br><span class="line">		<span class="keyword">boolean</span> succeed = <span class="keyword">true</span>;</span><br><span class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; testTime; i++) &#123;</span><br><span class="line">			<span class="keyword">int</span>[] arr = generateRandomArr(maxSize, maxValue);</span><br><span class="line">			Arrays.sort(arr);</span><br><span class="line">			<span class="keyword">int</span> value = (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random()) - (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random());</span><br><span class="line">			<span class="keyword">if</span> (test(arr, value) != exists(arr, value)) &#123;</span><br><span class="line">				succeed = <span class="keyword">false</span>;</span><br><span class="line">				<span class="keyword">break</span>;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		System.out.println(succeed ? <span class="string">&quot;SUCCEED&quot;</span> : <span class="string">&quot;FAIL&quot;</span>);</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure></li>
+<li><h3 id="有序数组找到-gt-num最左的位置"><a href="#有序数组找到-gt-num最左的位置" class="headerlink" title="有序数组找到&gt;=num最左的位置"></a><strong>有序数组找到&gt;=num最左的位置</strong></h3><p>定义变量index用于记录最左边的数</p>
+<p>只要左边界不大于右边界,那么就判断数组中间数的值是否大于等于指定num</p>
+<ul>
+<li><p>如果大于等于num(满足条件就使用index记录),不要右边</p>
+</li>
+<li><p>否则不要左边</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">findMostLeftNum</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (arr == <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">int</span> L = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">int</span> R = arr.length - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">int</span> ans = -<span class="number">1</span>;</span><br><span class="line">    <span class="keyword">while</span> (L &lt;= R) &#123;</span><br><span class="line">        <span class="keyword">int</span> mid = L + ((R - L) &gt;&gt; <span class="number">1</span>);</span><br><span class="line">        <span class="keyword">if</span> (arr[mid] &gt;= num) &#123;</span><br><span class="line">            ans = mid;</span><br><span class="line">            R = mid - <span class="number">1</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            L = mid + <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> ans;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//对数器</span></span><br><span class="line"><span class="comment">// for test</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">test</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">        <span class="keyword">if</span> (arr[i] &gt;= num) &#123;</span><br><span class="line">            <span class="keyword">return</span> i;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// for test</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span>[] generateRandomArr(<span class="keyword">int</span> maxSize, <span class="keyword">int</span> maxValue) &#123;</span><br><span class="line">    <span class="keyword">int</span>[] arr = <span class="keyword">new</span> <span class="keyword">int</span>[(<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random())];</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">        arr[i] = (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random()) - (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> arr;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> testTime = <span class="number">500000</span>;</span><br><span class="line">    <span class="keyword">int</span> maxSize = <span class="number">100</span>;</span><br><span class="line">    <span class="keyword">int</span> maxValue = <span class="number">100</span>;</span><br><span class="line">    <span class="keyword">boolean</span> succeed = <span class="keyword">true</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; testTime; i++) &#123;</span><br><span class="line">        <span class="keyword">int</span>[] arr = generateRandomArr(maxSize, maxValue);</span><br><span class="line">        <span class="comment">// 有序数组</span></span><br><span class="line">        Arrays.sort(arr);</span><br><span class="line">        <span class="keyword">int</span> value = (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random()) - (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random());</span><br><span class="line">        <span class="keyword">if</span> (test(arr, value) != moreNumNearLeft(arr, value)) &#123;</span><br><span class="line">            succeed = <span class="keyword">false</span>;</span><br><span class="line">            System.out.println(Arrays.toString(arr));</span><br><span class="line">            System.out.println(<span class="string">&quot;num:&quot;</span> + value);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    System.out.println(succeed ? <span class="string">&quot;SUCCEED&quot;</span> : <span class="string">&quot;FAIL&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><h3 id="有序数组中找到-lt-num最右的位置-同理"><a href="#有序数组中找到-lt-num最右的位置-同理" class="headerlink" title="有序数组中找到&lt;=num最右的位置(同理)"></a><strong>有序数组中找到&lt;=num最右的位置(同理)</strong></h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//有序数组&lt;=num 最右</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">lessNumMostRight</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> index = -<span class="number">1</span>;</span><br><span class="line">    <span class="keyword">if</span> (arr == <span class="keyword">null</span> || arr.length == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> index;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">int</span> L = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">int</span> R = arr.length - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">while</span> (L &lt;= R) &#123;</span><br><span class="line">        <span class="keyword">int</span> mid = L + ((R - L) &gt;&gt; <span class="number">1</span>);</span><br><span class="line">        <span class="keyword">if</span> (arr[mid] &lt;= num) &#123;</span><br><span class="line">            index = mid;</span><br><span class="line">            L = mid + <span class="number">1</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            R = mid - <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> index;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//对数器</span></span><br><span class="line"><span class="comment">// for test</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">test</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = arr.length - <span class="number">1</span>; i &gt;= <span class="number">0</span>; i--) &#123;</span><br><span class="line">        <span class="keyword">if</span> (arr[i] &lt;= num) &#123;</span><br><span class="line">            <span class="keyword">return</span> i;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> testTime = <span class="number">1000000</span>;</span><br><span class="line">    <span class="keyword">int</span> maxSize = <span class="number">100</span>;</span><br><span class="line">    <span class="keyword">int</span> maxValue = <span class="number">100</span>;</span><br><span class="line">    <span class="keyword">boolean</span> succeed = <span class="keyword">true</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; testTime; i++) &#123;</span><br><span class="line">        <span class="keyword">int</span>[] arr = generateRandomArr(maxSize, maxValue);</span><br><span class="line">        Arrays.sort(arr);</span><br><span class="line">        <span class="keyword">int</span> value = (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random()) - (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random());</span><br><span class="line">        <span class="keyword">if</span> (test(arr, value) != lessNumMostRight(arr, value)) &#123;</span><br><span class="line">            succeed = <span class="keyword">false</span>;</span><br><span class="line">            System.out.println(Arrays.toString(arr));</span><br><span class="line">            System.out.print(<span class="string">&quot;num:&quot;</span> + value);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    System.out.println(succeed ? <span class="string">&quot;SUCCEED&quot;</span> : <span class="string">&quot;FAIL&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span>[] generateRandomArr(<span class="keyword">int</span> maxSize, <span class="keyword">int</span> maxValue) &#123;</span><br><span class="line">    <span class="keyword">int</span>[] arr = <span class="keyword">new</span> <span class="keyword">int</span>[(<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random())];</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">        arr[i] = (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random()) - (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> arr;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>无序数组</p>
+<ul>
+<li><h3 id="相邻不等求局部最小值"><a href="#相邻不等求局部最小值" class="headerlink" title="相邻不等求局部最小值"></a><strong>相邻不等求局部最小值</strong></h3><ul>
+<li><p>判断数组分别为null,长度为0,1的校验</p>
+</li>
+<li><p>考虑边界数组两边的极小值情况</p>
+</li>
+<li><p>只要左边界小于右边界(没考虑L=R的情况),取数组中值进行判断</p>
+<ul>
+<li>如果大于左值,说明左边有极值,不要右边</li>
+<li>如果大于右值,说明右边有极值,不要左边</li>
+<li>否则直接返回中间值</li>
+</ul>
+</li>
+<li><p>返回L或者R(考虑L=R情况)</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">getMinIndex</span><span class="params">(<span class="keyword">int</span>[] arr)</span> </span>&#123;</span><br><span class="line">    <span class="comment">//not exist</span></span><br><span class="line">    <span class="keyword">if</span> (arr == <span class="keyword">null</span> || arr.length == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 1,2 注意不能反着写</span></span><br><span class="line">    <span class="keyword">if</span> (arr.length == <span class="number">1</span> || arr[<span class="number">0</span>] &lt; arr[<span class="number">1</span>] ) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// N-2 N-1</span></span><br><span class="line">    <span class="keyword">if</span> (arr[arr.length - <span class="number">1</span>] &lt; arr[arr.length - <span class="number">2</span>]) &#123;</span><br><span class="line">        <span class="keyword">return</span> arr.length - <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">int</span> L = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">int</span> R = arr.length - <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">while</span> (L &lt; R) &#123;</span><br><span class="line">        <span class="keyword">int</span> mid = L + ((R - L) &gt;&gt; <span class="number">1</span>);</span><br><span class="line">        <span class="keyword">if</span> (arr[mid] &gt; arr[mid - <span class="number">1</span>]) &#123;</span><br><span class="line">            R = mid - <span class="number">1</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (arr[mid] &gt; arr[mid + <span class="number">1</span>]) &#123;</span><br><span class="line">            L = mid + <span class="number">1</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> mid;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// L==R</span></span><br><span class="line">    <span class="keyword">return</span> L;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//对数器</span></span><br><span class="line"><span class="comment">// 生成随机数组，且相邻数不相等</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span>[] randomArray(<span class="keyword">int</span> maxLen, <span class="keyword">int</span> maxValue) &#123;</span><br><span class="line">    <span class="keyword">int</span> len = (<span class="keyword">int</span>) (Math.random() * maxLen);</span><br><span class="line">    <span class="keyword">int</span>[] arr = <span class="keyword">new</span> <span class="keyword">int</span>[len];</span><br><span class="line">    <span class="keyword">if</span> (len &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        arr[<span class="number">0</span>] = (<span class="keyword">int</span>) (Math.random() * maxValue);</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">1</span>; i &lt; len; i++) &#123;</span><br><span class="line">            <span class="keyword">do</span> &#123;</span><br><span class="line">                arr[i] = (<span class="keyword">int</span>) (Math.random() * maxValue);</span><br><span class="line">            &#125; <span class="keyword">while</span> (arr[i] == arr[i - <span class="number">1</span>]);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> arr;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 也用于测试</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">check</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> minIndex)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (arr.length == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> minIndex == -<span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">int</span> left = minIndex - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">int</span> right = minIndex + <span class="number">1</span>;</span><br><span class="line">    <span class="comment">//如果该索引是边界就不比较,否则就比较</span></span><br><span class="line">    <span class="keyword">boolean</span> leftBigger = left &lt; <span class="number">0</span> || arr[left] &gt; arr[minIndex];</span><br><span class="line">    <span class="keyword">boolean</span> rightBigger = right &gt;= arr.length || arr[right] &gt; arr[minIndex];</span><br><span class="line">    <span class="keyword">return</span> leftBigger &amp;&amp; rightBigger;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">printArray</span><span class="params">(<span class="keyword">int</span>[] arr)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> num : arr) &#123;</span><br><span class="line">        System.out.print(num + <span class="string">&quot; &quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    System.out.println();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> maxLen = <span class="number">100</span>;</span><br><span class="line">    <span class="keyword">int</span> maxValue = <span class="number">200</span>;</span><br><span class="line">    <span class="keyword">int</span> testTime = <span class="number">1000000</span>;</span><br><span class="line">    System.out.println(<span class="string">&quot;测试开始&quot;</span>);</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; testTime; i++) &#123;</span><br><span class="line">        <span class="keyword">int</span>[] arr = randomArray(maxLen, maxValue);</span><br><span class="line">        <span class="keyword">int</span> ans = getMinIndex(arr);</span><br><span class="line">        <span class="keyword">if</span> (!check(arr, ans)) &#123;</span><br><span class="line">            printArray(arr);</span><br><span class="line">            System.out.println(ans);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    System.out.println(<span class="string">&quot;测试结束&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
 ]]></content>
       <categories>
-        <category>从网络到分布式</category>
+        <category>算法</category>
       </categories>
       <tags>
-        <tag>redis相关API</tag>
-        <tag>redis代码实现</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>redis集群理论</title>
-    <url>/posts/e17a.html</url>
-    <content><![CDATA[<h2 id="一、redis的cluster的引入"><a href="#一、redis的cluster的引入" class="headerlink" title="一、redis的cluster的引入"></a>一、redis的cluster的引入</h2><p>三个模式都不能作为数据库,这里三个模式分别指的是</p>
-<ul>
-<li><p>random</p>
-</li>
-<li><p>hash+modula</p>
-</li>
-<li><p>kemata</p>
-<span id="more"></span></li>
-</ul>
-<h3 id="random分片问题"><a href="#random分片问题" class="headerlink" title="random分片问题"></a>random分片问题</h3><p>为了redis引入中为了采用random来分片导致的部分数据取不到,所以redis中有一个预分区的功能</p>
-<ul>
-<li><p>random分片问题:    添加新的node3,会导致所有的取模数据都不一样了,需要全部rehash,所以涉及到了数据的迁移问题</p>
-</li>
-<li><p>解决:</p>
-<p>在redis服务有一个mapping,标记了自己在哪个hash环的槽位,如果添加了新的node那么就不需要全部rehash,而是对新的node进行预分区处理,然后把数据通过网络传输给redis3</p>
-</li>
-</ul>
-<p><img data-src="../images/redis%E9%9B%86%E7%BE%A4%E7%90%86%E8%AE%BA.asset/image-20211213185538110.png" alt="image-20211213185538110"></p>
-<h3 id="kemata击穿问题"><a href="#kemata击穿问题" class="headerlink" title="kemata击穿问题"></a>kemata击穿问题</h3><ul>
-<li><p>kemata击穿问题 : 新增节点后,访问没有数据的新增节点,导致数据穿透</p>
-</li>
-<li><p>解决</p>
-<p>在每个服务端都会有对应的槽点的映射,如果访问到没有数据的新增节点node3,那么他会进行hash运算然后返回给客户端,客户端在重新请求到对应的卡槽的redis服务</p>
-<p><img data-src="../images/redis%E9%9B%86%E7%BE%A4%E7%90%86%E8%AE%BA.asset/image-20211213190657311.png" alt="image-20211213190657311"></p>
-</li>
-</ul>
-<h2 id="二、redis的集群"><a href="#二、redis的集群" class="headerlink" title="二、redis的集群"></a>二、redis的集群</h2><p><strong>推荐直接看官方文档<a href="https://redis.io/">redis</a></strong>,后续会对<a href="https://github.com/joyieldInc/predixy">Predixy</a>进行实操</p>
-<p>redis在分片的情况是很难做事务和一些交集的聚合操作的,所以一般我们让用户来保证,如下图所示</p>
-<p><img data-src="../images/redis%E9%9B%86%E7%BE%A4%E7%90%86%E8%AE%BA.asset/image-20211213191906811.png" alt="image-20211213191906811"></p>
-]]></content>
-      <categories>
-        <category>从网络到分布式</category>
-      </categories>
-      <tags>
-        <tag>redis</tag>
-        <tag>redis集群</tag>
+        <tag>二分法</tag>
       </tags>
   </entry>
   <entry>
@@ -1494,62 +2170,6 @@
         <tag>redis</tag>
         <tag>redis集群</tag>
         <tag>redis的分片和代理</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>二分法</title>
-    <url>/posts/db6.html</url>
-    <content><![CDATA[<h2 id="二分法"><a href="#二分法" class="headerlink" title="二分法"></a>二分法</h2><ul>
-<li><p>有序数组</p>
-<ul>
-<li><h3 id="有序数组找到指定num"><a href="#有序数组找到指定num" class="headerlink" title="有序数组找到指定num"></a><strong>有序数组找到指定num</strong></h3><p>只要左边界不大于右边界,那么就判断数组中间数的值是否等于指定num</p>
-<ul>
-<li>如果等于则返回true</li>
-<li>如果大于则不要右边</li>
-<li>如果小于则不要左边</li>
-</ul>
-<span id="more"></span>
-
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 有序数组查找指定数字</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">exists</span><span class="params">(<span class="keyword">int</span>[] sortedArr, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (sortedArr == <span class="keyword">null</span> || sortedArr.length == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">int</span> L = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">int</span> R = sortedArr.length - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">int</span> mid = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">// L..R</span></span><br><span class="line">    <span class="keyword">while</span> (L &lt;= R) &#123;</span><br><span class="line">        mid = L + ((R - L) &gt;&gt; <span class="number">1</span>);</span><br><span class="line">        <span class="keyword">if</span> (sortedArr[mid] == num) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (sortedArr[mid] &gt; num) &#123;</span><br><span class="line">            R = mid - <span class="number">1</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            L = mid + <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//对数器</span></span><br><span class="line"><span class="comment">// for test</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">test</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">if</span> (arr == <span class="keyword">null</span> || arr.length == <span class="number">0</span>) &#123;</span><br><span class="line">			<span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">if</span> (arr.length == <span class="number">1</span>) &#123;</span><br><span class="line">			<span class="keyword">return</span> arr[<span class="number">0</span>] == num;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">			<span class="keyword">if</span> (arr[i] == num) &#123;</span><br><span class="line">				<span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// for test</span></span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span>[] generateRandomArr(<span class="keyword">int</span> maxSize, <span class="keyword">int</span> maxValue) &#123;</span><br><span class="line">		<span class="keyword">int</span>[] arr = <span class="keyword">new</span> <span class="keyword">int</span>[(<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random())];</span><br><span class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">			arr[i] = (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random()) - (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random());</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">return</span> arr;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">int</span> testTime = <span class="number">500000</span>;</span><br><span class="line">		<span class="keyword">int</span> maxSize = <span class="number">100</span>;</span><br><span class="line">		<span class="keyword">int</span> maxValue = <span class="number">1000</span>;</span><br><span class="line">		<span class="keyword">boolean</span> succeed = <span class="keyword">true</span>;</span><br><span class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; testTime; i++) &#123;</span><br><span class="line">			<span class="keyword">int</span>[] arr = generateRandomArr(maxSize, maxValue);</span><br><span class="line">			Arrays.sort(arr);</span><br><span class="line">			<span class="keyword">int</span> value = (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random()) - (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random());</span><br><span class="line">			<span class="keyword">if</span> (test(arr, value) != exists(arr, value)) &#123;</span><br><span class="line">				succeed = <span class="keyword">false</span>;</span><br><span class="line">				<span class="keyword">break</span>;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		System.out.println(succeed ? <span class="string">&quot;SUCCEED&quot;</span> : <span class="string">&quot;FAIL&quot;</span>);</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure></li>
-<li><h3 id="有序数组找到-gt-num最左的位置"><a href="#有序数组找到-gt-num最左的位置" class="headerlink" title="有序数组找到&gt;=num最左的位置"></a><strong>有序数组找到&gt;=num最左的位置</strong></h3><p>定义变量index用于记录最左边的数</p>
-<p>只要左边界不大于右边界,那么就判断数组中间数的值是否大于等于指定num</p>
-<ul>
-<li><p>如果大于等于num(满足条件就使用index记录),不要右边</p>
-</li>
-<li><p>否则不要左边</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">findMostLeftNum</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (arr == <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">int</span> L = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">int</span> R = arr.length - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">int</span> ans = -<span class="number">1</span>;</span><br><span class="line">    <span class="keyword">while</span> (L &lt;= R) &#123;</span><br><span class="line">        <span class="keyword">int</span> mid = L + ((R - L) &gt;&gt; <span class="number">1</span>);</span><br><span class="line">        <span class="keyword">if</span> (arr[mid] &gt;= num) &#123;</span><br><span class="line">            ans = mid;</span><br><span class="line">            R = mid - <span class="number">1</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            L = mid + <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> ans;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//对数器</span></span><br><span class="line"><span class="comment">// for test</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">test</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">        <span class="keyword">if</span> (arr[i] &gt;= num) &#123;</span><br><span class="line">            <span class="keyword">return</span> i;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// for test</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span>[] generateRandomArr(<span class="keyword">int</span> maxSize, <span class="keyword">int</span> maxValue) &#123;</span><br><span class="line">    <span class="keyword">int</span>[] arr = <span class="keyword">new</span> <span class="keyword">int</span>[(<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random())];</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">        arr[i] = (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random()) - (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> arr;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> testTime = <span class="number">500000</span>;</span><br><span class="line">    <span class="keyword">int</span> maxSize = <span class="number">100</span>;</span><br><span class="line">    <span class="keyword">int</span> maxValue = <span class="number">100</span>;</span><br><span class="line">    <span class="keyword">boolean</span> succeed = <span class="keyword">true</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; testTime; i++) &#123;</span><br><span class="line">        <span class="keyword">int</span>[] arr = generateRandomArr(maxSize, maxValue);</span><br><span class="line">        <span class="comment">// 有序数组</span></span><br><span class="line">        Arrays.sort(arr);</span><br><span class="line">        <span class="keyword">int</span> value = (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random()) - (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random());</span><br><span class="line">        <span class="keyword">if</span> (test(arr, value) != moreNumNearLeft(arr, value)) &#123;</span><br><span class="line">            succeed = <span class="keyword">false</span>;</span><br><span class="line">            System.out.println(Arrays.toString(arr));</span><br><span class="line">            System.out.println(<span class="string">&quot;num:&quot;</span> + value);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    System.out.println(succeed ? <span class="string">&quot;SUCCEED&quot;</span> : <span class="string">&quot;FAIL&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-<li><h3 id="有序数组中找到-lt-num最右的位置-同理"><a href="#有序数组中找到-lt-num最右的位置-同理" class="headerlink" title="有序数组中找到&lt;=num最右的位置(同理)"></a><strong>有序数组中找到&lt;=num最右的位置(同理)</strong></h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//有序数组&lt;=num 最右</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">lessNumMostRight</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> index = -<span class="number">1</span>;</span><br><span class="line">    <span class="keyword">if</span> (arr == <span class="keyword">null</span> || arr.length == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> index;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">int</span> L = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">int</span> R = arr.length - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">while</span> (L &lt;= R) &#123;</span><br><span class="line">        <span class="keyword">int</span> mid = L + ((R - L) &gt;&gt; <span class="number">1</span>);</span><br><span class="line">        <span class="keyword">if</span> (arr[mid] &lt;= num) &#123;</span><br><span class="line">            index = mid;</span><br><span class="line">            L = mid + <span class="number">1</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            R = mid - <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> index;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//对数器</span></span><br><span class="line"><span class="comment">// for test</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">test</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = arr.length - <span class="number">1</span>; i &gt;= <span class="number">0</span>; i--) &#123;</span><br><span class="line">        <span class="keyword">if</span> (arr[i] &lt;= num) &#123;</span><br><span class="line">            <span class="keyword">return</span> i;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> testTime = <span class="number">1000000</span>;</span><br><span class="line">    <span class="keyword">int</span> maxSize = <span class="number">100</span>;</span><br><span class="line">    <span class="keyword">int</span> maxValue = <span class="number">100</span>;</span><br><span class="line">    <span class="keyword">boolean</span> succeed = <span class="keyword">true</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; testTime; i++) &#123;</span><br><span class="line">        <span class="keyword">int</span>[] arr = generateRandomArr(maxSize, maxValue);</span><br><span class="line">        Arrays.sort(arr);</span><br><span class="line">        <span class="keyword">int</span> value = (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random()) - (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random());</span><br><span class="line">        <span class="keyword">if</span> (test(arr, value) != lessNumMostRight(arr, value)) &#123;</span><br><span class="line">            succeed = <span class="keyword">false</span>;</span><br><span class="line">            System.out.println(Arrays.toString(arr));</span><br><span class="line">            System.out.print(<span class="string">&quot;num:&quot;</span> + value);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    System.out.println(succeed ? <span class="string">&quot;SUCCEED&quot;</span> : <span class="string">&quot;FAIL&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span>[] generateRandomArr(<span class="keyword">int</span> maxSize, <span class="keyword">int</span> maxValue) &#123;</span><br><span class="line">    <span class="keyword">int</span>[] arr = <span class="keyword">new</span> <span class="keyword">int</span>[(<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random())];</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">        arr[i] = (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random()) - (<span class="keyword">int</span>) ((maxSize + <span class="number">1</span>) * Math.random());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> arr;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-<li><p>无序数组</p>
-<ul>
-<li><h3 id="相邻不等求局部最小值"><a href="#相邻不等求局部最小值" class="headerlink" title="相邻不等求局部最小值"></a><strong>相邻不等求局部最小值</strong></h3><ul>
-<li><p>判断数组分别为null,长度为0,1的校验</p>
-</li>
-<li><p>考虑边界数组两边的极小值情况</p>
-</li>
-<li><p>只要左边界小于右边界(没考虑L=R的情况),取数组中值进行判断</p>
-<ul>
-<li>如果大于左值,说明左边有极值,不要右边</li>
-<li>如果大于右值,说明右边有极值,不要左边</li>
-<li>否则直接返回中间值</li>
-</ul>
-</li>
-<li><p>返回L或者R(考虑L=R情况)</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">getMinIndex</span><span class="params">(<span class="keyword">int</span>[] arr)</span> </span>&#123;</span><br><span class="line">    <span class="comment">//not exist</span></span><br><span class="line">    <span class="keyword">if</span> (arr == <span class="keyword">null</span> || arr.length == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 1,2 注意不能反着写</span></span><br><span class="line">    <span class="keyword">if</span> (arr.length == <span class="number">1</span> || arr[<span class="number">0</span>] &lt; arr[<span class="number">1</span>] ) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// N-2 N-1</span></span><br><span class="line">    <span class="keyword">if</span> (arr[arr.length - <span class="number">1</span>] &lt; arr[arr.length - <span class="number">2</span>]) &#123;</span><br><span class="line">        <span class="keyword">return</span> arr.length - <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">int</span> L = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">int</span> R = arr.length - <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">while</span> (L &lt; R) &#123;</span><br><span class="line">        <span class="keyword">int</span> mid = L + ((R - L) &gt;&gt; <span class="number">1</span>);</span><br><span class="line">        <span class="keyword">if</span> (arr[mid] &gt; arr[mid - <span class="number">1</span>]) &#123;</span><br><span class="line">            R = mid - <span class="number">1</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (arr[mid] &gt; arr[mid + <span class="number">1</span>]) &#123;</span><br><span class="line">            L = mid + <span class="number">1</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> mid;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// L==R</span></span><br><span class="line">    <span class="keyword">return</span> L;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//对数器</span></span><br><span class="line"><span class="comment">// 生成随机数组，且相邻数不相等</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span>[] randomArray(<span class="keyword">int</span> maxLen, <span class="keyword">int</span> maxValue) &#123;</span><br><span class="line">    <span class="keyword">int</span> len = (<span class="keyword">int</span>) (Math.random() * maxLen);</span><br><span class="line">    <span class="keyword">int</span>[] arr = <span class="keyword">new</span> <span class="keyword">int</span>[len];</span><br><span class="line">    <span class="keyword">if</span> (len &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        arr[<span class="number">0</span>] = (<span class="keyword">int</span>) (Math.random() * maxValue);</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">1</span>; i &lt; len; i++) &#123;</span><br><span class="line">            <span class="keyword">do</span> &#123;</span><br><span class="line">                arr[i] = (<span class="keyword">int</span>) (Math.random() * maxValue);</span><br><span class="line">            &#125; <span class="keyword">while</span> (arr[i] == arr[i - <span class="number">1</span>]);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> arr;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 也用于测试</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">check</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> minIndex)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (arr.length == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> minIndex == -<span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">int</span> left = minIndex - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">int</span> right = minIndex + <span class="number">1</span>;</span><br><span class="line">    <span class="comment">//如果该索引是边界就不比较,否则就比较</span></span><br><span class="line">    <span class="keyword">boolean</span> leftBigger = left &lt; <span class="number">0</span> || arr[left] &gt; arr[minIndex];</span><br><span class="line">    <span class="keyword">boolean</span> rightBigger = right &gt;= arr.length || arr[right] &gt; arr[minIndex];</span><br><span class="line">    <span class="keyword">return</span> leftBigger &amp;&amp; rightBigger;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">printArray</span><span class="params">(<span class="keyword">int</span>[] arr)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> num : arr) &#123;</span><br><span class="line">        System.out.print(num + <span class="string">&quot; &quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    System.out.println();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> maxLen = <span class="number">100</span>;</span><br><span class="line">    <span class="keyword">int</span> maxValue = <span class="number">200</span>;</span><br><span class="line">    <span class="keyword">int</span> testTime = <span class="number">1000000</span>;</span><br><span class="line">    System.out.println(<span class="string">&quot;测试开始&quot;</span>);</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; testTime; i++) &#123;</span><br><span class="line">        <span class="keyword">int</span>[] arr = randomArray(maxLen, maxValue);</span><br><span class="line">        <span class="keyword">int</span> ans = getMinIndex(arr);</span><br><span class="line">        <span class="keyword">if</span> (!check(arr, ans)) &#123;</span><br><span class="line">            printArray(arr);</span><br><span class="line">            System.out.println(ans);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    System.out.println(<span class="string">&quot;测试结束&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-]]></content>
-      <categories>
-        <category>算法</category>
-      </categories>
-      <tags>
-        <tag>二分法</tag>
       </tags>
   </entry>
   <entry>
@@ -2340,118 +2960,6 @@
       </tags>
   </entry>
   <entry>
-    <title>设计模式-单例模式</title>
-    <url>/posts/4c1a.html</url>
-    <content><![CDATA[<h2 id="单例模式"><a href="#单例模式" class="headerlink" title="单例模式"></a>单例模式</h2><h3 id="一、概念"><a href="#一、概念" class="headerlink" title="一、概念"></a>一、概念</h3><ul>
-<li><p>定义</p>
-<p><strong>单例模式是指确保一个类在任何情况下都绝对只有一个实例，并提供一个全局访问点</strong> （保证一个类在内存中的对象就一个 ）</p>
-</li>
-<li><p>特点</p>
-<ol>
-<li>一是这个类只能有一个实例 </li>
-<li>二是它必须自行创建这个实例 </li>
-<li>三是它必须自行向整个系统提供这个实例 </li>
-</ol>
-</li>
-</ul>
-<span id="more"></span>
-
-<ul>
-<li><p>优点</p>
-<p>可节约系统内存空间，控制资源的使用 </p>
-</li>
-<li><p>应用场景</p>
-<p>J2EE中的ServlertContext、SerletContextConfig等、Spring框架应用中的ApplicationContext、数据库连接池等 </p>
-</li>
-</ul>
-<h3 id="二、类型"><a href="#二、类型" class="headerlink" title="二、类型"></a>二、类型</h3><h4 id="一-饿汉式"><a href="#一-饿汉式" class="headerlink" title="(一)饿汉式"></a>(一)饿汉式</h4><ul>
-<li><p>优点</p>
-<p>没有任何锁，执行效率高，用户体验比懒汉式单例模式更好 </p>
-</li>
-<li><p>缺点</p>
-<p>类加载的时候就初始化，不管用不用都占内存空间 </p>
-</li>
-<li><p>建议</p>
-<ol>
-<li>适用于单例模式较少的场景</li>
-<li>如果我们在程序启动后，一定会加载到类，那么用饿汉模式实现的单例简单又实用</li>
-<li>如果我们是写一些工具类，则优先考虑使用懒汉模式，可以避免提前被加载到内存中，占用系统资源</li>
-</ol>
-</li>
-<li><p>Java中的RunTime就是经典</p>
-</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 描述：饿汉式单例模式</span></span><br><span class="line"><span class="comment"> * 优点：没有任何锁，执行效率高，用户体验比懒汉式单例模式更好</span></span><br><span class="line"><span class="comment"> * 缺点：类加载的时候就初始化，不管用不用都占内存空间</span></span><br><span class="line"><span class="comment"> * 建议：适用于单例模式较少的场景</span></span><br><span class="line"><span class="comment"> *      如果我们在程序启动后，一定会加载到类，那么用饿汉模式实现的单例简单又实用；</span></span><br><span class="line"><span class="comment"> *      如果我们是写一些工具类，则优先考虑使用懒汉模式，可以避免提前被加载到内存中，占用系统资源。</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">HungrySingleton</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">static</span> HungrySingleton HUNGRY_SINGLETON = <span class="keyword">new</span> HungrySingleton();</span><br><span class="line"> </span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="title">HungrySingleton</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> HungrySingleton <span class="title">getInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> HUNGRY_SINGLETON;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-
-
-<h4 id="二-懒汉式"><a href="#二-懒汉式" class="headerlink" title="(二)懒汉式"></a>(二)懒汉式</h4><ul>
-<li><p>优点</p>
-<p>为了解决饿汉式的缺点,在需要的时候才初始化</p>
-</li>
-<li><p>缺点</p>
-<p>带来了线程不安全问题</p>
-</li>
-<li><p>优化</p>
-<p>可以在方法上加锁,或者在进行锁粒度的细分</p>
-</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Singleton2</span> </span>&#123;</span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">static</span> Singleton2 INSTANCE;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">private</span> <span class="title">Singleton2</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Singleton2 <span class="title">getInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">		<span class="keyword">if</span> (INSTANCE == <span class="keyword">null</span>) &#123;</span><br><span class="line">			INSTANCE = <span class="keyword">new</span> Singleton2();</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">return</span> INSTANCE;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-
-
-<h4 id="三-双检索"><a href="#三-双检索" class="headerlink" title="(三)双检索"></a>(三)双检索</h4><ul>
-<li><p>优点</p>
-<p>解决了懒汉式中的线程安全问题</p>
-</li>
-<li><p>缺点</p>
-<p>代码复杂,不能解决反序列化</p>
-</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 描述：懒汉式单例模式---双重检查锁</span></span><br><span class="line"><span class="comment"> * 相比单锁而言，双重检查锁性能上虽然有提升，但是依旧用到了synchronized关键字总归要上锁，</span></span><br><span class="line"><span class="comment">   对程序性能还是存在一定的性能影响</span></span><br><span class="line"><span class="comment"> * 不算最优--存在优化空间</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LazyDoubleCheckSingleton</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * volatile 关键字可以保证线程间变量的可见性，还有一个作用就是阻止局部重排序的发生</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">static</span> LazyDoubleCheckSingleton lazyDoubleCheckSingleton = <span class="keyword">null</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="title">LazyDoubleCheckSingleton</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> LazyDoubleCheckSingleton <span class="title">getInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">//这里多加一次非空判断可以避免大量的情况</span></span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">null</span> == lazyDoubleCheckSingleton) &#123;</span><br><span class="line">            <span class="keyword">synchronized</span> (LazyDoubleCheckSingleton.class) &#123;</span><br><span class="line">                <span class="keyword">if</span> (<span class="keyword">null</span> == lazyDoubleCheckSingleton) &#123;</span><br><span class="line">                    lazyDoubleCheckSingleton = <span class="keyword">new</span> LazyDoubleCheckSingleton();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> lazyDoubleCheckSingleton;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-
-
-<h4 id="四-静态内部类"><a href="#四-静态内部类" class="headerlink" title="(四)静态内部类"></a>(四)静态内部类</h4><ul>
-<li><p>优点</p>
-<p>JVM保证单例,加载外部类的时候不会加载内部类(比饿汉式的要好一点),这样可以实现懒加载</p>
-<p>屏蔽饿汉式单例模式的内存浪费问题和双重检查锁中synchronized的性能问题，</p>
-<p>同时考虑避免因为反射破坏单例问题,相对而言性能最好！</p>
-</li>
-<li><p>缺点</p>
-<p>代码复杂,不能解决反序列化</p>
-</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 描述：屏蔽饿汉式单例模式的内存浪费问题和双重检查锁中synchronized的性能问题</span></span><br><span class="line"><span class="comment"> * 避免因为反射破坏单例</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LazyInnerClassSingleton</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 使用LazyInnerClassSingleton的时候会先默认初始化换内部类</span></span><br><span class="line"><span class="comment">     * 如果没有使用，则内部类是不加载的</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="title">LazyInnerClassSingleton</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">/*为了避免反射破坏单例，需要在构造方法中增加限制，一旦出现多次重复创建，直接抛出异常*/</span></span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">null</span> != Lazyholder.LAZY_INNER_CLASS_SINGLETON) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> RuntimeException(<span class="string">&quot;创建LazyInnerClassSingleton异常，不允许创建多个实例！&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 每一个关键字都不是多余的，static是为了使单例的空间共享，保证这个方法不会被重写、重载</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> LazyInnerClassSingleton <span class="title">getInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">/*在返回结果前，一定会先加载内部类*/</span></span><br><span class="line">        <span class="keyword">return</span> Lazyholder.LAZY_INNER_CLASS_SINGLETON;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 默认不加载</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">Lazyholder</span> </span>&#123;</span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> LazyInnerClassSingleton LAZY_INNER_CLASS_SINGLETON = <span class="keyword">new</span> LazyInnerClassSingleton();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-
-
-<h4 id="五-枚举"><a href="#五-枚举" class="headerlink" title="(五)枚举"></a>(五)枚举</h4><ul>
-<li><p>优点</p>
-<p>Java中个规定枚举是没有构造方法的反编译之后枚举是一个Abstract Class，不仅解决线程同步问题,还可以防止反序列化</p>
-<p>序列化：将对象转成二进制数组,反序列化就是二进制数组转回对象</p>
-</li>
-<li><p>缺点</p>
-<p>有点破坏类的用法</p>
-</li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 描述：注册式单例模式/登记式单例模式，将每个实例都登记到一个地方，使用唯一的标识获取单例。</span></span><br><span class="line"><span class="comment"> * 注册单例模式有两种：枚举式单例模式+容器式单例模式</span></span><br><span class="line"><span class="comment"> * 此为枚举式单例模式---Effective Java推荐单例模式</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> yanfengzhang</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@date</span> 2020-01-03 09:59</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">enum</span> <span class="title">EnumSingleton</span> </span>&#123;</span><br><span class="line">    <span class="comment">/*枚举式单例模式*/</span></span><br><span class="line">    INSTANCE;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> Object data;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Object <span class="title">getData</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> data;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setData</span><span class="params">(Object data)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.data = data;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> EnumSingleton <span class="title">getInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> INSTANCE;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="三、总结"><a href="#三、总结" class="headerlink" title="三、总结"></a>三、总结</h3><h4 id="演变发展"><a href="#演变发展" class="headerlink" title="演变发展"></a>演变发展</h4><p><img data-src="../images/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F.asset/1637576961038.png" alt="1637576961038"></p>
-<blockquote>
-<p>1.虽然饿汉式有些缺点,但是线程安全而且简单,所以我们经常使用它</p>
-<p>2.如果我们在程序启动后，一定会加载到类，那么用饿汉模式实现的单例简单又实用</p>
-<p>3.如果我们是写一些工具类，则优先考虑使用懒汉模式，可以避免提前被加载到内存中，占用系统资源 </p>
-</blockquote>
-]]></content>
-      <categories>
-        <category>设计模式</category>
-      </categories>
-      <tags>
-        <tag>单例模式</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>负载均衡模型与实现</title>
     <url>/posts/552f.html</url>
     <content><![CDATA[<h2 id="负载均衡模型"><a href="#负载均衡模型" class="headerlink" title="负载均衡模型"></a>负载均衡模型</h2><h3 id="一、问题引入"><a href="#一、问题引入" class="headerlink" title="一、问题引入"></a>一、问题引入</h3><p>​        <strong>如果有多个用户来访问服务器,要想要减轻服务器的压力,应该怎么办呢?</strong></p>
@@ -2730,6 +3238,118 @@
       </categories>
       <tags>
         <tag>高并发和负载均衡</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>设计模式-单例模式</title>
+    <url>/posts/4c1a.html</url>
+    <content><![CDATA[<h2 id="单例模式"><a href="#单例模式" class="headerlink" title="单例模式"></a>单例模式</h2><h3 id="一、概念"><a href="#一、概念" class="headerlink" title="一、概念"></a>一、概念</h3><ul>
+<li><p>定义</p>
+<p><strong>单例模式是指确保一个类在任何情况下都绝对只有一个实例，并提供一个全局访问点</strong> （保证一个类在内存中的对象就一个 ）</p>
+</li>
+<li><p>特点</p>
+<ol>
+<li>一是这个类只能有一个实例 </li>
+<li>二是它必须自行创建这个实例 </li>
+<li>三是它必须自行向整个系统提供这个实例 </li>
+</ol>
+</li>
+</ul>
+<span id="more"></span>
+
+<ul>
+<li><p>优点</p>
+<p>可节约系统内存空间，控制资源的使用 </p>
+</li>
+<li><p>应用场景</p>
+<p>J2EE中的ServlertContext、SerletContextConfig等、Spring框架应用中的ApplicationContext、数据库连接池等 </p>
+</li>
+</ul>
+<h3 id="二、类型"><a href="#二、类型" class="headerlink" title="二、类型"></a>二、类型</h3><h4 id="一-饿汉式"><a href="#一-饿汉式" class="headerlink" title="(一)饿汉式"></a>(一)饿汉式</h4><ul>
+<li><p>优点</p>
+<p>没有任何锁，执行效率高，用户体验比懒汉式单例模式更好 </p>
+</li>
+<li><p>缺点</p>
+<p>类加载的时候就初始化，不管用不用都占内存空间 </p>
+</li>
+<li><p>建议</p>
+<ol>
+<li>适用于单例模式较少的场景</li>
+<li>如果我们在程序启动后，一定会加载到类，那么用饿汉模式实现的单例简单又实用</li>
+<li>如果我们是写一些工具类，则优先考虑使用懒汉模式，可以避免提前被加载到内存中，占用系统资源</li>
+</ol>
+</li>
+<li><p>Java中的RunTime就是经典</p>
+</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 描述：饿汉式单例模式</span></span><br><span class="line"><span class="comment"> * 优点：没有任何锁，执行效率高，用户体验比懒汉式单例模式更好</span></span><br><span class="line"><span class="comment"> * 缺点：类加载的时候就初始化，不管用不用都占内存空间</span></span><br><span class="line"><span class="comment"> * 建议：适用于单例模式较少的场景</span></span><br><span class="line"><span class="comment"> *      如果我们在程序启动后，一定会加载到类，那么用饿汉模式实现的单例简单又实用；</span></span><br><span class="line"><span class="comment"> *      如果我们是写一些工具类，则优先考虑使用懒汉模式，可以避免提前被加载到内存中，占用系统资源。</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">HungrySingleton</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">static</span> HungrySingleton HUNGRY_SINGLETON = <span class="keyword">new</span> HungrySingleton();</span><br><span class="line"> </span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="title">HungrySingleton</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> HungrySingleton <span class="title">getInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> HUNGRY_SINGLETON;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="二-懒汉式"><a href="#二-懒汉式" class="headerlink" title="(二)懒汉式"></a>(二)懒汉式</h4><ul>
+<li><p>优点</p>
+<p>为了解决饿汉式的缺点,在需要的时候才初始化</p>
+</li>
+<li><p>缺点</p>
+<p>带来了线程不安全问题</p>
+</li>
+<li><p>优化</p>
+<p>可以在方法上加锁,或者在进行锁粒度的细分</p>
+</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Singleton2</span> </span>&#123;</span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">static</span> Singleton2 INSTANCE;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">private</span> <span class="title">Singleton2</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Singleton2 <span class="title">getInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">		<span class="keyword">if</span> (INSTANCE == <span class="keyword">null</span>) &#123;</span><br><span class="line">			INSTANCE = <span class="keyword">new</span> Singleton2();</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">return</span> INSTANCE;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="三-双检索"><a href="#三-双检索" class="headerlink" title="(三)双检索"></a>(三)双检索</h4><ul>
+<li><p>优点</p>
+<p>解决了懒汉式中的线程安全问题</p>
+</li>
+<li><p>缺点</p>
+<p>代码复杂,不能解决反序列化</p>
+</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 描述：懒汉式单例模式---双重检查锁</span></span><br><span class="line"><span class="comment"> * 相比单锁而言，双重检查锁性能上虽然有提升，但是依旧用到了synchronized关键字总归要上锁，</span></span><br><span class="line"><span class="comment">   对程序性能还是存在一定的性能影响</span></span><br><span class="line"><span class="comment"> * 不算最优--存在优化空间</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LazyDoubleCheckSingleton</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * volatile 关键字可以保证线程间变量的可见性，还有一个作用就是阻止局部重排序的发生</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">static</span> LazyDoubleCheckSingleton lazyDoubleCheckSingleton = <span class="keyword">null</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="title">LazyDoubleCheckSingleton</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> LazyDoubleCheckSingleton <span class="title">getInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">//这里多加一次非空判断可以避免大量的情况</span></span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">null</span> == lazyDoubleCheckSingleton) &#123;</span><br><span class="line">            <span class="keyword">synchronized</span> (LazyDoubleCheckSingleton.class) &#123;</span><br><span class="line">                <span class="keyword">if</span> (<span class="keyword">null</span> == lazyDoubleCheckSingleton) &#123;</span><br><span class="line">                    lazyDoubleCheckSingleton = <span class="keyword">new</span> LazyDoubleCheckSingleton();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> lazyDoubleCheckSingleton;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="四-静态内部类"><a href="#四-静态内部类" class="headerlink" title="(四)静态内部类"></a>(四)静态内部类</h4><ul>
+<li><p>优点</p>
+<p>JVM保证单例,加载外部类的时候不会加载内部类(比饿汉式的要好一点),这样可以实现懒加载</p>
+<p>屏蔽饿汉式单例模式的内存浪费问题和双重检查锁中synchronized的性能问题，</p>
+<p>同时考虑避免因为反射破坏单例问题,相对而言性能最好！</p>
+</li>
+<li><p>缺点</p>
+<p>代码复杂,不能解决反序列化</p>
+</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 描述：屏蔽饿汉式单例模式的内存浪费问题和双重检查锁中synchronized的性能问题</span></span><br><span class="line"><span class="comment"> * 避免因为反射破坏单例</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LazyInnerClassSingleton</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 使用LazyInnerClassSingleton的时候会先默认初始化换内部类</span></span><br><span class="line"><span class="comment">     * 如果没有使用，则内部类是不加载的</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="title">LazyInnerClassSingleton</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">/*为了避免反射破坏单例，需要在构造方法中增加限制，一旦出现多次重复创建，直接抛出异常*/</span></span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">null</span> != Lazyholder.LAZY_INNER_CLASS_SINGLETON) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> RuntimeException(<span class="string">&quot;创建LazyInnerClassSingleton异常，不允许创建多个实例！&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 每一个关键字都不是多余的，static是为了使单例的空间共享，保证这个方法不会被重写、重载</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> LazyInnerClassSingleton <span class="title">getInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">/*在返回结果前，一定会先加载内部类*/</span></span><br><span class="line">        <span class="keyword">return</span> Lazyholder.LAZY_INNER_CLASS_SINGLETON;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 默认不加载</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">Lazyholder</span> </span>&#123;</span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> LazyInnerClassSingleton LAZY_INNER_CLASS_SINGLETON = <span class="keyword">new</span> LazyInnerClassSingleton();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="五-枚举"><a href="#五-枚举" class="headerlink" title="(五)枚举"></a>(五)枚举</h4><ul>
+<li><p>优点</p>
+<p>Java中个规定枚举是没有构造方法的反编译之后枚举是一个Abstract Class，不仅解决线程同步问题,还可以防止反序列化</p>
+<p>序列化：将对象转成二进制数组,反序列化就是二进制数组转回对象</p>
+</li>
+<li><p>缺点</p>
+<p>有点破坏类的用法</p>
+</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 描述：注册式单例模式/登记式单例模式，将每个实例都登记到一个地方，使用唯一的标识获取单例。</span></span><br><span class="line"><span class="comment"> * 注册单例模式有两种：枚举式单例模式+容器式单例模式</span></span><br><span class="line"><span class="comment"> * 此为枚举式单例模式---Effective Java推荐单例模式</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> yanfengzhang</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@date</span> 2020-01-03 09:59</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">enum</span> <span class="title">EnumSingleton</span> </span>&#123;</span><br><span class="line">    <span class="comment">/*枚举式单例模式*/</span></span><br><span class="line">    INSTANCE;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> Object data;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Object <span class="title">getData</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> data;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setData</span><span class="params">(Object data)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.data = data;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> EnumSingleton <span class="title">getInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> INSTANCE;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="三、总结"><a href="#三、总结" class="headerlink" title="三、总结"></a>三、总结</h3><h4 id="演变发展"><a href="#演变发展" class="headerlink" title="演变发展"></a>演变发展</h4><p><img data-src="../images/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F.asset/1637576961038.png" alt="1637576961038"></p>
+<blockquote>
+<p>1.虽然饿汉式有些缺点,但是线程安全而且简单,所以我们经常使用它</p>
+<p>2.如果我们在程序启动后，一定会加载到类，那么用饿汉模式实现的单例简单又实用</p>
+<p>3.如果我们是写一些工具类，则优先考虑使用懒汉模式，可以避免提前被加载到内存中，占用系统资源 </p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>设计模式</category>
+      </categories>
+      <tags>
+        <tag>单例模式</tag>
       </tags>
   </entry>
 </search>

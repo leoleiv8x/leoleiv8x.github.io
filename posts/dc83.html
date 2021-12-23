@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"leoleiv8x.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":true,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="根据ZK的API我们知道有参数WATCH,ACL等参数和单个Session的概念,所以我们对其进行详细的讲解 ACLzookeeper 的 ACL（Access Control List，访问控制表）权限在生产环境是特别重要的，所以本章节特别介绍一下。 ACL 权限可以针对节点设置相关读写等权限，保障数据安全性。 permissions 可以指定不同的权限范围及角色。 ACL 命令行 getA">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ZK的ACL和Session原理">
+<meta property="og:url" content="https://leoleiv8x.github.io/posts/dc83.html">
+<meta property="og:site_name" content="LENO">
+<meta property="og:description" content="根据ZK的API我们知道有参数WATCH,ACL等参数和单个Session的概念,所以我们对其进行详细的讲解 ACLzookeeper 的 ACL（Access Control List，访问控制表）权限在生产环境是特别重要的，所以本章节特别介绍一下。 ACL 权限可以针对节点设置相关读写等权限，保障数据安全性。 permissions 可以指定不同的权限范围及角色。 ACL 命令行 getA">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/zk-acl-01.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/zk-acl-02.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/zk-acl-03.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/zk-acl-04.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/session01.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/session02.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/session03.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/session04.png">
+<meta property="article:published_time" content="2021-12-23T14:43:48.000Z">
+<meta property="article:modified_time" content="2021-12-23T14:44:29.030Z">
+<meta property="article:author" content="Lei">
+<meta property="article:tag" content="zookeeper">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leoleiv8x.github.io/images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/zk-acl-01.png">
+
+<link rel="canonical" href="https://leoleiv8x.github.io/posts/dc83.html">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>ZK的ACL和Session原理 | LENO</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">LENO</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Keep track of your life</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/dc83.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ZK的ACL和Session原理
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-12-23 22:43:48 / 修改时间：22:44:29" itemprop="dateCreated datePublished" datetime="2021-12-23T22:43:48+08:00">2021-12-23</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.2k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>2 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <span id="more"></span>
+
+<p>根据ZK的API我们知道有参数<strong>WATCH,ACL</strong>等参数和<strong>单个Session</strong>的概念,所以我们对其进行详细的讲解</p>
+<h2 id="ACL"><a href="#ACL" class="headerlink" title="ACL"></a>ACL</h2><p>zookeeper 的 ACL（Access Control List，访问控制表）权限在生产环境是特别重要的，所以本章节特别介绍一下。</p>
+<p>ACL 权限可以针对节点设置相关读写等权限，保障数据安全性。</p>
+<p>permissions 可以指定不同的权限范围及角色。</p>
+<h3 id="ACL-命令行"><a href="#ACL-命令行" class="headerlink" title="ACL 命令行"></a>ACL 命令行</h3><ul>
+<li><strong>getAcl 命令</strong>：获取某个节点的 acl 权限信息。</li>
+<li><strong>setAcl 命令</strong>：设置某个节点的 acl 权限信息。</li>
+<li><strong>addauth 命令</strong>：输入认证授权信息，注册时输入明文密码，加密形式保存。</li>
+</ul>
+<h3 id="ACL-构成"><a href="#ACL-构成" class="headerlink" title="ACL 构成"></a>ACL 构成</h3><p>zookeeper 的 acl 通过 <strong>[scheme:id:permissions]</strong> 来构成权限列表。</p>
+<ul>
+<li>1、<strong>scheme</strong>：代表采用的某种权限机制，包括 world、auth、digest、ip、super 几种。</li>
+<li>2、<strong>id</strong>：代表允许访问的用户。</li>
+<li>3、<strong>permissions</strong>：权限组合字符串，由 cdrwa 组成，其中每个字母代表支持不同权限， 创建权限 create(c)、删除权限 delete(d)、读权限 read(r)、写权限 write(w)、管理权限admin(a)。</li>
+</ul>
+<h3 id="world-实例"><a href="#world-实例" class="headerlink" title="world 实例"></a>world 实例</h3><p>查看默认节点权限，再更新节点 permissions 权限部分为 crwa，结果删除节点失败。其中 world 代表开放式权限。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ getAcl /runoob/child</span><br><span class="line">$ setAcl /runoob/child world:anyone:crwa</span><br><span class="line">$ delete /runoob/child</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/zk-acl-01.png" alt="img"></p>
+<h3 id="auth-实例"><a href="#auth-实例" class="headerlink" title="auth 实例"></a>auth 实例</h3><p>auth 用于授予权限，注意需要先创建用户。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ setAcl /runoob/child auth:user1:123456:cdrwa</span><br><span class="line">$ addauth digest user1:123456</span><br><span class="line">$ setAcl /runoob/child auth:user1:123456:cdrwa</span><br><span class="line">$ getAcl /runoob/child</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/zk-acl-02.png" alt="img"></p>
+<h3 id="digest-实例"><a href="#digest-实例" class="headerlink" title="digest 实例"></a>digest 实例</h3><p>退出当前用户，重新连接终端，digest 可用于账号密码登录和验证。。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">$ ls /runoob</span><br><span class="line">$ create /runoob/child01 runoob</span><br><span class="line">$ getAcl /runoob/child01</span><br><span class="line">$ setAcl /runoob/child01 digest:user1:HYGa7IZRm2PUBFiFFu8xY2pPP/s=:cdra</span><br><span class="line">$ getAcl /runoob/child01</span><br><span class="line">$ addauth digest user1:123456</span><br><span class="line">$ getAcl /runoob/child01</span><br></pre></td></tr></table></figure>
+
+<p><strong>提示：</strong>加密密码是上一步创建的。</p>
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/zk-acl-03.png" alt="img"></p>
+<h3 id="IP-实例"><a href="#IP-实例" class="headerlink" title="IP 实例"></a>IP 实例</h3><p>限制 IP 地址的访问权限，把权限设置给 IP 地址为 192.168.3.7 后，IP 为 192.168.3.38 已经没有访问权限。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ create /runoob/ip 0</span><br><span class="line">$ getAcl /runoob/ip</span><br><span class="line">$ setAcl /runoob/ip ip:192.168.3.7:cdrwa</span><br><span class="line">$ get /runoob/ip</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/zk-acl-04.png" alt="img"></p>
+<h2 id="Session原理"><a href="#Session原理" class="headerlink" title="Session原理"></a>Session原理</h2><p>客户端与服务端之间的连接是基于 TCP 长连接，client 端连接 server 端默认的 2181 端口，也就是 session 会话。</p>
+<p>从第一次连接建立开始，客户端开始会话的生命周期，客户端向服务端的ping包请求，每个会话都可以设置一个超时时间。</p>
+<h3 id="Session-的创建"><a href="#Session-的创建" class="headerlink" title="Session 的创建"></a>Session 的创建</h3><p><strong>sessionID</strong>: 会话ID，用来唯一标识一个会话，每次客户端创建会话的时候，zookeeper 都会为其分配一个全局唯一的 sessionID。zookeeper 创建 sessionID 类 SessionTrackerImpl 中的源码。</p>
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/session01.png" alt="img"></p>
+<p><strong>Timeout</strong>：会话超时时间。客户端在构造 Zookeeper 实例时候，向服务端发送配置的超时时间，server 端会根据自己的超时时间限制最终确认会话的超时时间。</p>
+<p><strong>TickTime</strong>：下次会话超时时间点，默认 2000 毫秒。可在 zoo.cfg 配置文件中配置，便于 server 端对 session 会话实行<strong>分桶策略管理</strong>。</p>
+<p><strong>isClosing</strong>：该属性标记一个会话是否已经被关闭，当 server 端检测到会话已经超时失效，该会话标记为”已关闭”，不再处理该会话的新请求。</p>
+<h3 id="Session-的状态"><a href="#Session-的状态" class="headerlink" title="Session 的状态"></a>Session 的状态</h3><p>下面介绍几个重要的状态：</p>
+<ul>
+<li><strong>connecting</strong>：连接中，session 一旦建立，状态就是 connecting 状态，时间很短。</li>
+<li><strong>connected</strong>：已连接，连接成功之后的状态。</li>
+<li><strong>closed</strong>：已关闭，发生在 session 过期，一般由于网络故障客户端重连失败，服务器宕机或者客户端主动断开。</li>
+</ul>
+<h3 id="会话超时管理（分桶策略-会话激活）"><a href="#会话超时管理（分桶策略-会话激活）" class="headerlink" title="会话超时管理（分桶策略+会话激活）"></a>会话超时管理（分桶策略+会话激活）</h3><p>zookeeper 的 leader 服务器再运行期间定时进行会话超时检查，时间间隔是 ExpirationInterval，单位是毫秒，默认值是 tickTime，每隔 tickTime 进行一次会话超时检查。</p>
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/session02.png" alt="img"></p>
+<p>ExpirationTime 的计算方式:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ExpirationTime = CurrentTime + SessionTimeout;</span><br><span class="line">ExpirationTime = (ExpirationTime / ExpirationInterval + 1) * ExpirationInterval;</span><br></pre></td></tr></table></figure>
+
+<p>在 zookeeper 运行过程中，客户端会在会话超时过期范围内向服务器发送请求（包括读和写）或者 ping 请求，俗称<strong>心跳检测</strong>完成会话激活，从而来保持会话的有效性。</p>
+<p>会话激活流程：</p>
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/session03.png" alt="img"></p>
+<p>激活后进行迁移会话的过程，然后开始新一轮：</p>
+<p><img data-src="../images/ZK%E7%9A%84ACL%E5%92%8CSession%E5%8E%9F%E7%90%86.asset/session04.png" alt="img"></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+             <div class="post-tags">
+              <a href="/tags/zookeeper/" rel="tag"><i class="fa fa-tag"></i> zookeeper</a>
+          </div>
+          <script type="text/javascript">
+            var tagsall=document.getElementsByClassName("post-tags")
+            for (var i = tagsall.length - 1; i >= 0; i--){
+                var tags=tagsall[i].getElementsByTagName("a");
+                for (var j = tags.length - 1; j >= 0; j--) {
+                    var golden_ratio = 0.618033988749895;
+                    var s = 0.5;
+                    var v = 0.999;
+                    var h = golden_ratio + Math.random()*0.8 - 0.5;
+                    var h_i = parseInt(h * 6);
+                    var f = h * 6 - h_i;
+                    var p = v * (1 - s);
+                    var q = v * (1 - f * s);
+                    var t = v * (1 - (1 - f) * s);
+                    var r, g, b;
+                    switch (h_i) {
+                        case 0:
+                            r = v;
+                            g = t;
+                            b = p;
+                            break;
+                        case 1:
+                            r = q;
+                            g = v;
+                            b = p;
+                            break;
+                        case 2:
+                            r = p;
+                            g = v;
+                            b = t;
+                            break;
+                        case 3 :
+                            r = p;
+                            g = q;
+                            b = v;
+                            break;
+                        case 4:
+                            r = t;
+                            g = p;
+                            b = v;
+                            break;
+                        case 5:
+                            r = v;
+                            g = p;
+                            b = q;
+                            break;
+                        default:
+                            r = 1;
+                            g = 1;
+                            b = 1;
+                      }
+                    tags[j].style.background = "rgba("+parseInt(r*255)+","+parseInt(g*255)+","+parseInt(b*255)+","+0.5+")";
+                }
+            }                        
+            </script>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/posts/9aad.html" rel="prev" title="ZooKeeper数据模型和znode详解">
+      <i class="fa fa-chevron-left"></i> ZooKeeper数据模型和znode详解
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/posts/7a93.html" rel="next" title="ZooKeeper的数据同步流程和Leader选举原理">
+      ZooKeeper的数据同步流程和Leader选举原理 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#ACL"><span class="nav-number">1.</span> <span class="nav-text">ACL</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ACL-%E5%91%BD%E4%BB%A4%E8%A1%8C"><span class="nav-number">1.1.</span> <span class="nav-text">ACL 命令行</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ACL-%E6%9E%84%E6%88%90"><span class="nav-number">1.2.</span> <span class="nav-text">ACL 构成</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#world-%E5%AE%9E%E4%BE%8B"><span class="nav-number">1.3.</span> <span class="nav-text">world 实例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#auth-%E5%AE%9E%E4%BE%8B"><span class="nav-number">1.4.</span> <span class="nav-text">auth 实例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#digest-%E5%AE%9E%E4%BE%8B"><span class="nav-number">1.5.</span> <span class="nav-text">digest 实例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#IP-%E5%AE%9E%E4%BE%8B"><span class="nav-number">1.6.</span> <span class="nav-text">IP 实例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Session%E5%8E%9F%E7%90%86"><span class="nav-number">2.</span> <span class="nav-text">Session原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Session-%E7%9A%84%E5%88%9B%E5%BB%BA"><span class="nav-number">2.1.</span> <span class="nav-text">Session 的创建</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Session-%E7%9A%84%E7%8A%B6%E6%80%81"><span class="nav-number">2.2.</span> <span class="nav-text">Session 的状态</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%9A%E8%AF%9D%E8%B6%85%E6%97%B6%E7%AE%A1%E7%90%86%EF%BC%88%E5%88%86%E6%A1%B6%E7%AD%96%E7%95%A5-%E4%BC%9A%E8%AF%9D%E6%BF%80%E6%B4%BB%EF%BC%89"><span class="nav-number">2.3.</span> <span class="nav-text">会话超时管理（分桶策略+会话激活）</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Lei"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Lei</p>
+  <div class="site-description" itemprop="description">The Art of Code Documentation</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">38</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/leoleiv8x" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;leoleiv8x" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/qq_43583755" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;qq_43583755" rel="noopener" target="_blank"><i class="fab fa-telegram fa-fw"></i>CSDN</a>
+      </span>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Lei</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">104k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">1:35</span>
+</div>
+
+<!-- 网站运行时间的设置 -->
+<span id="timeDate">载入天数...</span>
+<span id="times">载入时分秒...</span>
+<script>
+    var now = new Date();
+    function createtime() {
+        var grt= new Date("12/12/2021 12:00:00");//此处修改你的建站时间或者网站上线时间
+        now.setTime(now.getTime()+250);
+        days = (now - grt ) / 1000 / 60 / 60 / 24; dnum = Math.floor(days);
+        hours = (now - grt ) / 1000 / 60 / 60 - (24 * dnum); hnum = Math.floor(hours);
+        if(String(hnum).length ==1 ){hnum = "0" + hnum;} minutes = (now - grt ) / 1000 /60 - (24 * 60 * dnum) - (60 * hnum);
+        mnum = Math.floor(minutes); if(String(mnum).length ==1 ){mnum = "0" + mnum;}
+        seconds = (now - grt ) / 1000 - (24 * 60 * 60 * dnum) - (60 * 60 * hnum) - (60 * mnum);
+        snum = Math.round(seconds); if(String(snum).length ==1 ){snum = "0" + snum;}
+        document.getElementById("timeDate").innerHTML = "本站已安全运行 "+dnum+" 天 ";
+        document.getElementById("times").innerHTML = hnum + " 小时 " + mnum + " 分 " + snum + " 秒";
+    }
+    setInterval("createtime()",250);
+</script>
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+<span><br></span> 
+
+<span class="post-meta-item-icon">
+      <i class="fa fa-user"></i>
+</span>
+<span>总访客&nbsp<span id="busuanzi_value_site_uv"></span>&nbsp人</span>
+    <span class="post-meta-divider">|</span>
+<span class="post-meta-item-icon">
+      <i class="fa fa-eye"></i>
+</span>
+    <span>总访问量&nbsp<span id="busuanzi_value_site_pv"></span>&nbsp次</span>
+
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/lozad@1/dist/lozad.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"jsonPath":"/live2dw/assets/assets/hijiki.model.json"},"display":{"position":"right","width":150,"height":300},"mobile":{"show":true},"react":{"opacity":0.7},"log":false});</script></body>
+</html>

@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"leoleiv8x.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":true,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="简介针对官方文档进行的翻译和着重,也可以参照菜鸟教程-zookeeper ZooKeeper:针对分布式应用的分布式协调服务ZooKeeper是一个分布式、开源的分布式应用协调服务。它公开了一组简单的原语，分布式应用程序可以在此基础上构建，以实现同步、配置维护、组和命名等更高级别的服务。它的设计是易于编程的，并使用了一个数据模型，其样式类似于熟悉的文件系统的目录树结构。它在Java中运行，并且有J">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ZooKeeper">
+<meta property="og:url" content="https://leoleiv8x.github.io/posts/1cac.html">
+<meta property="og:site_name" content="LENO">
+<meta property="og:description" content="简介针对官方文档进行的翻译和着重,也可以参照菜鸟教程-zookeeper ZooKeeper:针对分布式应用的分布式协调服务ZooKeeper是一个分布式、开源的分布式应用协调服务。它公开了一组简单的原语，分布式应用程序可以在此基础上构建，以实现同步、配置维护、组和命名等更高级别的服务。它的设计是易于编程的，并使用了一个数据模型，其样式类似于熟悉的文件系统的目录树结构。它在Java中运行，并且有J">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/ZooKeeper.asset/1640069286990.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/ZooKeeper.asset/image-20211221224838094.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/ZooKeeper.asset/image-20211221223038840.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/ZooKeeper.asset/image-20211221222638446.png">
+<meta property="article:published_time" content="2021-12-21T14:19:02.000Z">
+<meta property="article:modified_time" content="2021-12-23T02:01:53.000Z">
+<meta property="article:author" content="Lei">
+<meta property="article:tag" content="zookeeper简介">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leoleiv8x.github.io/images/ZooKeeper.asset/1640069286990.png">
+
+<link rel="canonical" href="https://leoleiv8x.github.io/posts/1cac.html">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>ZooKeeper | LENO</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">LENO</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Keep track of your life</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/1cac.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ZooKeeper
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-12-21 22:19:02" itemprop="dateCreated datePublished" datetime="2021-12-21T22:19:02+08:00">2021-12-21</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-23 10:01:53" itemprop="dateModified" datetime="2021-12-23T10:01:53+08:00">2021-12-23</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.7k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>2 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><p>针对官方文档进行的翻译和着重,也可以参照<a target="_blank" rel="noopener" href="https://www.runoob.com/w3cnote/zookeeper-tutorial.html">菜鸟教程-zookeeper</a></p>
+<h3 id="ZooKeeper-针对分布式应用的分布式协调服务"><a href="#ZooKeeper-针对分布式应用的分布式协调服务" class="headerlink" title="ZooKeeper:针对分布式应用的分布式协调服务"></a><a target="_blank" rel="noopener" href="https://zookeeper.apache.org/doc/r3.7.0/zookeeperOver.html">ZooKeeper</a>:针对分布式应用的分布式协调服务</h3><p><a target="_blank" rel="noopener" href="https://zookeeper.apache.org/doc/r3.7.0/zookeeperOver.html">ZooKeeper</a>是一个<strong>分布式、开源的分布式应用协调服务</strong>。它公开了一组简单的原语，分布式应用程序可以在此基础上构建，以实现同步、配置维护、组和命名等更高级别的服务。它的设计是易于编程的，并使用了一个数据模型，其样式类似于熟悉的文件系统的目录树结构。它在Java中运行，并且有Java和C的绑定。众所周知，协调服务很难做好。它们特别容易出现竞争条件和死锁等错误</p>
+<span id="more"></span>
+
+<h3 id="设计目的-特点"><a href="#设计目的-特点" class="headerlink" title="设计目的(特点)"></a>设计目的(特点)</h3><h4 id="simple"><a href="#simple" class="headerlink" title="simple"></a><strong>simple</strong></h4><p>ZooKeeper允许分布式进程<strong>通过一个共享的层次命名空间相互协调</strong>，这个命名空间的组织方式类似于标准的文件系统。命名空间由数据寄存器组成——用ZooKeeper的话说叫做<strong>znode——它们类似于文件和目录</strong>。与典型的存储文件系统不同，<strong>ZooKeeper的数据保存在内存中</strong>，这意味着ZooKeeper可以实现高吞吐量和低时延 </p>
+<p>ZooKeeper的实现<strong>注重高性能、高可用性和严格的有序访问</strong>。ZooKeeper的性能方面意味着它可以在大型分布式系统中使用。可靠性方面使它不会成为单点故障。严格的顺序意味着复杂的同步原语可以在客户机上实现 </p>
+<h4 id="replicated"><a href="#replicated" class="headerlink" title="replicated"></a><strong>replicated</strong></h4><p>就像它所协调的分布式进程一样，ZooKeeper本身也被复制到一组称为集合的主机上**(主从复制)**</p>
+<p><strong>组成ZooKeeper服务的服务器必须互相了解</strong>。它们维护内存中的状态映像、事务日志和持久化存储中的快照。<strong>只要大多数服务器可用，ZooKeeper服务就可用</strong>。</p>
+<p>客户端连接到单个ZooKeeper服务器。<strong>客户机维护一个TCP连接，通过该连接发送请求、获取响应、监视事件和发送心跳</strong>。如果到服务器的TCP连接断开，客户端将连接到另一个服务器</p>
+<h4 id="ordered"><a href="#ordered" class="headerlink" title="ordered"></a><strong>ordered</strong></h4><p>ZooKeeper会给每个更新戳一个数字，这个数字<strong>反映了所有ZooKeeper事务的顺序</strong>。后续操作可以使用该顺序来实现更高级的抽象，比如同步原语。 </p>
+<h4 id="fast"><a href="#fast" class="headerlink" title="fast"></a><strong>fast</strong></h4><p>在“读为主”的工作负载中，它的<strong>速度尤其快</strong>。ZooKeeper应用程序运行在数千台机器上，<strong>当读比写更常见时，它的性能最好，比率约为10:1。</strong> </p>
+<h3 id="数据模型和分层名称空间"><a href="#数据模型和分层名称空间" class="headerlink" title="数据模型和分层名称空间"></a>数据模型和分层名称空间</h3><p>ZooKeeper提供的命名空间<strong>很像标准文件系统的命名空间</strong>。名称是一个由斜杠(/)分隔的路径元素序列。ZooKeeper命名空间中的每个节点都有一个路径来标识。 </p>
+<p><img data-src="../images/ZooKeeper.asset/1640069286990.png" alt="1640069286990"></p>
+<h3 id="节点和临时节点"><a href="#节点和临时节点" class="headerlink" title="节点和临时节点"></a>节点和临时节点</h3><p>与标准的文件系统不同，ZooKeeper名称空间中的<strong>每个节点都可以有与其关联的数据以及子节点</strong>。这就像拥有一个允许文件同时也是目录的文件系统。(ZooKeeper是用来<strong>存储协调数据的:状态信息、配置信息、位置信息</strong>等，所以每个节点存储的<strong>数据通常很小</strong>，在字节到千字节之间。)我们使用<strong>术语znode</strong>来说明我们谈论的是ZooKeeper数据节点。 </p>
+<p>znode维护一个统计结构，其中包括<strong>数据更改的版本号、ACL更改和时间戳</strong>，以允许缓存验证和协调更新。znode的数据<strong>每次更改，版本号就会增加</strong>。例如，每当客户端检索数据时，它也会接收到数据的版本。 </p>
+<p>存储在名称空间中的每个znode上的数据是原子式读写的。<strong>读获取与znode关联的所有数据字节，写则替换所有数据</strong>。每个节点都有一个访问控制列表(Access Control List, ACL)来限制谁可以做什么。 </p>
+<p>ZooKeeper也有<strong>临时节点</strong>的概念。<strong>只要创建znode的会话处于活动状态，这些znode就会存在。当会话结束时，删除znode。</strong> </p>
+<ul>
+<li>持久节点</li>
+<li>临时节点(session)</li>
+<li>序列节点</li>
+</ul>
+<p><img data-src="../images/ZooKeeper.asset/image-20211221224838094.png" alt="image-20211221224838094"></p>
+<h3 id="条件更新和监视"><a href="#条件更新和监视" class="headerlink" title="条件更新和监视"></a>条件更新和监视</h3><p>ZooKeeper支持watch的概念。<strong>客户端可以在znode上设置监视。当znode发生变化时，将触发并删除一个watch</strong>。当<strong>一个监视被触发时，客户端收到一个数据包，说znode已经改变了</strong>。如果客户端与其中一个ZooKeeper服务器的连接<strong>断开，客户端会收到本地的通知。</strong></p>
+<p>3.6.0新功能:客户端还可以在znode上设置<strong>永久的递归监视</strong>，这些监视在被触发时不会被删除，并且会触发已注册的znode以及任何子znode的变化。</p>
+<h3 id="担保"><a href="#担保" class="headerlink" title="担保"></a>担保</h3><p>ZooKeeper非常快速和简单。但是，由于它的目标是作为构建更复杂服务(如同步)的基础，因此它提供了一组保证。这些都是:</p>
+<h4 id="顺序一致性"><a href="#顺序一致性" class="headerlink" title="顺序一致性"></a>顺序一致性</h4><p>客户端的更新将按照发送的顺序进行。</p>
+<h4 id="原子性"><a href="#原子性" class="headerlink" title="原子性"></a>原子性</h4><p>更新成功或失败没有部分结果。</p>
+<h4 id="单系统映像"><a href="#单系统映像" class="headerlink" title="单系统映像"></a>单系统映像</h4><p>客户机将看到相同的服务视图，而不管它连接到哪个服务器。也就是说，客户端永远不会看到系统的旧视图，即使客户端使用相同的会话故障转移到不同的服务器。</p>
+<h4 id="可靠性"><a href="#可靠性" class="headerlink" title="可靠性"></a>可靠性</h4><p>一旦应用了更新，它将从那时起持续存在，直到客户端覆盖更新。</p>
+<h4 id="及时性"><a href="#及时性" class="headerlink" title="及时性"></a>及时性</h4><p>保证系统的客户端视图在一定的时间范围内是最新的。</p>
+<p><img data-src="../images/ZooKeeper.asset/image-20211221223038840.png" alt="image-20211221223038840"></p>
+<h3 id="简单的API"><a href="#简单的API" class="headerlink" title="简单的API"></a>简单的API</h3><p>ZooKeeper的设计目标之一是提供一个非常简单的编程接口。因此，它只支持以下操作:</p>
+<ul>
+<li><em>create</em> : creates a node at a location in the tree</li>
+<li><em>delete</em> : deletes a node</li>
+<li><em>exists</em> : tests if a node exists at a location</li>
+<li><em>get data</em> : reads the data from a node</li>
+<li><em>set data</em> : writes data to a node</li>
+<li><em>get children</em> : retrieves a list of children of a node</li>
+<li><em>sync</em> : waits for data to be propagated</li>
+</ul>
+<h3 id="实施"><a href="#实施" class="headerlink" title="实施"></a>实施</h3><p>ZooKeeper组件展示了ZooKeeper服务的高级组件。除了请求处理器之外，<strong>每个组成ZooKeeper服务的服务器都会复制自己的组件副本</strong>。</p>
+<p>复制的数据库是包含整个数据树的内存数据库。<strong>更新被记录到磁盘以实现可恢复性，写操作在应用到内存数据库之前被序列化到磁盘</strong>。</p>
+<p><strong>每个ZooKeeper服务器都为客户端提供服务</strong>。客户端连接到一个服务器来提交请求。读取请求由每个服务器数据库的本地副本提供服务。改变服务状态的请求(写请求)由协议协议处理。</p>
+<p>作为协议的一部分，<strong>所有来自客户端的写请求都被转发到一个称为leader的服务器上</strong>。<strong>剩下的ZooKeeper服务器，称为follower，接收来自leader的消息提议，并同意消息传递</strong>。<strong>消息层负责在失败时替换领导者，并将追随者与领导者同步</strong>。</p>
+<p>ZooKeeper使用自定义的原子消息传递协议。由于消息层是原子的，<strong>ZooKeeper可以保证本地副本不会发散</strong>。当leader收到写请求时，它会计算出系统的状态，并将其转换为一个事务来捕获这个新状态。</p>
+<ul>
+<li><p>follower    读</p>
+</li>
+<li><p>leader      读写</p>
+</li>
+<li><p>临时节点有session</p>
+</li>
+<li><p>znode存的数据很小,目的是不要把zookeeper当数据库用</p>
+</li>
+</ul>
+<p> <img data-src="../images/ZooKeeper.asset/image-20211221222638446.png" alt="image-20211221222638446"></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+             <div class="post-tags">
+              <a href="/tags/zookeeper%E7%AE%80%E4%BB%8B/" rel="tag"><i class="fa fa-tag"></i> zookeeper简介</a>
+          </div>
+          <script type="text/javascript">
+            var tagsall=document.getElementsByClassName("post-tags")
+            for (var i = tagsall.length - 1; i >= 0; i--){
+                var tags=tagsall[i].getElementsByTagName("a");
+                for (var j = tags.length - 1; j >= 0; j--) {
+                    var golden_ratio = 0.618033988749895;
+                    var s = 0.5;
+                    var v = 0.999;
+                    var h = golden_ratio + Math.random()*0.8 - 0.5;
+                    var h_i = parseInt(h * 6);
+                    var f = h * 6 - h_i;
+                    var p = v * (1 - s);
+                    var q = v * (1 - f * s);
+                    var t = v * (1 - (1 - f) * s);
+                    var r, g, b;
+                    switch (h_i) {
+                        case 0:
+                            r = v;
+                            g = t;
+                            b = p;
+                            break;
+                        case 1:
+                            r = q;
+                            g = v;
+                            b = p;
+                            break;
+                        case 2:
+                            r = p;
+                            g = v;
+                            b = t;
+                            break;
+                        case 3 :
+                            r = p;
+                            g = q;
+                            b = v;
+                            break;
+                        case 4:
+                            r = t;
+                            g = p;
+                            b = v;
+                            break;
+                        case 5:
+                            r = v;
+                            g = p;
+                            b = q;
+                            break;
+                        default:
+                            r = 1;
+                            g = 1;
+                            b = 1;
+                      }
+                    tags[j].style.background = "rgba("+parseInt(r*255)+","+parseInt(g*255)+","+parseInt(b*255)+","+0.5+")";
+                }
+            }                        
+            </script>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/posts/6a1c.html" rel="prev" title="redis相关API代码实现">
+      <i class="fa fa-chevron-left"></i> redis相关API代码实现
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/posts/7fb0.html" rel="next" title="ZooKeeper安装验证和简单使用">
+      ZooKeeper安装验证和简单使用 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%80%E4%BB%8B"><span class="nav-number">1.</span> <span class="nav-text">简介</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ZooKeeper-%E9%92%88%E5%AF%B9%E5%88%86%E5%B8%83%E5%BC%8F%E5%BA%94%E7%94%A8%E7%9A%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%8D%8F%E8%B0%83%E6%9C%8D%E5%8A%A1"><span class="nav-number">1.1.</span> <span class="nav-text">ZooKeeper:针对分布式应用的分布式协调服务</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AE%BE%E8%AE%A1%E7%9B%AE%E7%9A%84-%E7%89%B9%E7%82%B9"><span class="nav-number">1.2.</span> <span class="nav-text">设计目的(特点)</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#simple"><span class="nav-number">1.2.1.</span> <span class="nav-text">simple</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#replicated"><span class="nav-number">1.2.2.</span> <span class="nav-text">replicated</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ordered"><span class="nav-number">1.2.3.</span> <span class="nav-text">ordered</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#fast"><span class="nav-number">1.2.4.</span> <span class="nav-text">fast</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E5%92%8C%E5%88%86%E5%B1%82%E5%90%8D%E7%A7%B0%E7%A9%BA%E9%97%B4"><span class="nav-number">1.3.</span> <span class="nav-text">数据模型和分层名称空间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%8A%82%E7%82%B9%E5%92%8C%E4%B8%B4%E6%97%B6%E8%8A%82%E7%82%B9"><span class="nav-number">1.4.</span> <span class="nav-text">节点和临时节点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9D%A1%E4%BB%B6%E6%9B%B4%E6%96%B0%E5%92%8C%E7%9B%91%E8%A7%86"><span class="nav-number">1.5.</span> <span class="nav-text">条件更新和监视</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%85%E4%BF%9D"><span class="nav-number">1.6.</span> <span class="nav-text">担保</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%A1%BA%E5%BA%8F%E4%B8%80%E8%87%B4%E6%80%A7"><span class="nav-number">1.6.1.</span> <span class="nav-text">顺序一致性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8E%9F%E5%AD%90%E6%80%A7"><span class="nav-number">1.6.2.</span> <span class="nav-text">原子性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8D%95%E7%B3%BB%E7%BB%9F%E6%98%A0%E5%83%8F"><span class="nav-number">1.6.3.</span> <span class="nav-text">单系统映像</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8F%AF%E9%9D%A0%E6%80%A7"><span class="nav-number">1.6.4.</span> <span class="nav-text">可靠性</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8F%8A%E6%97%B6%E6%80%A7"><span class="nav-number">1.6.5.</span> <span class="nav-text">及时性</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AE%80%E5%8D%95%E7%9A%84API"><span class="nav-number">1.7.</span> <span class="nav-text">简单的API</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E6%96%BD"><span class="nav-number">1.8.</span> <span class="nav-text">实施</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Lei"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Lei</p>
+  <div class="site-description" itemprop="description">The Art of Code Documentation</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">38</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/leoleiv8x" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;leoleiv8x" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/qq_43583755" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;qq_43583755" rel="noopener" target="_blank"><i class="fab fa-telegram fa-fw"></i>CSDN</a>
+      </span>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Lei</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">104k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">1:35</span>
+</div>
+
+<!-- 网站运行时间的设置 -->
+<span id="timeDate">载入天数...</span>
+<span id="times">载入时分秒...</span>
+<script>
+    var now = new Date();
+    function createtime() {
+        var grt= new Date("12/12/2021 12:00:00");//此处修改你的建站时间或者网站上线时间
+        now.setTime(now.getTime()+250);
+        days = (now - grt ) / 1000 / 60 / 60 / 24; dnum = Math.floor(days);
+        hours = (now - grt ) / 1000 / 60 / 60 - (24 * dnum); hnum = Math.floor(hours);
+        if(String(hnum).length ==1 ){hnum = "0" + hnum;} minutes = (now - grt ) / 1000 /60 - (24 * 60 * dnum) - (60 * hnum);
+        mnum = Math.floor(minutes); if(String(mnum).length ==1 ){mnum = "0" + mnum;}
+        seconds = (now - grt ) / 1000 - (24 * 60 * 60 * dnum) - (60 * 60 * hnum) - (60 * mnum);
+        snum = Math.round(seconds); if(String(snum).length ==1 ){snum = "0" + snum;}
+        document.getElementById("timeDate").innerHTML = "本站已安全运行 "+dnum+" 天 ";
+        document.getElementById("times").innerHTML = hnum + " 小时 " + mnum + " 分 " + snum + " 秒";
+    }
+    setInterval("createtime()",250);
+</script>
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+<span><br></span> 
+
+<span class="post-meta-item-icon">
+      <i class="fa fa-user"></i>
+</span>
+<span>总访客&nbsp<span id="busuanzi_value_site_uv"></span>&nbsp人</span>
+    <span class="post-meta-divider">|</span>
+<span class="post-meta-item-icon">
+      <i class="fa fa-eye"></i>
+</span>
+    <span>总访问量&nbsp<span id="busuanzi_value_site_pv"></span>&nbsp次</span>
+
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/lozad@1/dist/lozad.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"jsonPath":"/live2dw/assets/assets/hijiki.model.json"},"display":{"position":"right","width":150,"height":300},"mobile":{"show":true},"react":{"opacity":0.7},"log":false});</script></body>
+</html>
