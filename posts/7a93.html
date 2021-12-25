@@ -31,8 +31,10 @@
 <meta property="og:image" content="https://leoleiv8x.github.io/images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/image-20211223232310773.png">
 <meta property="og:image" content="https://leoleiv8x.github.io/images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/zk-data-stream-async.png">
 <meta property="og:image" content="https://leoleiv8x.github.io/images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/image-20211223230118238.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/1640327491487.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/1640327784269.png">
 <meta property="article:published_time" content="2021-12-23T14:57:04.000Z">
-<meta property="article:modified_time" content="2021-12-23T15:45:16.464Z">
+<meta property="article:modified_time" content="2021-12-25T04:41:36.416Z">
 <meta property="article:author" content="Lei">
 <meta property="article:tag" content="zookeeper">
 <meta property="article:tag" content="ZK的数据同步流程">
@@ -223,10 +225,16 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2021-12-23 22:57:04 / 修改时间：23:45:16" itemprop="dateCreated datePublished" datetime="2021-12-23T22:57:04+08:00">2021-12-23</time>
+              <time title="创建时间：2021-12-23 22:57:04" itemprop="dateCreated datePublished" datetime="2021-12-23T22:57:04+08:00">2021-12-23</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-25 12:41:36" itemprop="dateModified" datetime="2021-12-25T12:41:36+08:00">2021-12-25</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -243,14 +251,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>1.8k</span>
+              <span>3.2k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>2 分钟</span>
+              <span>3 分钟</span>
             </span>
 
         </div>
@@ -333,7 +341,51 @@
 <p>通过ZK提供的sync方法来同步leader然后再返回client</p>
 </li>
 </ul>
-<h2 id="Zookeeper-Leader-选举原理-ZAB无主"><a href="#Zookeeper-Leader-选举原理-ZAB无主" class="headerlink" title="Zookeeper Leader 选举原理(ZAB无主)"></a>Zookeeper Leader 选举原理(ZAB无主)</h2>
+<h2 id="Zookeeper-Leader-选举原理-ZAB无主"><a href="#Zookeeper-Leader-选举原理-ZAB无主" class="headerlink" title="Zookeeper Leader 选举原理(ZAB无主)"></a>Zookeeper Leader 选举原理(ZAB无主)</h2><p>zookeeper 的 leader 选举存在两个阶段，一个是服务器启动时 leader 选举，另一个是运行过程中 leader 服务器宕机。在分析选举原理前，先介绍几个重要的参数。</p>
+<ul>
+<li>服务器 ID(myid)：编号越大在选举算法中权重越大</li>
+<li>事务 ID(zxid)：值越大说明数据越新，权重越大</li>
+<li>逻辑时钟(epoch-logicalclock)：同一轮投票过程中的逻辑时钟值是相同的，每投完一次值会增加</li>
+<li><strong>选举状态：</strong><ul>
+<li><strong>LOOKING</strong>: 竞选状态</li>
+<li><strong>FOLLOWING</strong>: 随从状态，同步 leader 状态，参与投票</li>
+<li><strong>OBSERVING</strong>: 观察状态，同步 leader 状态，不参与投票</li>
+<li><strong>LEADING</strong>: 领导者状态</li>
+</ul>
+</li>
+</ul>
+<h2 id="1、服务器启动时的-leader-选举"><a href="#1、服务器启动时的-leader-选举" class="headerlink" title="1、服务器启动时的 leader 选举"></a>1、服务器启动时的 leader 选举</h2><h3 id="发起投票"><a href="#发起投票" class="headerlink" title="发起投票"></a>发起投票</h3><p>每台 server 发出一个投票，由于是初始情况，server1 和 server2 都将自己作为 leader 服务器进行投票，每次投票包含所推举的服务器myid、zxid、epoch，使用（myid，zxid）表示，此时 server1 投票为（1,0），server2 投票为（2,0），然后将各自投票发送给集群中其他机器 </p>
+<h3 id="接受投票"><a href="#接受投票" class="headerlink" title="接受投票"></a>接受投票</h3><p>接收来自各个服务器的投票。集群中的每个服务器收到投票后，首先判断该投票的有效性，如检查是否是本轮投票（epoch）、是否来自 LOOKING 状态的服务器 </p>
+<h3 id="处理投票"><a href="#处理投票" class="headerlink" title="处理投票"></a>处理投票</h3><p>分别处理投票。针对每一次投票，服务器都需要将其他服务器的投票和自己的投票进行对比，对比规则如下：</p>
+<ul>
+<li>优先比较 epoch</li>
+<li>检查 zxid，zxid 比较大的服务器优先作为 leader</li>
+<li>如果 zxid 相同，那么就比较 myid，myid 较大的服务器作为 leader 服务器</li>
+</ul>
+<h3 id="统计投票"><a href="#统计投票" class="headerlink" title="统计投票"></a>统计投票</h3><p>统计投票。<strong>每次投票后，服务器统计投票信息，判断是都有过半机器接收到相同的投票信息</strong>。server1、server2 都统计出集群中有两台机器接受了（2,0）的投票信息，此时已经选出了 server2 为 leader 节点 </p>
+<h3 id="改变服务器状态"><a href="#改变服务器状态" class="headerlink" title="改变服务器状态"></a>改变服务器状态</h3><p>改变服务器状态 .一旦确定了 leader，每个服务器响应更新自己的状态，如果是 follower，那么就变更为 FOLLOWING，如果是 Leader，变更为 LEADING。此时 server3继续启动，直接加入变更自己为 FOLLOWING </p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/1640327491487.png" alt="1640327491487"></p>
+<h2 id="2、运行过程中的-leader-选举"><a href="#2、运行过程中的-leader-选举" class="headerlink" title="2、运行过程中的 leader 选举"></a>2、运行过程中的 leader 选举</h2><p>当集群中 leader 服务器出现宕机或者不可用情况时，整个集群无法对外提供服务，进入新一轮的 leader 选举。</p>
+<h3 id="变更状态"><a href="#变更状态" class="headerlink" title="变更状态"></a>变更状态</h3><p>leader 挂后，其他非 Oberver服务器将自身服务器状态变更为 LOOKING</p>
+<h3 id="发起投票-1"><a href="#发起投票-1" class="headerlink" title="发起投票"></a>发起投票</h3><p>每个 server 发出一个投票。在运行期间，每个服务器上 zxid 可能不同</p>
+<h3 id="处理投票-1"><a href="#处理投票-1" class="headerlink" title="处理投票"></a>处理投票</h3><p>处理投票。规则同启动过程</p>
+<h3 id="统计投票-1"><a href="#统计投票-1" class="headerlink" title="统计投票"></a>统计投票</h3><p>与启动过程相同</p>
+<h3 id="改变服务器状态-1"><a href="#改变服务器状态-1" class="headerlink" title="改变服务器状态"></a>改变服务器状态</h3><p>改变服务器状态。与启动过程相同</p>
+<h2 id="场景"><a href="#场景" class="headerlink" title="场景"></a>场景</h2><h3 id="前置知识-1"><a href="#前置知识-1" class="headerlink" title="前置知识"></a>前置知识</h3><p>通过上述了解,我们应知道一下知识</p>
+<ul>
+<li>port3888进行选举</li>
+<li>node1~node4之间都是互相通信的</li>
+<li><strong>只要任何人投票，都会触发那个准leader发起自己的投票</strong> </li>
+<li><strong>推选制：先比较zxid，如果zxid相同，再比较myid</strong> </li>
+<li>过半通过的数据才是真数据，你见到的可用的Zxid </li>
+</ul>
+<p>如下场景node4宕机,node1~node3重新选主,其中node03事务未提交,node1和node2事务提交</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/1640327784269.png" alt="1640327784269"></p>
+<h3 id="步骤"><a href="#步骤" class="headerlink" title="步骤"></a>步骤</h3><ol>
+<li>node1~node3由follower变为looking状态,对外关闭服务</li>
+<li>总之就是拿当前的分发给投票,然后比较</li>
+</ol>
+
     </div>
 
     
@@ -663,7 +715,10 @@
     <a href="/posts/dc83.html" rel="prev" title="ZK的ACL和Session原理">
       <i class="fa fa-chevron-left"></i> ZK的ACL和Session原理
     </a></div>
-      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/posts/41ef.html" rel="next" title="自定义切面和注解">
+      自定义切面和注解 <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
       </footer>
     
@@ -722,7 +777,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E7%BD%AE%E7%9F%A5%E8%AF%86"><span class="nav-number">1.</span> <span class="nav-text">前置知识</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%9B%B8%E5%85%B3-CAP-%E7%90%86%E8%AE%BA"><span class="nav-number">1.1.</span> <span class="nav-text">相关 CAP 理论</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#BASE-%E7%90%86%E8%AE%BA"><span class="nav-number">1.2.</span> <span class="nav-text">BASE 理论</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Zookeeper-%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B-ZAB%E6%9C%89%E4%B8%BB"><span class="nav-number">2.</span> <span class="nav-text">Zookeeper 数据同步流程(ZAB有主)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B6%88%E6%81%AF%E5%B9%BF%E6%92%AD"><span class="nav-number">2.1.</span> <span class="nav-text">消息广播</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B4%A9%E6%BA%83%E6%81%A2%E5%A4%8D"><span class="nav-number">2.2.</span> <span class="nav-text">崩溃恢复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AF%A6%E7%BB%86%E6%AD%A5%E9%AA%A4%E5%88%86%E6%9E%90"><span class="nav-number">2.3.</span> <span class="nav-text">详细步骤分析</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Zookeeper-Leader-%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86-ZAB%E6%97%A0%E4%B8%BB"><span class="nav-number">3.</span> <span class="nav-text">Zookeeper Leader 选举原理(ZAB无主)</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E7%BD%AE%E7%9F%A5%E8%AF%86"><span class="nav-number">1.</span> <span class="nav-text">前置知识</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%9B%B8%E5%85%B3-CAP-%E7%90%86%E8%AE%BA"><span class="nav-number">1.1.</span> <span class="nav-text">相关 CAP 理论</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#BASE-%E7%90%86%E8%AE%BA"><span class="nav-number">1.2.</span> <span class="nav-text">BASE 理论</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Zookeeper-%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B-ZAB%E6%9C%89%E4%B8%BB"><span class="nav-number">2.</span> <span class="nav-text">Zookeeper 数据同步流程(ZAB有主)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B6%88%E6%81%AF%E5%B9%BF%E6%92%AD"><span class="nav-number">2.1.</span> <span class="nav-text">消息广播</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B4%A9%E6%BA%83%E6%81%A2%E5%A4%8D"><span class="nav-number">2.2.</span> <span class="nav-text">崩溃恢复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AF%A6%E7%BB%86%E6%AD%A5%E9%AA%A4%E5%88%86%E6%9E%90"><span class="nav-number">2.3.</span> <span class="nav-text">详细步骤分析</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Zookeeper-Leader-%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86-ZAB%E6%97%A0%E4%B8%BB"><span class="nav-number">3.</span> <span class="nav-text">Zookeeper Leader 选举原理(ZAB无主)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1%E3%80%81%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%90%AF%E5%8A%A8%E6%97%B6%E7%9A%84-leader-%E9%80%89%E4%B8%BE"><span class="nav-number">4.</span> <span class="nav-text">1、服务器启动时的 leader 选举</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%91%E8%B5%B7%E6%8A%95%E7%A5%A8"><span class="nav-number">4.1.</span> <span class="nav-text">发起投票</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A5%E5%8F%97%E6%8A%95%E7%A5%A8"><span class="nav-number">4.2.</span> <span class="nav-text">接受投票</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%84%E7%90%86%E6%8A%95%E7%A5%A8"><span class="nav-number">4.3.</span> <span class="nav-text">处理投票</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%9F%E8%AE%A1%E6%8A%95%E7%A5%A8"><span class="nav-number">4.4.</span> <span class="nav-text">统计投票</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%94%B9%E5%8F%98%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%8A%B6%E6%80%81"><span class="nav-number">4.5.</span> <span class="nav-text">改变服务器状态</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2%E3%80%81%E8%BF%90%E8%A1%8C%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84-leader-%E9%80%89%E4%B8%BE"><span class="nav-number">5.</span> <span class="nav-text">2、运行过程中的 leader 选举</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%98%E6%9B%B4%E7%8A%B6%E6%80%81"><span class="nav-number">5.1.</span> <span class="nav-text">变更状态</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%91%E8%B5%B7%E6%8A%95%E7%A5%A8-1"><span class="nav-number">5.2.</span> <span class="nav-text">发起投票</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%84%E7%90%86%E6%8A%95%E7%A5%A8-1"><span class="nav-number">5.3.</span> <span class="nav-text">处理投票</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%9F%E8%AE%A1%E6%8A%95%E7%A5%A8-1"><span class="nav-number">5.4.</span> <span class="nav-text">统计投票</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%94%B9%E5%8F%98%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%8A%B6%E6%80%81-1"><span class="nav-number">5.5.</span> <span class="nav-text">改变服务器状态</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9C%BA%E6%99%AF"><span class="nav-number">6.</span> <span class="nav-text">场景</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%89%8D%E7%BD%AE%E7%9F%A5%E8%AF%86-1"><span class="nav-number">6.1.</span> <span class="nav-text">前置知识</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%AD%A5%E9%AA%A4"><span class="nav-number">6.2.</span> <span class="nav-text">步骤</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -738,7 +793,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">38</span>
+          <span class="site-state-item-count">40</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -800,13 +855,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">104k</span>
+    <span title="站点总字数">118k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">1:35</span>
+    <span title="站点阅读时长">1:48</span>
 </div>
 
 <!-- 网站运行时间的设置 -->

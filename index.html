@@ -189,6 +189,184 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/5367.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/posts/5367.html" class="post-title-link" itemprop="url">自定义异常和全局异常处理</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-12-25 12:42:38 / 修改时间：12:43:50" itemprop="dateCreated datePublished" datetime="2021-12-25T12:42:38+08:00">2021-12-25</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>4.2k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>4 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <span id="more"></span>
+
+<h3 id="自定义异常"><a href="#自定义异常" class="headerlink" title="自定义异常"></a>自定义异常</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">OpenapiSignatureException</span> <span class="keyword">extends</span> <span class="title">BaseScfException</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> String exceptionCode;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = <span class="number">1L</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的模块异常</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String mcode, ECBCExceptionEnum e)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(ECBCConstants.ECBC, mcode, e.getCode(), e.getMessage());</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = e.getCode();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的模块异常(带异常级别)</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String mcode, ECBCExceptionEnum e, BaseScfExceptionLevelEnum level)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(ECBCConstants.ECBC, mcode, e.getCode(), e.getMessage(), level);</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = e.getCode();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的模块异常-带堆栈信息</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String mcode, ECBCExceptionEnum e, Throwable cause)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(ECBCConstants.ECBC, mcode, e.getCode(), e.getMessage(), cause);</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = e.getCode();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的模块异常-带堆栈信息(带异常级别)</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String mcode, ECBCExceptionEnum e, BaseScfExceptionLevelEnum level, Throwable cause)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(ECBCConstants.ECBC, mcode, e.getCode(), e.getMessage(), level, cause);</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = e.getCode();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的自定义异常</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> error</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String code, String error)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(code, error);</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = code;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的自定义异常(带异常级别)</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> error</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String code, String error, BaseScfExceptionLevelEnum level)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(code, error, level);</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = code;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 只抛出异常信息</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> error</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String error)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(error);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 公共异常</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(BaseScfExceptionEnum e)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(e);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">getExceptionCode</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> exceptionCode;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="全局异常处理类"><a href="#全局异常处理类" class="headerlink" title="全局异常处理类"></a>全局异常处理类</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@RestControllerAdvice</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">OpenApiGlobalExceptionHandler</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * ECBC业务异常返回</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@ResponseStatus(HttpStatus.OK)</span></span><br><span class="line">    <span class="meta">@ExceptionHandler(value = ECBCException.class)</span></span><br><span class="line">    <span class="keyword">public</span> OpenapiResponse&lt;?&gt; handleECBCException(ECBCException ex) &#123;</span><br><span class="line">        OpenapiResponse&lt;String&gt; response = <span class="keyword">new</span> OpenapiResponse&lt;String&gt;();</span><br><span class="line">        <span class="comment">// ECBC业务异常</span></span><br><span class="line">        BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">        <span class="keyword">return</span> response.failure(ex.getMessage());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 权限异常返回</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@ResponseStatus(HttpStatus.FORBIDDEN)</span></span><br><span class="line">    <span class="meta">@ExceptionHandler(value = AccessDeniedException.class)</span></span><br><span class="line">    <span class="keyword">public</span> OpenapiResponse&lt;?&gt; handleAccessDeniedException(AccessDeniedException ex) &#123;</span><br><span class="line">        OpenapiResponse&lt;String&gt; response = <span class="keyword">new</span> OpenapiResponse&lt;String&gt;();</span><br><span class="line">        <span class="comment">// 权限异常</span></span><br><span class="line">        BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">        <span class="keyword">return</span> response.failure(ex.getMessage());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 请求参数异常返回</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@ResponseStatus(HttpStatus.BAD_REQUEST)</span></span><br><span class="line">    <span class="meta">@ExceptionHandler(value = &#123;HttpMessageNotReadableException.class, MissingServletRequestParameterException.class, MissingServletRequestPartException.class&#125;)</span></span><br><span class="line">    <span class="keyword">public</span> OpenapiResponse&lt;?&gt; handleRequestException(Exception ex) &#123;</span><br><span class="line">        OpenapiResponse&lt;String&gt; response = <span class="keyword">new</span> OpenapiResponse&lt;String&gt;();</span><br><span class="line">        <span class="comment">// 参数异常</span></span><br><span class="line">        BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">        <span class="keyword">return</span> response.failure(HttpCodeEnum.INVALID_REQUEST.getMessage());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 验签异常返回</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@ResponseStatus(HttpStatus.UNAUTHORIZED)</span></span><br><span class="line">    <span class="meta">@ExceptionHandler(value = OpenapiSignatureException.class)</span></span><br><span class="line">    <span class="keyword">public</span> OpenapiResponse&lt;?&gt; handleOpenapiSignatureException(OpenapiSignatureException ex) &#123;</span><br><span class="line">        OpenapiResponse&lt;String&gt; response = <span class="keyword">new</span> OpenapiResponse&lt;String&gt;();</span><br><span class="line">        <span class="comment">// 验签异常</span></span><br><span class="line">        BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">        <span class="keyword">return</span> response.failure(ECBCExceptionEnum.OPENAPI_CONFIRMATION_SIGNATURE_FAIL.getMessage());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 服务器异常</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)</span></span><br><span class="line">    <span class="meta">@ExceptionHandler(value = Exception.class)</span></span><br><span class="line">    <span class="keyword">public</span> OpenapiResponse&lt;?&gt; handleException(Exception ex) &#123;</span><br><span class="line">        OpenapiResponse&lt;String&gt; response = <span class="keyword">new</span> OpenapiResponse&lt;String&gt;();</span><br><span class="line">        <span class="comment">// 其他模块业务异常</span></span><br><span class="line">        <span class="keyword">if</span> (ex <span class="keyword">instanceof</span> BaseScfException) &#123;</span><br><span class="line">            BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">            <span class="keyword">return</span> response.failure(ex.getMessage());</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 其他服务异常</span></span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">            <span class="keyword">return</span> response.failure(HttpCodeEnum.INTERNAL_SERVER_ERROR.getMessage());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/41ef.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/posts/41ef.html" class="post-title-link" itemprop="url">自定义切面和注解</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-12-25 12:42:27 / 修改时间：12:43:07" itemprop="dateCreated datePublished" datetime="2021-12-25T12:42:27+08:00">2021-12-25</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>7.8k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>7 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>在OpenAPi的验签方面使用自定义注解和切面来进行验签操作,首先回忆一下注解和切面的一些理论知识</p>
+<h2 id="注解"><a href="#注解" class="headerlink" title="注解"></a>注解</h2><p>Java 注解（Annotation）又称 Java 标注，是 JDK5.0 引入的一种注释机制 </p>
+<h3 id="内置的注解"><a href="#内置的注解" class="headerlink" title="内置的注解"></a>内置的注解</h3><p>Java 定义了一套注解，共有 7 个，3 个在 java.lang 中，剩下 4 个在 java.lang.annotation 中。</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/posts/41ef.html#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/7a93.html">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -212,10 +390,16 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2021-12-23 22:57:04 / 修改时间：23:45:16" itemprop="dateCreated datePublished" datetime="2021-12-23T22:57:04+08:00">2021-12-23</time>
+              <time title="创建时间：2021-12-23 22:57:04" itemprop="dateCreated datePublished" datetime="2021-12-23T22:57:04+08:00">2021-12-23</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-25 12:41:36" itemprop="dateModified" datetime="2021-12-25T12:41:36+08:00">2021-12-25</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -232,14 +416,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>1.8k</span>
+              <span>3.2k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>2 分钟</span>
+              <span>3 分钟</span>
             </span>
 
         </div>
@@ -322,7 +506,51 @@
 <p>通过ZK提供的sync方法来同步leader然后再返回client</p>
 </li>
 </ul>
-<h2 id="Zookeeper-Leader-选举原理-ZAB无主"><a href="#Zookeeper-Leader-选举原理-ZAB无主" class="headerlink" title="Zookeeper Leader 选举原理(ZAB无主)"></a>Zookeeper Leader 选举原理(ZAB无主)</h2>
+<h2 id="Zookeeper-Leader-选举原理-ZAB无主"><a href="#Zookeeper-Leader-选举原理-ZAB无主" class="headerlink" title="Zookeeper Leader 选举原理(ZAB无主)"></a>Zookeeper Leader 选举原理(ZAB无主)</h2><p>zookeeper 的 leader 选举存在两个阶段，一个是服务器启动时 leader 选举，另一个是运行过程中 leader 服务器宕机。在分析选举原理前，先介绍几个重要的参数。</p>
+<ul>
+<li>服务器 ID(myid)：编号越大在选举算法中权重越大</li>
+<li>事务 ID(zxid)：值越大说明数据越新，权重越大</li>
+<li>逻辑时钟(epoch-logicalclock)：同一轮投票过程中的逻辑时钟值是相同的，每投完一次值会增加</li>
+<li><strong>选举状态：</strong><ul>
+<li><strong>LOOKING</strong>: 竞选状态</li>
+<li><strong>FOLLOWING</strong>: 随从状态，同步 leader 状态，参与投票</li>
+<li><strong>OBSERVING</strong>: 观察状态，同步 leader 状态，不参与投票</li>
+<li><strong>LEADING</strong>: 领导者状态</li>
+</ul>
+</li>
+</ul>
+<h2 id="1、服务器启动时的-leader-选举"><a href="#1、服务器启动时的-leader-选举" class="headerlink" title="1、服务器启动时的 leader 选举"></a>1、服务器启动时的 leader 选举</h2><h3 id="发起投票"><a href="#发起投票" class="headerlink" title="发起投票"></a>发起投票</h3><p>每台 server 发出一个投票，由于是初始情况，server1 和 server2 都将自己作为 leader 服务器进行投票，每次投票包含所推举的服务器myid、zxid、epoch，使用（myid，zxid）表示，此时 server1 投票为（1,0），server2 投票为（2,0），然后将各自投票发送给集群中其他机器 </p>
+<h3 id="接受投票"><a href="#接受投票" class="headerlink" title="接受投票"></a>接受投票</h3><p>接收来自各个服务器的投票。集群中的每个服务器收到投票后，首先判断该投票的有效性，如检查是否是本轮投票（epoch）、是否来自 LOOKING 状态的服务器 </p>
+<h3 id="处理投票"><a href="#处理投票" class="headerlink" title="处理投票"></a>处理投票</h3><p>分别处理投票。针对每一次投票，服务器都需要将其他服务器的投票和自己的投票进行对比，对比规则如下：</p>
+<ul>
+<li>优先比较 epoch</li>
+<li>检查 zxid，zxid 比较大的服务器优先作为 leader</li>
+<li>如果 zxid 相同，那么就比较 myid，myid 较大的服务器作为 leader 服务器</li>
+</ul>
+<h3 id="统计投票"><a href="#统计投票" class="headerlink" title="统计投票"></a>统计投票</h3><p>统计投票。<strong>每次投票后，服务器统计投票信息，判断是都有过半机器接收到相同的投票信息</strong>。server1、server2 都统计出集群中有两台机器接受了（2,0）的投票信息，此时已经选出了 server2 为 leader 节点 </p>
+<h3 id="改变服务器状态"><a href="#改变服务器状态" class="headerlink" title="改变服务器状态"></a>改变服务器状态</h3><p>改变服务器状态 .一旦确定了 leader，每个服务器响应更新自己的状态，如果是 follower，那么就变更为 FOLLOWING，如果是 Leader，变更为 LEADING。此时 server3继续启动，直接加入变更自己为 FOLLOWING </p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/1640327491487.png" alt="1640327491487"></p>
+<h2 id="2、运行过程中的-leader-选举"><a href="#2、运行过程中的-leader-选举" class="headerlink" title="2、运行过程中的 leader 选举"></a>2、运行过程中的 leader 选举</h2><p>当集群中 leader 服务器出现宕机或者不可用情况时，整个集群无法对外提供服务，进入新一轮的 leader 选举。</p>
+<h3 id="变更状态"><a href="#变更状态" class="headerlink" title="变更状态"></a>变更状态</h3><p>leader 挂后，其他非 Oberver服务器将自身服务器状态变更为 LOOKING</p>
+<h3 id="发起投票-1"><a href="#发起投票-1" class="headerlink" title="发起投票"></a>发起投票</h3><p>每个 server 发出一个投票。在运行期间，每个服务器上 zxid 可能不同</p>
+<h3 id="处理投票-1"><a href="#处理投票-1" class="headerlink" title="处理投票"></a>处理投票</h3><p>处理投票。规则同启动过程</p>
+<h3 id="统计投票-1"><a href="#统计投票-1" class="headerlink" title="统计投票"></a>统计投票</h3><p>与启动过程相同</p>
+<h3 id="改变服务器状态-1"><a href="#改变服务器状态-1" class="headerlink" title="改变服务器状态"></a>改变服务器状态</h3><p>改变服务器状态。与启动过程相同</p>
+<h2 id="场景"><a href="#场景" class="headerlink" title="场景"></a>场景</h2><h3 id="前置知识-1"><a href="#前置知识-1" class="headerlink" title="前置知识"></a>前置知识</h3><p>通过上述了解,我们应知道一下知识</p>
+<ul>
+<li>port3888进行选举</li>
+<li>node1~node4之间都是互相通信的</li>
+<li><strong>只要任何人投票，都会触发那个准leader发起自己的投票</strong> </li>
+<li><strong>推选制：先比较zxid，如果zxid相同，再比较myid</strong> </li>
+<li>过半通过的数据才是真数据，你见到的可用的Zxid </li>
+</ul>
+<p>如下场景node4宕机,node1~node3重新选主,其中node03事务未提交,node1和node2事务提交</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/1640327784269.png" alt="1640327784269"></p>
+<h3 id="步骤"><a href="#步骤" class="headerlink" title="步骤"></a>步骤</h3><ol>
+<li>node1~node3由follower变为looking状态,对外关闭服务</li>
+<li>总之就是拿当前的分发给投票,然后比较</li>
+</ol>
+
       
     </div>
 
@@ -366,7 +594,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2021-12-23 22:43:48 / 修改时间：22:44:29" itemprop="dateCreated datePublished" datetime="2021-12-23T22:43:48+08:00">2021-12-23</time>
+              <time title="创建时间：2021-12-23 22:43:48 / 修改时间：23:45:32" itemprop="dateCreated datePublished" datetime="2021-12-23T22:43:48+08:00">2021-12-23</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -504,7 +732,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2021-12-23 22:25:49 / 修改时间：22:27:03" itemprop="dateCreated datePublished" datetime="2021-12-23T22:25:49+08:00">2021-12-23</time>
+              <time title="创建时间：2021-12-23 22:25:49 / 修改时间：23:45:32" itemprop="dateCreated datePublished" datetime="2021-12-23T22:25:49+08:00">2021-12-23</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -599,6 +827,13 @@
 
               <time title="创建时间：2021-12-21 22:53:29" itemprop="dateCreated datePublished" datetime="2021-12-21T22:53:29+08:00">2021-12-21</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-25 12:40:43" itemprop="dateModified" datetime="2021-12-25T12:40:43+08:00">2021-12-25</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -615,7 +850,7 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>0</span>
+              <span>946</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
@@ -634,7 +869,17 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <span id="more"></span>
+          <p>以后我们使用zookeeper来作为分布式锁,所以redis的分布式锁详细资料</p>
+<p><a target="_blank" rel="noopener" href="http://redis.cn/topics/distlock.html">redis分布式锁</a></p>
+<h3 id="为什么基于故障转移的实现还不够"><a href="#为什么基于故障转移的实现还不够" class="headerlink" title="为什么基于故障转移的实现还不够"></a>为什么基于故障转移的实现还不够</h3>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/posts/47b6.html#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -679,6 +924,13 @@
 
               <time title="创建时间：2021-12-21 22:53:15" itemprop="dateCreated datePublished" datetime="2021-12-21T22:53:15+08:00">2021-12-21</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-23 23:45:32" itemprop="dateModified" datetime="2021-12-23T23:45:32+08:00">2021-12-23</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -764,7 +1016,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-12-23 22:24:25" itemprop="dateModified" datetime="2021-12-23T22:24:25+08:00">2021-12-23</time>
+                <time title="修改时间：2021-12-23 23:45:32" itemprop="dateModified" datetime="2021-12-23T23:45:32+08:00">2021-12-23</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -863,7 +1115,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-12-23 22:54:49" itemprop="dateModified" datetime="2021-12-23T22:54:49+08:00">2021-12-23</time>
+                <time title="修改时间：2021-12-23 23:45:32" itemprop="dateModified" datetime="2021-12-23T23:45:32+08:00">2021-12-23</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -971,7 +1223,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-12-23 22:39:20" itemprop="dateModified" datetime="2021-12-23T22:39:20+08:00">2021-12-23</time>
+                <time title="修改时间：2021-12-25 12:41:57" itemprop="dateModified" datetime="2021-12-25T12:41:57+08:00">2021-12-25</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -1019,197 +1271,6 @@
           <!--noindex-->
             <div class="post-button">
               <a class="btn" href="/posts/5c4.html#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/7fb0.html">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="Lei">
-      <meta itemprop="description" content="The Art of Code Documentation">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="LENO">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/posts/7fb0.html" class="post-title-link" itemprop="url">ZooKeeper安装验证和简单使用</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-12-21 22:50:36" itemprop="dateCreated datePublished" datetime="2021-12-21T22:50:36+08:00">2021-12-21</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-12-23 22:23:37" itemprop="dateModified" datetime="2021-12-23T22:23:37+08:00">2021-12-23</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
-                </span>
-            </span>
-
-          <br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>1.9k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>2 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="安装配置"><a href="#安装配置" class="headerlink" title="安装配置"></a>安装配置</h2><h3 id="zookeeper安装"><a href="#zookeeper安装" class="headerlink" title="zookeeper安装"></a><a target="_blank" rel="noopener" href="https://www.runoob.com/w3cnote/zookeeper-setup.html">zookeeper安装</a></h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">#准备 node01~node04	安装JDK,并配置JAVA_HOME</span><br><span class="line">wget https://mirror.bit.edu.cn/apache/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz</span><br><span class="line">tar -zxvf zookeeper-3.4.14.tar.gz</span><br><span class="line">mkdir /opt/lei</span><br><span class="line">mv  zookeeper  /opt/lei</span><br><span class="line">vi /etc/profile</span><br><span class="line">	export ZOOKEEPER_HOME=/opt/mashibing/zookeeper-3.4.6       </span><br><span class="line">	export PATH=$PATH:$ZOOKEEPER_HOME/bin</span><br><span class="line">cd zookeeper/conf</span><br><span class="line">cp zoo_sample.cfg zoo.cfg</span><br><span class="line">vi zoo.cfg</span><br><span class="line">	dataDir=/var/lei/zk     </span><br><span class="line">	server.1=node01:2888:3888</span><br><span class="line">echo 1 &gt;  /var/lei/zk/myid</span><br><span class="line">#远程拷贝</span><br><span class="line">cd /opt  &amp;&amp;  scp -r ./lei/  node02:`pwd`</span><br><span class="line">#同理node02~node04   创建 myid</span><br></pre></td></tr></table></figure>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/posts/7fb0.html#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/1cac.html">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="Lei">
-      <meta itemprop="description" content="The Art of Code Documentation">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="LENO">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/posts/1cac.html" class="post-title-link" itemprop="url">ZooKeeper</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-12-21 22:19:02" itemprop="dateCreated datePublished" datetime="2021-12-21T22:19:02+08:00">2021-12-21</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-12-23 10:01:53" itemprop="dateModified" datetime="2021-12-23T10:01:53+08:00">2021-12-23</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
-                </span>
-            </span>
-
-          <br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>2.7k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>2 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><p>针对官方文档进行的翻译和着重,也可以参照<a target="_blank" rel="noopener" href="https://www.runoob.com/w3cnote/zookeeper-tutorial.html">菜鸟教程-zookeeper</a></p>
-<h3 id="ZooKeeper-针对分布式应用的分布式协调服务"><a href="#ZooKeeper-针对分布式应用的分布式协调服务" class="headerlink" title="ZooKeeper:针对分布式应用的分布式协调服务"></a><a target="_blank" rel="noopener" href="https://zookeeper.apache.org/doc/r3.7.0/zookeeperOver.html">ZooKeeper</a>:针对分布式应用的分布式协调服务</h3><p><a target="_blank" rel="noopener" href="https://zookeeper.apache.org/doc/r3.7.0/zookeeperOver.html">ZooKeeper</a>是一个<strong>分布式、开源的分布式应用协调服务</strong>。它公开了一组简单的原语，分布式应用程序可以在此基础上构建，以实现同步、配置维护、组和命名等更高级别的服务。它的设计是易于编程的，并使用了一个数据模型，其样式类似于熟悉的文件系统的目录树结构。它在Java中运行，并且有Java和C的绑定。众所周知，协调服务很难做好。它们特别容易出现竞争条件和死锁等错误</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/posts/1cac.html#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
@@ -1300,7 +1361,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">38</span>
+          <span class="site-state-item-count">40</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -1362,13 +1423,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">104k</span>
+    <span title="站点总字数">118k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">1:35</span>
+    <span title="站点阅读时长">1:48</span>
 </div>
 
 <!-- 网站运行时间的设置 -->
