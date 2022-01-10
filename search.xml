@@ -563,55 +563,6 @@
       </tags>
   </entry>
   <entry>
-    <title>ZooKeeper安装验证和简单使用</title>
-    <url>/posts/7fb0.html</url>
-    <content><![CDATA[<h2 id="安装配置"><a href="#安装配置" class="headerlink" title="安装配置"></a>安装配置</h2><h3 id="zookeeper安装"><a href="#zookeeper安装" class="headerlink" title="zookeeper安装"></a><a href="https://www.runoob.com/w3cnote/zookeeper-setup.html">zookeeper安装</a></h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#准备 node01~node04	安装JDK,并配置JAVA_HOME</span><br><span class="line">wget https://mirror.bit.edu.cn/apache/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz</span><br><span class="line">tar -zxvf zookeeper-3.4.14.tar.gz</span><br><span class="line">mkdir /opt/lei</span><br><span class="line">mv  zookeeper  /opt/lei</span><br><span class="line">vi /etc/profile</span><br><span class="line">	export ZOOKEEPER_HOME=/opt/lei/zookeeper-3.4.6       </span><br><span class="line">	export PATH=$PATH:$ZOOKEEPER_HOME/bin</span><br><span class="line">cd zookeeper/conf</span><br><span class="line">cp zoo_sample.cfg zoo.cfg</span><br><span class="line">vi zoo.cfg</span><br><span class="line">	dataDir=/var/lei/zk     </span><br><span class="line">	server.1=node01:2888:3888</span><br><span class="line">mkdir -p /var/lei/zk     </span><br><span class="line">echo 1 &gt;  /var/lei/zk/myid</span><br><span class="line">#远程拷贝</span><br><span class="line">cd /opt  &amp;&amp;  scp -r ./lei/  node02:`pwd`</span><br><span class="line">#同理node02~node04   创建 myid</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="../images/ZooKeeper%E5%AE%89%E8%A3%85%E5%8F%8A%E5%BA%94%E7%94%A8.asset/image-20211225140730070.png" alt="image-20211225140730070"></p>
-<span id="more"></span>
-
-<h3 id="启动"><a href="#启动" class="headerlink" title="启动"></a>启动</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#启动顺序  1，2，3，4</span><br><span class="line">#前台阻塞启动</span><br><span class="line">zkServer.sh   start-foreground</span><br><span class="line">#查看服务器状态</span><br><span class="line">zkServer.sh status</span><br><span class="line">#启动客户端</span><br><span class="line">zkCli.sh</span><br></pre></td></tr></table></figure>
-
-<h3 id="帮助命令"><a href="#帮助命令" class="headerlink" title="帮助命令"></a>帮助命令</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">ZooKeeper -server host:port cmd args</span><br><span class="line">        stat path [watch]</span><br><span class="line">        set path data [version]</span><br><span class="line">        ls path [watch]</span><br><span class="line">        delquota [-n|-b] path</span><br><span class="line">        ls2 path [watch]</span><br><span class="line">        setAcl path acl</span><br><span class="line">        setquota -n|-b val path</span><br><span class="line">        history </span><br><span class="line">        redo cmdno</span><br><span class="line">        printwatches on|off</span><br><span class="line">        delete path [version]</span><br><span class="line">        sync path</span><br><span class="line">        listquota path</span><br><span class="line">        rmr path</span><br><span class="line">        get path [watch]</span><br><span class="line">        create [-s] [-e] path data acl</span><br><span class="line">        addauth scheme auth</span><br><span class="line">        quit </span><br><span class="line">        getAcl path</span><br><span class="line">        close </span><br><span class="line">        connect host:port</span><br></pre></td></tr></table></figure>
-
-<h2 id="应用"><a href="#应用" class="headerlink" title="应用"></a>应用</h2><h3 id="Zookeeper-客户端基础命令使用"><a href="#Zookeeper-客户端基础命令使用" class="headerlink" title="Zookeeper 客户端基础命令使用"></a><a href="https://www.runoob.com/w3cnote/zookeeper-bs-command.html">Zookeeper 客户端基础命令使用</a></h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#启动zk客户端</span><br><span class="line">zkCli.sh</span><br><span class="line">#通过help指令自主学习</span><br><span class="line">help</span><br><span class="line"></span><br><span class="line">create  /k1  &quot;&quot;</span><br><span class="line">#查看某个路径下目录列表</span><br><span class="line">ls /  </span><br><span class="line">#更详细信息</span><br><span class="line">ls2 / </span><br><span class="line">create  /ooxx  &quot;&quot;   </span><br><span class="line">create -s /abc/aaa  </span><br><span class="line">create -e /ooxx/xxoo   </span><br><span class="line">create -s -e /ooxx/xoxo </span><br><span class="line">#获取节点数据和状态信息</span><br><span class="line">get /ooxx	</span><br><span class="line"></span><br><span class="line">#验证zk的通信过程</span><br><span class="line">netstat -natp   |   egrep  &#x27;(2888|3888)&#x27; </span><br></pre></td></tr></table></figure>
-<h3 id="Zookeeper-四字命令"><a href="#Zookeeper-四字命令" class="headerlink" title="Zookeeper 四字命令"></a><a href="https://www.runoob.com/w3cnote/zookeeper-sc-4lw.html">Zookeeper 四字命令</a></h3><p>zookeeper 支持某些特定的四字命令与其交互，用户获取 zookeeper 服务的当前状态及相关信息，用户在客户端可以通过 telenet 或者 nc（netcat） 向 zookeeper 提交相应的命令 </p>
-<ul>
-<li><p>安装</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">yum install nc                # centos</span><br><span class="line">sudo apt install netcat     # ubuntu</span><br></pre></td></tr></table></figure></li>
-<li><p>命令格式</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">echo [command] | nc [ip] [port]</span><br></pre></td></tr></table></figure></li>
-<li><p>使用</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#查看 zk 的状态信息</span><br><span class="line">echo stat | nc 192.168.3.38 2181</span><br><span class="line"></span><br><span class="line">#查看当前 zkserver 是否启动，若返回 imok 表示正常</span><br><span class="line">echo ruok | nc 192.168.3.38 2181</span><br><span class="line"></span><br><span class="line">#列出未经处理的会话和临时节点</span><br><span class="line">echo dump | nc 192.168.3.38 2181</span><br><span class="line"></span><br><span class="line">#查看服务器配置</span><br><span class="line">echo conf | nc 192.168.3.38 2181</span><br><span class="line"></span><br><span class="line">#展示连接到服务器的客户端信息</span><br><span class="line">echo cons | nc 192.168.3.38 2181</span><br><span class="line"></span><br><span class="line">#查看环境变量</span><br><span class="line">echo envi | nc 192.168.3.38 2181</span><br></pre></td></tr></table></figure></li>
-</ul>
-<blockquote>
-<p>扩展:zookeeper 的三个端口作用</p>
-<p> zoo.cfg 配置信息中</p>
-<ul>
-<li>2181 : 对 client 端提供服务</li>
-<li>2888 : 集群内机器通信使用</li>
-<li>3888 : 选举 leader 使用</li>
-</ul>
-<p>问题: 为什么要选用4台机器搭建zk集群?</p>
-<ul>
-<li><p>查看通信信息</p>
-<p>netstat -natp   |   egrep  ‘(2888|3888)’ </p>
-</li>
-<li><p>结论</p>
-<p><strong>每个服务都是互通的,这也是为什么能统一镜像的原因</strong></p>
-</li>
-</ul>
-<p><img data-src="../images/ZooKeeper%E5%AE%89%E8%A3%85%E5%8F%8A%E5%BA%94%E7%94%A8.asset/image-20211223222335157.png" alt="image-20211223222335157"></p>
-</blockquote>
-]]></content>
-      <categories>
-        <category>从网络到分布式</category>
-      </categories>
-      <tags>
-        <tag>zookeeper</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>ZooKeeper数据模型和znode详解</title>
     <url>/posts/9aad.html</url>
     <content><![CDATA[<h2 id="数据模型"><a href="#数据模型" class="headerlink" title="数据模型"></a>数据模型</h2><p>在 zookeeper 中，可以说 zookeeper 中的所有存储的数据是由 znode 组成的，节点也称为 znode，并以 key/value 形式存储数据。</p>
@@ -772,6 +723,55 @@
       </tags>
   </entry>
   <entry>
+    <title>ZooKeeper安装验证和简单使用</title>
+    <url>/posts/7fb0.html</url>
+    <content><![CDATA[<h2 id="安装配置"><a href="#安装配置" class="headerlink" title="安装配置"></a>安装配置</h2><h3 id="zookeeper安装"><a href="#zookeeper安装" class="headerlink" title="zookeeper安装"></a><a href="https://www.runoob.com/w3cnote/zookeeper-setup.html">zookeeper安装</a></h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#准备 node01~node04	安装JDK,并配置JAVA_HOME</span><br><span class="line">wget https://mirror.bit.edu.cn/apache/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz</span><br><span class="line">tar -zxvf zookeeper-3.4.14.tar.gz</span><br><span class="line">mkdir /opt/lei</span><br><span class="line">mv  zookeeper  /opt/lei</span><br><span class="line">vi /etc/profile</span><br><span class="line">	export ZOOKEEPER_HOME=/opt/lei/zookeeper-3.4.6       </span><br><span class="line">	export PATH=$PATH:$ZOOKEEPER_HOME/bin</span><br><span class="line">cd zookeeper/conf</span><br><span class="line">cp zoo_sample.cfg zoo.cfg</span><br><span class="line">vi zoo.cfg</span><br><span class="line">	dataDir=/var/lei/zk     </span><br><span class="line">	server.1=node01:2888:3888</span><br><span class="line">mkdir -p /var/lei/zk     </span><br><span class="line">echo 1 &gt;  /var/lei/zk/myid</span><br><span class="line">#远程拷贝</span><br><span class="line">cd /opt  &amp;&amp;  scp -r ./lei/  node02:`pwd`</span><br><span class="line">#同理node02~node04   创建 myid</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZooKeeper%E5%AE%89%E8%A3%85%E5%8F%8A%E5%BA%94%E7%94%A8.asset/image-20211225140730070.png" alt="image-20211225140730070"></p>
+<span id="more"></span>
+
+<h3 id="启动"><a href="#启动" class="headerlink" title="启动"></a>启动</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#启动顺序  1，2，3，4</span><br><span class="line">#前台阻塞启动</span><br><span class="line">zkServer.sh   start-foreground</span><br><span class="line">#查看服务器状态</span><br><span class="line">zkServer.sh status</span><br><span class="line">#启动客户端</span><br><span class="line">zkCli.sh</span><br></pre></td></tr></table></figure>
+
+<h3 id="帮助命令"><a href="#帮助命令" class="headerlink" title="帮助命令"></a>帮助命令</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">ZooKeeper -server host:port cmd args</span><br><span class="line">        stat path [watch]</span><br><span class="line">        set path data [version]</span><br><span class="line">        ls path [watch]</span><br><span class="line">        delquota [-n|-b] path</span><br><span class="line">        ls2 path [watch]</span><br><span class="line">        setAcl path acl</span><br><span class="line">        setquota -n|-b val path</span><br><span class="line">        history </span><br><span class="line">        redo cmdno</span><br><span class="line">        printwatches on|off</span><br><span class="line">        delete path [version]</span><br><span class="line">        sync path</span><br><span class="line">        listquota path</span><br><span class="line">        rmr path</span><br><span class="line">        get path [watch]</span><br><span class="line">        create [-s] [-e] path data acl</span><br><span class="line">        addauth scheme auth</span><br><span class="line">        quit </span><br><span class="line">        getAcl path</span><br><span class="line">        close </span><br><span class="line">        connect host:port</span><br></pre></td></tr></table></figure>
+
+<h2 id="应用"><a href="#应用" class="headerlink" title="应用"></a>应用</h2><h3 id="Zookeeper-客户端基础命令使用"><a href="#Zookeeper-客户端基础命令使用" class="headerlink" title="Zookeeper 客户端基础命令使用"></a><a href="https://www.runoob.com/w3cnote/zookeeper-bs-command.html">Zookeeper 客户端基础命令使用</a></h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#启动zk客户端</span><br><span class="line">zkCli.sh</span><br><span class="line">#通过help指令自主学习</span><br><span class="line">help</span><br><span class="line"></span><br><span class="line">create  /k1  &quot;&quot;</span><br><span class="line">#查看某个路径下目录列表</span><br><span class="line">ls /  </span><br><span class="line">#更详细信息</span><br><span class="line">ls2 / </span><br><span class="line">create  /ooxx  &quot;&quot;   </span><br><span class="line">create -s /abc/aaa  </span><br><span class="line">create -e /ooxx/xxoo   </span><br><span class="line">create -s -e /ooxx/xoxo </span><br><span class="line">#获取节点数据和状态信息</span><br><span class="line">get /ooxx	</span><br><span class="line"></span><br><span class="line">#验证zk的通信过程</span><br><span class="line">netstat -natp   |   egrep  &#x27;(2888|3888)&#x27; </span><br></pre></td></tr></table></figure>
+<h3 id="Zookeeper-四字命令"><a href="#Zookeeper-四字命令" class="headerlink" title="Zookeeper 四字命令"></a><a href="https://www.runoob.com/w3cnote/zookeeper-sc-4lw.html">Zookeeper 四字命令</a></h3><p>zookeeper 支持某些特定的四字命令与其交互，用户获取 zookeeper 服务的当前状态及相关信息，用户在客户端可以通过 telenet 或者 nc（netcat） 向 zookeeper 提交相应的命令 </p>
+<ul>
+<li><p>安装</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">yum install nc                # centos</span><br><span class="line">sudo apt install netcat     # ubuntu</span><br></pre></td></tr></table></figure></li>
+<li><p>命令格式</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">echo [command] | nc [ip] [port]</span><br></pre></td></tr></table></figure></li>
+<li><p>使用</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#查看 zk 的状态信息</span><br><span class="line">echo stat | nc 192.168.3.38 2181</span><br><span class="line"></span><br><span class="line">#查看当前 zkserver 是否启动，若返回 imok 表示正常</span><br><span class="line">echo ruok | nc 192.168.3.38 2181</span><br><span class="line"></span><br><span class="line">#列出未经处理的会话和临时节点</span><br><span class="line">echo dump | nc 192.168.3.38 2181</span><br><span class="line"></span><br><span class="line">#查看服务器配置</span><br><span class="line">echo conf | nc 192.168.3.38 2181</span><br><span class="line"></span><br><span class="line">#展示连接到服务器的客户端信息</span><br><span class="line">echo cons | nc 192.168.3.38 2181</span><br><span class="line"></span><br><span class="line">#查看环境变量</span><br><span class="line">echo envi | nc 192.168.3.38 2181</span><br></pre></td></tr></table></figure></li>
+</ul>
+<blockquote>
+<p>扩展:zookeeper 的三个端口作用</p>
+<p> zoo.cfg 配置信息中</p>
+<ul>
+<li>2181 : 对 client 端提供服务</li>
+<li>2888 : 集群内机器通信使用</li>
+<li>3888 : 选举 leader 使用</li>
+</ul>
+<p>问题: 为什么要选用4台机器搭建zk集群?</p>
+<ul>
+<li><p>查看通信信息</p>
+<p>netstat -natp   |   egrep  ‘(2888|3888)’ </p>
+</li>
+<li><p>结论</p>
+<p><strong>每个服务都是互通的,这也是为什么能统一镜像的原因</strong></p>
+</li>
+</ul>
+<p><img data-src="../images/ZooKeeper%E5%AE%89%E8%A3%85%E5%8F%8A%E5%BA%94%E7%94%A8.asset/image-20211223222335157.png" alt="image-20211223222335157"></p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>zookeeper</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>ZooKeeper的Watch机制</title>
     <url>/posts/49ea.html</url>
     <content><![CDATA[<h2 id="wathcer事件机制原理"><a href="#wathcer事件机制原理" class="headerlink" title="wathcer事件机制原理"></a>wathcer事件机制原理</h2><p>zk是有统一的视图的,所以怎么保证这个视图呢?</p>
@@ -841,136 +841,6 @@
       </categories>
       <tags>
         <tag>zookeeper</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>ZooKeeper的数据同步流程和Leader选举原理</title>
-    <url>/posts/7a93.html</url>
-    <content><![CDATA[<span id="more"></span>
-
-<p>ZK的核心就是paxos,可以参考该资料<a href="https://www.douban.com/note/208430424/">zk灵魂-paxos</a></p>
-<h2 id="前置知识"><a href="#前置知识" class="headerlink" title="前置知识"></a>前置知识</h2><h3 id="相关-CAP-理论"><a href="#相关-CAP-理论" class="headerlink" title="相关 CAP 理论"></a>相关 CAP 理论</h3><p>CAP 理论指出对于一个分布式计算系统来说，不可能同时满足以下三点：</p>
-<ul>
-<li><strong>一致性</strong>：在分布式环境中，一致性是指数据在多个副本之间是否能够保持一致的特性，等同于所有节点访问同一份最新的数据副本。在一致性的需求下，当一个系统在数据一致的状态下执行更新操作后，应该保证系统的数据仍然处于一致的状态。</li>
-<li><strong>可用性：</strong>每次请求都能获取到正确的响应，但是不保证获取的数据为最新数据。</li>
-<li><strong>分区容错性：</strong>分布式系统在遇到任何网络分区故障的时候，仍然需要能够保证对外提供满足一致性和可用性的服务，除非是整个网络环境都发生了故障。</li>
-</ul>
-<p>一个分布式系统最多只能同时满足一致性（Consistency）、可用性（Availability）和分区容错性（Partition tolerance）这三项中的两项。</p>
-<p>在这三个基本需求中，最多只能同时满足其中的两项，P 是必须的，因此只能在 CP 和 AP 中选择，zookeeper 保证的是 CP，对比 spring cloud 系统中的注册中心 eruka 实现的是 AP。</p>
-<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/image-20211223232310773.png" alt="image-20211223232310773"></p>
-<h3 id="BASE-理论"><a href="#BASE-理论" class="headerlink" title="BASE 理论"></a>BASE 理论</h3><p>BASE 是 Basically Available(基本可用)、Soft-state(软状态) 和 Eventually Consistent(最终一致性) 三个短语的缩写。</p>
-<ul>
-<li><strong>基本可用：</strong>在分布式系统出现故障，允许损失部分可用性（服务降级、页面降级）。</li>
-<li><strong>软状态：</strong>允许分布式系统出现中间状态。而且中间状态不影响系统的可用性。这里的中间状态是指不同的 data replication（数据备份节点）之间的数据更新可以出现延时的最终一致性。</li>
-<li><strong>最终一致性：</strong>data replications 经过一段时间达到一致性。</li>
-</ul>
-<p>BASE 理论是对 CAP 中的一致性和可用性进行一个权衡的结果，理论的核心思想就是：我们无法做到强一致，但每个应用都可以根据自身的业务特点，采用适当的方式来使系统达到最终一致性。</p>
-<h2 id="Zookeeper-数据同步流程-ZAB有主"><a href="#Zookeeper-数据同步流程-ZAB有主" class="headerlink" title="Zookeeper 数据同步流程(ZAB有主)"></a>Zookeeper 数据同步流程(ZAB有主)</h2><p>在 Zookeeper 中，主要依赖 ZAB 协议来实现分布式数据一致性。</p>
-<p>ZAB 协议分为两部分：</p>
-<ul>
-<li>消息广播</li>
-<li>崩溃恢复</li>
-</ul>
-<h3 id="消息广播"><a href="#消息广播" class="headerlink" title="消息广播"></a>消息广播</h3><p>Zookeeper 使用单一的主进程 Leader 来接收和处理客户端所有事务请求，并采用 <strong>ZAB 协议的原子广播协议</strong>，<strong>将事务请求以 Proposal 提议广播到所有 Follower 节点，当集群中有过半的Follower 服务器进行正确的 ACK 反馈，那么Leader就会再次向所有的 Follower 服务器发送commit 消息，将此次提案进行提交。这个过程可以简称为 2pc 事务</strong>提交，整个流程可以参考下图，注意 <strong>Observer 节点只负责同步 Leader 数据，不参与 2PC 数据同步过程。</strong></p>
-<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/zk-data-stream-async.png" alt="img"></p>
-<h3 id="崩溃恢复"><a href="#崩溃恢复" class="headerlink" title="崩溃恢复"></a>崩溃恢复</h3><p>在正常情况消息广播情况下能运行良好，但是一旦 Leader 服务器出现崩溃，或者由于网络原理导致 Leader 服务器失去了与过半 Follower 的通信，那么就会进入崩溃恢复模式，需要选举出一个新的 Leader 服务器。在这个过程中可能会出现两种数据不一致性的隐患，需要 ZAB 协议的特性进行避免。</p>
-<ul>
-<li>1、Leader 服务器将消息 commit 发出后，立即崩溃</li>
-<li>2、Leader 服务器刚提出 proposal 后，立即崩溃</li>
-</ul>
-<p>ZAB 协议的恢复模式使用了以下策略：</p>
-<ul>
-<li>1、选举 zxid 最大的节点作为新的 leader</li>
-<li>2、新 leader 将事务日志中尚未提交的消息进行处理</li>
-</ul>
-<h3 id="详细步骤分析"><a href="#详细步骤分析" class="headerlink" title="详细步骤分析"></a>详细步骤分析</h3><p>上述提到了<strong>ZAB的原子广播协议</strong></p>
-<ul>
-<li><p>原子</p>
-<p>要么成功,要么失败,没有中间状态(队列+2PC)</p>
-</li>
-<li><p>广播</p>
-<p>分布式多节点使用,全部都知道数据(过半)</p>
-</li>
-</ul>
-<blockquote>
-<p>注意:</p>
-<p>ZK的数据状态是在内存中的,这也是它为什么速度快的原因之一</p>
-</blockquote>
-<p>步骤详细:</p>
-<ol>
-<li>客户端create一个节点</li>
-<li>follower接受</li>
-<li>follower向leader提出create节点</li>
-<li>leader向所有folloewer广播,**分发日志(磁盘)**给每个follower</li>
-<li>各个follower返回结果给leader</li>
-<li>若follower返回的结果过半通过,那么leader就会create节点到各个follower的<strong>内存中</strong></li>
-<li>leader返回提出创建节点的follower创建OK的信息</li>
-<li>follower返回给客户端创建OK</li>
-</ol>
-<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/image-20211223230118238.png" alt="image-20211223230118238"></p>
-<ul>
-<li><p>问题</p>
-<p>可能会出现leader判断过半之后就将所有foolwer内存中写数据,但是log还没有同步到follower上</p>
-<p>如果还有其他client获取该节点数据,可能会出现数据不一致的情况</p>
-</li>
-<li><p>解决</p>
-<p>通过ZK提供的sync方法来同步leader然后再返回client</p>
-</li>
-</ul>
-<h2 id="Zookeeper-Leader-选举原理-ZAB无主"><a href="#Zookeeper-Leader-选举原理-ZAB无主" class="headerlink" title="Zookeeper Leader 选举原理(ZAB无主)"></a>Zookeeper Leader 选举原理(ZAB无主)</h2><p>zookeeper 的 leader 选举存在两个阶段，一个是服务器启动时 leader 选举，另一个是运行过程中 leader 服务器宕机。在分析选举原理前，先介绍几个重要的参数。</p>
-<ul>
-<li>服务器 ID(myid)：编号越大在选举算法中权重越大</li>
-<li>事务 ID(zxid)：值越大说明数据越新，权重越大</li>
-<li>逻辑时钟(epoch-logicalclock)：同一轮投票过程中的逻辑时钟值是相同的，每投完一次值会增加</li>
-<li><strong>选举状态：</strong><ul>
-<li><strong>LOOKING</strong>: 竞选状态</li>
-<li><strong>FOLLOWING</strong>: 随从状态，同步 leader 状态，参与投票</li>
-<li><strong>OBSERVING</strong>: 观察状态，同步 leader 状态，不参与投票</li>
-<li><strong>LEADING</strong>: 领导者状态</li>
-</ul>
-</li>
-</ul>
-<h2 id="1、服务器启动时的-leader-选举"><a href="#1、服务器启动时的-leader-选举" class="headerlink" title="1、服务器启动时的 leader 选举"></a>1、服务器启动时的 leader 选举</h2><h3 id="发起投票"><a href="#发起投票" class="headerlink" title="发起投票"></a>发起投票</h3><p>每台 server 发出一个投票，由于是初始情况，server1 和 server2 都将自己作为 leader 服务器进行投票，每次投票包含所推举的服务器myid、zxid、epoch，使用（myid，zxid）表示，此时 server1 投票为（1,0），server2 投票为（2,0），然后将各自投票发送给集群中其他机器 </p>
-<h3 id="接受投票"><a href="#接受投票" class="headerlink" title="接受投票"></a>接受投票</h3><p>接收来自各个服务器的投票。集群中的每个服务器收到投票后，首先判断该投票的有效性，如检查是否是本轮投票（epoch）、是否来自 LOOKING 状态的服务器 </p>
-<h3 id="处理投票"><a href="#处理投票" class="headerlink" title="处理投票"></a>处理投票</h3><p>分别处理投票。针对每一次投票，服务器都需要将其他服务器的投票和自己的投票进行对比，对比规则如下：</p>
-<ul>
-<li>优先比较 epoch</li>
-<li>检查 zxid，zxid 比较大的服务器优先作为 leader</li>
-<li>如果 zxid 相同，那么就比较 myid，myid 较大的服务器作为 leader 服务器</li>
-</ul>
-<h3 id="统计投票"><a href="#统计投票" class="headerlink" title="统计投票"></a>统计投票</h3><p>统计投票。<strong>每次投票后，服务器统计投票信息，判断是都有过半机器接收到相同的投票信息</strong>。server1、server2 都统计出集群中有两台机器接受了（2,0）的投票信息，此时已经选出了 server2 为 leader 节点 </p>
-<h3 id="改变服务器状态"><a href="#改变服务器状态" class="headerlink" title="改变服务器状态"></a>改变服务器状态</h3><p>改变服务器状态 .一旦确定了 leader，每个服务器响应更新自己的状态，如果是 follower，那么就变更为 FOLLOWING，如果是 Leader，变更为 LEADING。此时 server3继续启动，直接加入变更自己为 FOLLOWING </p>
-<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/1640327491487.png" alt="1640327491487"></p>
-<h2 id="2、运行过程中的-leader-选举"><a href="#2、运行过程中的-leader-选举" class="headerlink" title="2、运行过程中的 leader 选举"></a>2、运行过程中的 leader 选举</h2><p>当集群中 leader 服务器出现宕机或者不可用情况时，整个集群无法对外提供服务，进入新一轮的 leader 选举。</p>
-<h3 id="变更状态"><a href="#变更状态" class="headerlink" title="变更状态"></a>变更状态</h3><p>leader 挂后，其他非 Oberver服务器将自身服务器状态变更为 LOOKING</p>
-<h3 id="发起投票-1"><a href="#发起投票-1" class="headerlink" title="发起投票"></a>发起投票</h3><p>每个 server 发出一个投票。在运行期间，每个服务器上 zxid 可能不同</p>
-<h3 id="处理投票-1"><a href="#处理投票-1" class="headerlink" title="处理投票"></a>处理投票</h3><p>处理投票。规则同启动过程</p>
-<h3 id="统计投票-1"><a href="#统计投票-1" class="headerlink" title="统计投票"></a>统计投票</h3><p>与启动过程相同</p>
-<h3 id="改变服务器状态-1"><a href="#改变服务器状态-1" class="headerlink" title="改变服务器状态"></a>改变服务器状态</h3><p>改变服务器状态。与启动过程相同</p>
-<h2 id="场景"><a href="#场景" class="headerlink" title="场景"></a>场景</h2><h3 id="前置知识-1"><a href="#前置知识-1" class="headerlink" title="前置知识"></a>前置知识</h3><p>通过上述了解,我们应知道一下知识</p>
-<ul>
-<li>port3888进行选举</li>
-<li>node1~node4之间都是互相通信的</li>
-<li><strong>只要任何人投票，都会触发那个准leader发起自己的投票</strong> </li>
-<li><strong>推选制：先比较zxid，如果zxid相同，再比较myid</strong> </li>
-<li>过半通过的数据才是真数据，你见到的可用的Zxid </li>
-</ul>
-<p>如下场景node4宕机,node1~node3重新选主,其中node03事务未提交,node1和node2事务提交</p>
-<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/1640327784269.png" alt="1640327784269"></p>
-<h3 id="步骤"><a href="#步骤" class="headerlink" title="步骤"></a>步骤</h3><ol>
-<li>node1~node3由follower变为looking状态,对外关闭服务</li>
-<li>总之就是拿当前的分发给投票,然后比较</li>
-</ol>
-]]></content>
-      <categories>
-        <category>从网络到分布式</category>
-      </categories>
-      <tags>
-        <tag>zookeeper</tag>
-        <tag>ZK的数据同步流程</tag>
-        <tag>ZK的Leader选举原理</tag>
-        <tag>paxos算法</tag>
-        <tag>ZAB协议</tag>
       </tags>
   </entry>
   <entry>
@@ -1176,6 +1046,136 @@
       </tags>
   </entry>
   <entry>
+    <title>ZooKeeper的数据同步流程和Leader选举原理</title>
+    <url>/posts/7a93.html</url>
+    <content><![CDATA[<span id="more"></span>
+
+<p>ZK的核心就是paxos,可以参考该资料<a href="https://www.douban.com/note/208430424/">zk灵魂-paxos</a></p>
+<h2 id="前置知识"><a href="#前置知识" class="headerlink" title="前置知识"></a>前置知识</h2><h3 id="相关-CAP-理论"><a href="#相关-CAP-理论" class="headerlink" title="相关 CAP 理论"></a>相关 CAP 理论</h3><p>CAP 理论指出对于一个分布式计算系统来说，不可能同时满足以下三点：</p>
+<ul>
+<li><strong>一致性</strong>：在分布式环境中，一致性是指数据在多个副本之间是否能够保持一致的特性，等同于所有节点访问同一份最新的数据副本。在一致性的需求下，当一个系统在数据一致的状态下执行更新操作后，应该保证系统的数据仍然处于一致的状态。</li>
+<li><strong>可用性：</strong>每次请求都能获取到正确的响应，但是不保证获取的数据为最新数据。</li>
+<li><strong>分区容错性：</strong>分布式系统在遇到任何网络分区故障的时候，仍然需要能够保证对外提供满足一致性和可用性的服务，除非是整个网络环境都发生了故障。</li>
+</ul>
+<p>一个分布式系统最多只能同时满足一致性（Consistency）、可用性（Availability）和分区容错性（Partition tolerance）这三项中的两项。</p>
+<p>在这三个基本需求中，最多只能同时满足其中的两项，P 是必须的，因此只能在 CP 和 AP 中选择，zookeeper 保证的是 CP，对比 spring cloud 系统中的注册中心 eruka 实现的是 AP。</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/image-20211223232310773.png" alt="image-20211223232310773"></p>
+<h3 id="BASE-理论"><a href="#BASE-理论" class="headerlink" title="BASE 理论"></a>BASE 理论</h3><p>BASE 是 Basically Available(基本可用)、Soft-state(软状态) 和 Eventually Consistent(最终一致性) 三个短语的缩写。</p>
+<ul>
+<li><strong>基本可用：</strong>在分布式系统出现故障，允许损失部分可用性（服务降级、页面降级）。</li>
+<li><strong>软状态：</strong>允许分布式系统出现中间状态。而且中间状态不影响系统的可用性。这里的中间状态是指不同的 data replication（数据备份节点）之间的数据更新可以出现延时的最终一致性。</li>
+<li><strong>最终一致性：</strong>data replications 经过一段时间达到一致性。</li>
+</ul>
+<p>BASE 理论是对 CAP 中的一致性和可用性进行一个权衡的结果，理论的核心思想就是：我们无法做到强一致，但每个应用都可以根据自身的业务特点，采用适当的方式来使系统达到最终一致性。</p>
+<h2 id="Zookeeper-数据同步流程-ZAB有主"><a href="#Zookeeper-数据同步流程-ZAB有主" class="headerlink" title="Zookeeper 数据同步流程(ZAB有主)"></a>Zookeeper 数据同步流程(ZAB有主)</h2><p>在 Zookeeper 中，主要依赖 ZAB 协议来实现分布式数据一致性。</p>
+<p>ZAB 协议分为两部分：</p>
+<ul>
+<li>消息广播</li>
+<li>崩溃恢复</li>
+</ul>
+<h3 id="消息广播"><a href="#消息广播" class="headerlink" title="消息广播"></a>消息广播</h3><p>Zookeeper 使用单一的主进程 Leader 来接收和处理客户端所有事务请求，并采用 <strong>ZAB 协议的原子广播协议</strong>，<strong>将事务请求以 Proposal 提议广播到所有 Follower 节点，当集群中有过半的Follower 服务器进行正确的 ACK 反馈，那么Leader就会再次向所有的 Follower 服务器发送commit 消息，将此次提案进行提交。这个过程可以简称为 2pc 事务</strong>提交，整个流程可以参考下图，注意 <strong>Observer 节点只负责同步 Leader 数据，不参与 2PC 数据同步过程。</strong></p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/zk-data-stream-async.png" alt="img"></p>
+<h3 id="崩溃恢复"><a href="#崩溃恢复" class="headerlink" title="崩溃恢复"></a>崩溃恢复</h3><p>在正常情况消息广播情况下能运行良好，但是一旦 Leader 服务器出现崩溃，或者由于网络原理导致 Leader 服务器失去了与过半 Follower 的通信，那么就会进入崩溃恢复模式，需要选举出一个新的 Leader 服务器。在这个过程中可能会出现两种数据不一致性的隐患，需要 ZAB 协议的特性进行避免。</p>
+<ul>
+<li>1、Leader 服务器将消息 commit 发出后，立即崩溃</li>
+<li>2、Leader 服务器刚提出 proposal 后，立即崩溃</li>
+</ul>
+<p>ZAB 协议的恢复模式使用了以下策略：</p>
+<ul>
+<li>1、选举 zxid 最大的节点作为新的 leader</li>
+<li>2、新 leader 将事务日志中尚未提交的消息进行处理</li>
+</ul>
+<h3 id="详细步骤分析"><a href="#详细步骤分析" class="headerlink" title="详细步骤分析"></a>详细步骤分析</h3><p>上述提到了<strong>ZAB的原子广播协议</strong></p>
+<ul>
+<li><p>原子</p>
+<p>要么成功,要么失败,没有中间状态(队列+2PC)</p>
+</li>
+<li><p>广播</p>
+<p>分布式多节点使用,全部都知道数据(过半)</p>
+</li>
+</ul>
+<blockquote>
+<p>注意:</p>
+<p>ZK的数据状态是在内存中的,这也是它为什么速度快的原因之一</p>
+</blockquote>
+<p>步骤详细:</p>
+<ol>
+<li>客户端create一个节点</li>
+<li>follower接受</li>
+<li>follower向leader提出create节点</li>
+<li>leader向所有folloewer广播,**分发日志(磁盘)**给每个follower</li>
+<li>各个follower返回结果给leader</li>
+<li>若follower返回的结果过半通过,那么leader就会create节点到各个follower的<strong>内存中</strong></li>
+<li>leader返回提出创建节点的follower创建OK的信息</li>
+<li>follower返回给客户端创建OK</li>
+</ol>
+<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/image-20211223230118238.png" alt="image-20211223230118238"></p>
+<ul>
+<li><p>问题</p>
+<p>可能会出现leader判断过半之后就将所有foolwer内存中写数据,但是log还没有同步到follower上</p>
+<p>如果还有其他client获取该节点数据,可能会出现数据不一致的情况</p>
+</li>
+<li><p>解决</p>
+<p>通过ZK提供的sync方法来同步leader然后再返回client</p>
+</li>
+</ul>
+<h2 id="Zookeeper-Leader-选举原理-ZAB无主"><a href="#Zookeeper-Leader-选举原理-ZAB无主" class="headerlink" title="Zookeeper Leader 选举原理(ZAB无主)"></a>Zookeeper Leader 选举原理(ZAB无主)</h2><p>zookeeper 的 leader 选举存在两个阶段，一个是服务器启动时 leader 选举，另一个是运行过程中 leader 服务器宕机。在分析选举原理前，先介绍几个重要的参数。</p>
+<ul>
+<li>服务器 ID(myid)：编号越大在选举算法中权重越大</li>
+<li>事务 ID(zxid)：值越大说明数据越新，权重越大</li>
+<li>逻辑时钟(epoch-logicalclock)：同一轮投票过程中的逻辑时钟值是相同的，每投完一次值会增加</li>
+<li><strong>选举状态：</strong><ul>
+<li><strong>LOOKING</strong>: 竞选状态</li>
+<li><strong>FOLLOWING</strong>: 随从状态，同步 leader 状态，参与投票</li>
+<li><strong>OBSERVING</strong>: 观察状态，同步 leader 状态，不参与投票</li>
+<li><strong>LEADING</strong>: 领导者状态</li>
+</ul>
+</li>
+</ul>
+<h2 id="1、服务器启动时的-leader-选举"><a href="#1、服务器启动时的-leader-选举" class="headerlink" title="1、服务器启动时的 leader 选举"></a>1、服务器启动时的 leader 选举</h2><h3 id="发起投票"><a href="#发起投票" class="headerlink" title="发起投票"></a>发起投票</h3><p>每台 server 发出一个投票，由于是初始情况，server1 和 server2 都将自己作为 leader 服务器进行投票，每次投票包含所推举的服务器myid、zxid、epoch，使用（myid，zxid）表示，此时 server1 投票为（1,0），server2 投票为（2,0），然后将各自投票发送给集群中其他机器 </p>
+<h3 id="接受投票"><a href="#接受投票" class="headerlink" title="接受投票"></a>接受投票</h3><p>接收来自各个服务器的投票。集群中的每个服务器收到投票后，首先判断该投票的有效性，如检查是否是本轮投票（epoch）、是否来自 LOOKING 状态的服务器 </p>
+<h3 id="处理投票"><a href="#处理投票" class="headerlink" title="处理投票"></a>处理投票</h3><p>分别处理投票。针对每一次投票，服务器都需要将其他服务器的投票和自己的投票进行对比，对比规则如下：</p>
+<ul>
+<li>优先比较 epoch</li>
+<li>检查 zxid，zxid 比较大的服务器优先作为 leader</li>
+<li>如果 zxid 相同，那么就比较 myid，myid 较大的服务器作为 leader 服务器</li>
+</ul>
+<h3 id="统计投票"><a href="#统计投票" class="headerlink" title="统计投票"></a>统计投票</h3><p>统计投票。<strong>每次投票后，服务器统计投票信息，判断是都有过半机器接收到相同的投票信息</strong>。server1、server2 都统计出集群中有两台机器接受了（2,0）的投票信息，此时已经选出了 server2 为 leader 节点 </p>
+<h3 id="改变服务器状态"><a href="#改变服务器状态" class="headerlink" title="改变服务器状态"></a>改变服务器状态</h3><p>改变服务器状态 .一旦确定了 leader，每个服务器响应更新自己的状态，如果是 follower，那么就变更为 FOLLOWING，如果是 Leader，变更为 LEADING。此时 server3继续启动，直接加入变更自己为 FOLLOWING </p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/1640327491487.png" alt="1640327491487"></p>
+<h2 id="2、运行过程中的-leader-选举"><a href="#2、运行过程中的-leader-选举" class="headerlink" title="2、运行过程中的 leader 选举"></a>2、运行过程中的 leader 选举</h2><p>当集群中 leader 服务器出现宕机或者不可用情况时，整个集群无法对外提供服务，进入新一轮的 leader 选举。</p>
+<h3 id="变更状态"><a href="#变更状态" class="headerlink" title="变更状态"></a>变更状态</h3><p>leader 挂后，其他非 Oberver服务器将自身服务器状态变更为 LOOKING</p>
+<h3 id="发起投票-1"><a href="#发起投票-1" class="headerlink" title="发起投票"></a>发起投票</h3><p>每个 server 发出一个投票。在运行期间，每个服务器上 zxid 可能不同</p>
+<h3 id="处理投票-1"><a href="#处理投票-1" class="headerlink" title="处理投票"></a>处理投票</h3><p>处理投票。规则同启动过程</p>
+<h3 id="统计投票-1"><a href="#统计投票-1" class="headerlink" title="统计投票"></a>统计投票</h3><p>与启动过程相同</p>
+<h3 id="改变服务器状态-1"><a href="#改变服务器状态-1" class="headerlink" title="改变服务器状态"></a>改变服务器状态</h3><p>改变服务器状态。与启动过程相同</p>
+<h2 id="场景"><a href="#场景" class="headerlink" title="场景"></a>场景</h2><h3 id="前置知识-1"><a href="#前置知识-1" class="headerlink" title="前置知识"></a>前置知识</h3><p>通过上述了解,我们应知道一下知识</p>
+<ul>
+<li>port3888进行选举</li>
+<li>node1~node4之间都是互相通信的</li>
+<li><strong>只要任何人投票，都会触发那个准leader发起自己的投票</strong> </li>
+<li><strong>推选制：先比较zxid，如果zxid相同，再比较myid</strong> </li>
+<li>过半通过的数据才是真数据，你见到的可用的Zxid </li>
+</ul>
+<p>如下场景node4宕机,node1~node3重新选主,其中node03事务未提交,node1和node2事务提交</p>
+<p><img data-src="../images/ZooKeeper%E7%9A%84%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5%E6%B5%81%E7%A8%8B%E5%92%8CLeader%E9%80%89%E4%B8%BE%E5%8E%9F%E7%90%86.asset/1640327784269.png" alt="1640327784269"></p>
+<h3 id="步骤"><a href="#步骤" class="headerlink" title="步骤"></a>步骤</h3><ol>
+<li>node1~node3由follower变为looking状态,对外关闭服务</li>
+<li>总之就是拿当前的分发给投票,然后比较</li>
+</ol>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>zookeeper</tag>
+        <tag>ZK的数据同步流程</tag>
+        <tag>ZK的Leader选举原理</tag>
+        <tag>paxos算法</tag>
+        <tag>ZAB协议</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>redis中RDB和AOF实操</title>
     <url>/posts/3844.html</url>
     <content><![CDATA[<h2 id="RDB和AOF实操"><a href="#RDB和AOF实操" class="headerlink" title="RDB和AOF实操"></a>RDB和AOF实操</h2><h3 id="1-conf文件修改"><a href="#1-conf文件修改" class="headerlink" title="1.conf文件修改"></a>1.conf文件修改</h3><ol>
@@ -1215,6 +1215,72 @@
       </categories>
       <tags>
         <tag>redis</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>redis分布式锁介绍</title>
+    <url>/posts/331a.html</url>
+    <content><![CDATA[<h2 id="redis的分布式锁"><a href="#redis的分布式锁" class="headerlink" title="redis的分布式锁"></a>redis的分布式锁</h2><ol>
+<li>setnx</li>
+<li>过期时间</li>
+<li>多线程(守护线程)延长过期</li>
+</ol>
+<p>现在没有学zookeeper,所以了解不深,可以参考 <a href="http://redis.cn/topics/distlock.html">redis分布式锁</a></p>
+<span id="more"></span>
+
+<h3 id="为什么基于故障转移的实现还不够"><a href="#为什么基于故障转移的实现还不够" class="headerlink" title="为什么基于故障转移的实现还不够"></a>为什么基于故障转移的实现还不够</h3><p>故障转移不能解决几个客户端使用的一把锁,无法保证安全性:</p>
+<ol>
+<li>客户端A从master获取到锁</li>
+<li>在master将锁同步到slave之前，master宕掉了。</li>
+<li>slave节点被晋级为master节点</li>
+<li>客户端B取得了同一个资源被客户端A已经获取到的另外一个锁。安全失效！</li>
+</ol>
+<h3 id="单Redis实例实现分布式锁"><a href="#单Redis实例实现分布式锁" class="headerlink" title="单Redis实例实现分布式锁"></a>单Redis实例实现分布式锁</h3><h4 id="创建锁"><a href="#创建锁" class="headerlink" title="创建锁"></a>创建锁</h4><p> SET resource_name my_random_value NX PX 30000</p>
+<ul>
+<li>不存在key的时候才能被执行成功（NX选项）</li>
+<li>key有一个30秒的自动失效时间（PX属性)</li>
+<li>my_random_value    唯一,随机(安全)</li>
+</ul>
+<h4 id="释放锁"><a href="#释放锁" class="headerlink" title="释放锁"></a>释放锁</h4><p>只有key存在并且存储的值和我指定的值一样才能告诉我删除成功(Lua脚本实现)</p>
+<ul>
+<li><p>原因</p>
+<p>避免删除别的客户端获取成功的锁</p>
+<blockquote>
+<p>例子:</p>
+<p>A -&gt; set lock  -&gt; block -&gt; delete lock<br>b -&gt; get lock -&gt;….</p>
+<p>在b获取到锁的时候A删除掉锁</p>
+</blockquote>
+</li>
+</ul>
+<h3 id="分布式环境实现分布式锁"><a href="#分布式环境实现分布式锁" class="headerlink" title="分布式环境实现分布式锁"></a>分布式环境实现分布式锁</h3><h4 id="创建锁-1"><a href="#创建锁-1" class="headerlink" title="创建锁"></a>创建锁</h4><ol>
+<li><p>获取当前Unix时间，以毫秒为单位</p>
+</li>
+<li><p>依次尝试从N个实例，使用相同的key和随机值获取锁</p>
+</li>
+<li><p>Redis设置锁时,设置一个网络连接和响应超时时间,这个超时时间应该小于锁的失效时间</p>
+<p>例如你的锁自动失效时间为10秒，则超时时间应该在5-50毫秒之间。这样可以避免服务器端Redis已经挂掉的情况下，客户端还在死死地等待响应结果。如果服务器端没有在规定时间内响应，客户端应该尽快尝试另外一个Redis实例</p>
+</li>
+</ol>
+<h4 id="获取锁"><a href="#获取锁" class="headerlink" title="获取锁"></a>获取锁</h4><ol>
+<li><p>获取锁使用的时间</p>
+<p>客户端使用当前时间减去开始获取锁时间（步骤1记录的时间）就得到获取锁使用的时间</p>
+</li>
+<li><p>当且仅当从大多数的Redis节点都取到锁,并且使用的时间小于锁失效时间时,锁才算获取成功</p>
+</li>
+<li><p>如果取到了锁，key的真正有效时间等于有效时间减去获取锁所使用的时间（步骤3计算的结果）</p>
+</li>
+<li><p>如果因为某些原因，获取锁失败（没有在至少N/2+1个Redis实例取到锁或者取锁时间已经超过了有效时间），客户端应该在所有的Redis实例上进行解锁（即便某些Redis实例根本就没有加锁成功）</p>
+</li>
+</ol>
+<h4 id="释放锁-1"><a href="#释放锁-1" class="headerlink" title="释放锁"></a>释放锁</h4><p>​    释放锁比较简单，向所有的Redis实例发送释放锁命令即可，不用关心之前有没有从Redis实例成功获取到锁.</p>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>redis</tag>
+        <tag>分布式锁</tag>
+        <tag>redis集群</tag>
       </tags>
   </entry>
   <entry>
@@ -1327,72 +1393,6 @@
       <tags>
         <tag>redis</tag>
         <tag>redis集群</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>redis分布式锁介绍</title>
-    <url>/posts/331a.html</url>
-    <content><![CDATA[<h2 id="redis的分布式锁"><a href="#redis的分布式锁" class="headerlink" title="redis的分布式锁"></a>redis的分布式锁</h2><ol>
-<li>setnx</li>
-<li>过期时间</li>
-<li>多线程(守护线程)延长过期</li>
-</ol>
-<p>现在没有学zookeeper,所以了解不深,可以参考 <a href="http://redis.cn/topics/distlock.html">redis分布式锁</a></p>
-<span id="more"></span>
-
-<h3 id="为什么基于故障转移的实现还不够"><a href="#为什么基于故障转移的实现还不够" class="headerlink" title="为什么基于故障转移的实现还不够"></a>为什么基于故障转移的实现还不够</h3><p>故障转移不能解决几个客户端使用的一把锁,无法保证安全性:</p>
-<ol>
-<li>客户端A从master获取到锁</li>
-<li>在master将锁同步到slave之前，master宕掉了。</li>
-<li>slave节点被晋级为master节点</li>
-<li>客户端B取得了同一个资源被客户端A已经获取到的另外一个锁。安全失效！</li>
-</ol>
-<h3 id="单Redis实例实现分布式锁"><a href="#单Redis实例实现分布式锁" class="headerlink" title="单Redis实例实现分布式锁"></a>单Redis实例实现分布式锁</h3><h4 id="创建锁"><a href="#创建锁" class="headerlink" title="创建锁"></a>创建锁</h4><p> SET resource_name my_random_value NX PX 30000</p>
-<ul>
-<li>不存在key的时候才能被执行成功（NX选项）</li>
-<li>key有一个30秒的自动失效时间（PX属性)</li>
-<li>my_random_value    唯一,随机(安全)</li>
-</ul>
-<h4 id="释放锁"><a href="#释放锁" class="headerlink" title="释放锁"></a>释放锁</h4><p>只有key存在并且存储的值和我指定的值一样才能告诉我删除成功(Lua脚本实现)</p>
-<ul>
-<li><p>原因</p>
-<p>避免删除别的客户端获取成功的锁</p>
-<blockquote>
-<p>例子:</p>
-<p>A -&gt; set lock  -&gt; block -&gt; delete lock<br>b -&gt; get lock -&gt;….</p>
-<p>在b获取到锁的时候A删除掉锁</p>
-</blockquote>
-</li>
-</ul>
-<h3 id="分布式环境实现分布式锁"><a href="#分布式环境实现分布式锁" class="headerlink" title="分布式环境实现分布式锁"></a>分布式环境实现分布式锁</h3><h4 id="创建锁-1"><a href="#创建锁-1" class="headerlink" title="创建锁"></a>创建锁</h4><ol>
-<li><p>获取当前Unix时间，以毫秒为单位</p>
-</li>
-<li><p>依次尝试从N个实例，使用相同的key和随机值获取锁</p>
-</li>
-<li><p>Redis设置锁时,设置一个网络连接和响应超时时间,这个超时时间应该小于锁的失效时间</p>
-<p>例如你的锁自动失效时间为10秒，则超时时间应该在5-50毫秒之间。这样可以避免服务器端Redis已经挂掉的情况下，客户端还在死死地等待响应结果。如果服务器端没有在规定时间内响应，客户端应该尽快尝试另外一个Redis实例</p>
-</li>
-</ol>
-<h4 id="获取锁"><a href="#获取锁" class="headerlink" title="获取锁"></a>获取锁</h4><ol>
-<li><p>获取锁使用的时间</p>
-<p>客户端使用当前时间减去开始获取锁时间（步骤1记录的时间）就得到获取锁使用的时间</p>
-</li>
-<li><p>当且仅当从大多数的Redis节点都取到锁,并且使用的时间小于锁失效时间时,锁才算获取成功</p>
-</li>
-<li><p>如果取到了锁，key的真正有效时间等于有效时间减去获取锁所使用的时间（步骤3计算的结果）</p>
-</li>
-<li><p>如果因为某些原因，获取锁失败（没有在至少N/2+1个Redis实例取到锁或者取锁时间已经超过了有效时间），客户端应该在所有的Redis实例上进行解锁（即便某些Redis实例根本就没有加锁成功）</p>
-</li>
-</ol>
-<h4 id="释放锁-1"><a href="#释放锁-1" class="headerlink" title="释放锁"></a>释放锁</h4><p>​    释放锁比较简单，向所有的Redis实例发送释放锁命令即可，不用关心之前有没有从Redis实例成功获取到锁.</p>
-]]></content>
-      <categories>
-        <category>从网络到分布式</category>
-      </categories>
-      <tags>
-        <tag>redis</tag>
-        <tag>redis集群</tag>
-        <tag>分布式锁</tag>
       </tags>
   </entry>
   <entry>
@@ -2045,6 +2045,47 @@
       </tags>
   </entry>
   <entry>
+    <title>redis集群理论</title>
+    <url>/posts/e17a.html</url>
+    <content><![CDATA[<h2 id="一、redis的cluster的引入"><a href="#一、redis的cluster的引入" class="headerlink" title="一、redis的cluster的引入"></a>一、redis的cluster的引入</h2><p>三个模式都不能作为数据库,这里三个模式分别指的是</p>
+<ul>
+<li><p>random</p>
+</li>
+<li><p>hash+modula</p>
+</li>
+<li><p>kemata</p>
+<span id="more"></span></li>
+</ul>
+<h3 id="random分片问题"><a href="#random分片问题" class="headerlink" title="random分片问题"></a>random分片问题</h3><p>为了redis引入中为了采用random来分片导致的部分数据取不到,所以redis中有一个预分区的功能</p>
+<ul>
+<li><p>random分片问题:    添加新的node3,会导致所有的取模数据都不一样了,需要全部rehash,所以涉及到了数据的迁移问题</p>
+</li>
+<li><p>解决:</p>
+<p>在redis服务有一个mapping,标记了自己在哪个hash环的槽位,如果添加了新的node那么就不需要全部rehash,而是对新的node进行预分区处理,然后把数据通过网络传输给redis3</p>
+</li>
+</ul>
+<p><img data-src="../images/redis%E9%9B%86%E7%BE%A4%E7%90%86%E8%AE%BA.asset/image-20211213185538110.png" alt="image-20211213185538110"></p>
+<h3 id="kemata击穿问题"><a href="#kemata击穿问题" class="headerlink" title="kemata击穿问题"></a>kemata击穿问题</h3><ul>
+<li><p>kemata击穿问题 : 新增节点后,访问没有数据的新增节点,导致数据穿透</p>
+</li>
+<li><p>解决</p>
+<p>在每个服务端都会有对应的槽点的映射,如果访问到没有数据的新增节点node3,那么他会进行hash运算然后返回给客户端,客户端在重新请求到对应的卡槽的redis服务</p>
+<p><img data-src="../images/redis%E9%9B%86%E7%BE%A4%E7%90%86%E8%AE%BA.asset/image-20211213190657311.png" alt="image-20211213190657311"></p>
+</li>
+</ul>
+<h2 id="二、redis的集群"><a href="#二、redis的集群" class="headerlink" title="二、redis的集群"></a>二、redis的集群</h2><p><strong>推荐直接看官方文档<a href="https://redis.io/">redis</a></strong>,后续会对<a href="https://github.com/joyieldInc/predixy">Predixy</a>进行实操</p>
+<p>redis在分片的情况是很难做事务和一些交集的聚合操作的,所以一般我们让用户来保证,如下图所示</p>
+<p><img data-src="../images/redis%E9%9B%86%E7%BE%A4%E7%90%86%E8%AE%BA.asset/image-20211213191906811.png" alt="image-20211213191906811"></p>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>redis</tag>
+        <tag>redis集群</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>redis相关API代码实现</title>
     <url>/posts/6a1c.html</url>
     <content><![CDATA[<h2 id="API介绍"><a href="#API介绍" class="headerlink" title="API介绍"></a>API介绍</h2><p>大多数api其实是见名知意,所以可以回顾原来的<a href="https://leoleiv8x.github.io/posts/1575.html">redis的value类型</a>讲解那块儿.</p>
@@ -2084,47 +2125,6 @@
       <tags>
         <tag>redis相关API</tag>
         <tag>redis代码实现</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>redis集群理论</title>
-    <url>/posts/e17a.html</url>
-    <content><![CDATA[<h2 id="一、redis的cluster的引入"><a href="#一、redis的cluster的引入" class="headerlink" title="一、redis的cluster的引入"></a>一、redis的cluster的引入</h2><p>三个模式都不能作为数据库,这里三个模式分别指的是</p>
-<ul>
-<li><p>random</p>
-</li>
-<li><p>hash+modula</p>
-</li>
-<li><p>kemata</p>
-<span id="more"></span></li>
-</ul>
-<h3 id="random分片问题"><a href="#random分片问题" class="headerlink" title="random分片问题"></a>random分片问题</h3><p>为了redis引入中为了采用random来分片导致的部分数据取不到,所以redis中有一个预分区的功能</p>
-<ul>
-<li><p>random分片问题:    添加新的node3,会导致所有的取模数据都不一样了,需要全部rehash,所以涉及到了数据的迁移问题</p>
-</li>
-<li><p>解决:</p>
-<p>在redis服务有一个mapping,标记了自己在哪个hash环的槽位,如果添加了新的node那么就不需要全部rehash,而是对新的node进行预分区处理,然后把数据通过网络传输给redis3</p>
-</li>
-</ul>
-<p><img data-src="../images/redis%E9%9B%86%E7%BE%A4%E7%90%86%E8%AE%BA.asset/image-20211213185538110.png" alt="image-20211213185538110"></p>
-<h3 id="kemata击穿问题"><a href="#kemata击穿问题" class="headerlink" title="kemata击穿问题"></a>kemata击穿问题</h3><ul>
-<li><p>kemata击穿问题 : 新增节点后,访问没有数据的新增节点,导致数据穿透</p>
-</li>
-<li><p>解决</p>
-<p>在每个服务端都会有对应的槽点的映射,如果访问到没有数据的新增节点node3,那么他会进行hash运算然后返回给客户端,客户端在重新请求到对应的卡槽的redis服务</p>
-<p><img data-src="../images/redis%E9%9B%86%E7%BE%A4%E7%90%86%E8%AE%BA.asset/image-20211213190657311.png" alt="image-20211213190657311"></p>
-</li>
-</ul>
-<h2 id="二、redis的集群"><a href="#二、redis的集群" class="headerlink" title="二、redis的集群"></a>二、redis的集群</h2><p><strong>推荐直接看官方文档<a href="https://redis.io/">redis</a></strong>,后续会对<a href="https://github.com/joyieldInc/predixy">Predixy</a>进行实操</p>
-<p>redis在分片的情况是很难做事务和一些交集的聚合操作的,所以一般我们让用户来保证,如下图所示</p>
-<p><img data-src="../images/redis%E9%9B%86%E7%BE%A4%E7%90%86%E8%AE%BA.asset/image-20211213191906811.png" alt="image-20211213191906811"></p>
-]]></content>
-      <categories>
-        <category>从网络到分布式</category>
-      </categories>
-      <tags>
-        <tag>redis</tag>
-        <tag>redis集群</tag>
       </tags>
   </entry>
   <entry>
@@ -2217,64 +2217,6 @@
       </tags>
   </entry>
   <entry>
-    <title>代理分片机制-twemproxy|predixy实操和redis集群实操</title>
-    <url>/posts/7dc0.html</url>
-    <content><![CDATA[<h2 id="代理分片机制实操"><a href="#代理分片机制实操" class="headerlink" title="代理分片机制实操"></a>代理分片机制实操</h2><p>对于这种开源的项目,我们要养成在github上看文档的习惯,所以这里不会逐一的分析,写个学习看文档的方式</p>
-<h3 id="twemprxy"><a href="#twemprxy" class="headerlink" title="twemprxy"></a>twemprxy</h3><h4 id="下载并配置文件"><a href="#下载并配置文件" class="headerlink" title="下载并配置文件"></a>下载并配置文件</h4><p><a href="https://github.com/twitter/twemproxy">twemprxy</a>的资料都在README.md文件中</p>
-<span id="more"></span>
-
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">git clone git@github.com:twitter/twemproxy.git</span><br><span class="line">cd twemproxy</span><br><span class="line">autoreconf -fvi</span><br><span class="line">./configure --enable-debug=full</span><br><span class="line">make</span><br><span class="line">cd scripts</span><br><span class="line">cp nutcracker.init /etc/init.d/twemproxy</span><br><span class="line">#加执行权限</span><br><span class="line">chmod +x twemproxy</span><br><span class="line">vim /etc/init.d/twemproxy  #查看期望配置文件的位置 OPTIONS=&quot;-d -c /etc/nutcracker/nutcracker.yml</span><br><span class="line">#所以在对应的位置创建文件夹</span><br><span class="line">mkdir /etc/nutcracker</span><br><span class="line">#它已经给你准备好了配置文件在conf目录中</span><br><span class="line">cp /twemproxy/conf/* /etc/nutcracker/</span><br><span class="line">#在src下有一个make之后的可执行程序nutcracker,把它放到 /usr/bin 则可以全局使用这个命令</span><br><span class="line">cp nutcracker /usr/bin</span><br><span class="line">#编辑配置文件</span><br><span class="line">vim /etc/nutcracker/nutcracker.yml</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215215646634.png" alt="image-20211215215646634"></p>
-<h4 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#通过客户端关闭service</span><br><span class="line">redis-cli -p 6379 shutdown</span><br><span class="line"></span><br><span class="line">#开启服务</span><br><span class="line">redis-server --port 6379</span><br><span class="line">redis-server --port 6380</span><br><span class="line"></span><br><span class="line">#开启twemprxy分片代理</span><br><span class="line">service twemproxy start</span><br><span class="line"></span><br><span class="line">#进入twemprxy进行操作</span><br><span class="line">redis-cli -p 22121</span><br><span class="line">#在之后执行命令,会根据算法分配到对应的库中</span><br><span class="line"></span><br><span class="line">#因为数据已经分支了,所以在代理层调用一下命令是不支持的</span><br><span class="line">keys *</span><br><span class="line">watch k1</span><br><span class="line">multi</span><br></pre></td></tr></table></figure>
-
-<h3 id="predixy"><a href="#predixy" class="headerlink" title="predixy"></a>predixy</h3><p><a href="https://github.com/joyieldInc/predixy/releases">predixy</a></p>
-<h4 id="下载并配置文件-1"><a href="#下载并配置文件-1" class="headerlink" title="下载并配置文件"></a>下载并配置文件</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">mkdir predixy</span><br><span class="line">wget https://github.com/joyieldInc/predixy/releases/download/1.0.5/predixy-1.0.5-bin-amd64-linux.tar.gz</span><br><span class="line">vim predixy.conf </span><br><span class="line">	-#开启哨兵配置文件	Include sentinel.conf</span><br><span class="line">vim sentinel.conf #见下图配置</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215230230542.png" alt="image-20211215230230542"></p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#配置哨兵配置文件</span><br><span class="line">vim 26379.conf</span><br><span class="line">vim 26380.conf</span><br><span class="line">vim 26381.conf</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215230938246.png" alt="image-20211215230938246"></p>
-<h4 id="验证-1"><a href="#验证-1" class="headerlink" title="验证"></a>验证</h4><h5 id="启动哨兵"><a href="#启动哨兵" class="headerlink" title="启动哨兵"></a>启动哨兵</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">redis-server 26379.conf --sentinel</span><br><span class="line">redis-server 26380.conf --sentinel</span><br><span class="line">redis-server 26381.conf --sentinel</span><br></pre></td></tr></table></figure>
-
-<h5 id="启动主从"><a href="#启动主从" class="headerlink" title="启动主从"></a>启动主从</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">mkdir 36379</span><br><span class="line">mkdir 36380</span><br><span class="line">mkdir 46379</span><br><span class="line">mkdir 36380</span><br><span class="line">cd 36379</span><br><span class="line">redis-server --port 36379</span><br><span class="line">cd 36380</span><br><span class="line">redis-server --port 36380 --replicaof 127.0.0.1 36379</span><br><span class="line"></span><br><span class="line">cd 46379</span><br><span class="line">redis-server --port 46379</span><br><span class="line">cd 46380</span><br><span class="line">redis-server --port 46380 --replicaof 127.0.0.1 46379</span><br></pre></td></tr></table></figure>
-
-<h5 id="启动predixy"><a href="#启动predixy" class="headerlink" title="启动predixy"></a>启动predixy</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">./predixy ../conf/predixy.conf</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215232319988.png" alt="image-20211215232319988"></p>
-<h5 id="操作验证"><a href="#操作验证" class="headerlink" title="操作验证"></a>操作验证</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#代理上进行简单添加操作</span><br><span class="line">redi-cli -p 7617</span><br><span class="line">set k1 sadad</span><br><span class="line">set k2 asca</span><br><span class="line">set k3 214sd</span><br><span class="line"></span><br><span class="line">#在36379上查找数据</span><br><span class="line">redi-cli -p 36379</span><br><span class="line">key *</span><br><span class="line">   --&quot;k1&quot;</span><br><span class="line">   --&quot;k3&quot;</span><br><span class="line">   </span><br><span class="line">#在46379上查找数据</span><br><span class="line">redi-cli -p 46379</span><br><span class="line">key *</span><br><span class="line">   --&quot;k2&quot;</span><br><span class="line"></span><br><span class="line">#代理上进行含逻辑名key的添加操作</span><br><span class="line">redi-cli -p 7617</span><br><span class="line">set &#123;oo&#125;k1 sadad</span><br><span class="line">set &#123;oo&#125;k2 ascaasfasf</span><br><span class="line">#最终会发现设置的两者在同一个主机上</span><br><span class="line"></span><br><span class="line">#代理上进行watch等事务操作</span><br><span class="line">watch &#123;oo&#125;k2</span><br><span class="line">multi</span><br><span class="line">#结果会发现不支持,原因:peidixy支持事务但是支持在单个标签的时候</span><br><span class="line">#解决: 删除sentinel.conf中的一组xxoo</span><br><span class="line">#结果: 数据将只会在ooxx中写,相当于降级了,有两套但只写到一套里面</span><br><span class="line">#修改之后重新启动predixy,执行以下命令</span><br><span class="line">watch k1</span><br><span class="line">multi</span><br><span class="line">get k1 </span><br><span class="line">set k2 asdasd</span><br><span class="line">exec</span><br><span class="line">#结果:可以执行</span><br></pre></td></tr></table></figure>
-
-<h2 id="redis集群实操"><a href="#redis集群实操" class="headerlink" title="redis集群实操"></a>redis集群实操</h2><p><a href="http://redis.cn/topics/cluster-tutorial.html">redis集群</a></p>
-<h3 id="快速入门"><a href="#快速入门" class="headerlink" title="快速入门"></a>快速入门</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#redis中提供了一个创建集群的脚本,详情可看该文件夹中的README文件</span><br><span class="line">cd /utils/create-cluster</span><br><span class="line">vim create-cluster</span><br><span class="line">	--NODES=6  #服务数量</span><br><span class="line">	--REPLICAS=1 #副本数量</span><br><span class="line">	#这里其实启动6台机器,6/(1+1)=3台主机,3台从机</span><br><span class="line"></span><br><span class="line">./create-cluster start</span><br><span class="line">./create-cluster create </span><br></pre></td></tr></table></figure>
-
-<p>启动后的效果如下:</p>
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639623932939.png" alt="1639623932939"></p>
-<ul>
-<li>问题: 在30001开启了事务multi,但执行一些命令之后跳转到30003,最后在30003执行EXEC,最终执行事务失败</li>
-</ul>
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639624412919.png" alt="1639624412919"></p>
-<ul>
-<li><p>解决</p>
-<p>通过人为设置值来控制</p>
-</li>
-</ul>
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639624898095.png" alt="1639624898095"></p>
-<h3 id="分布式启动"><a href="#分布式启动" class="headerlink" title="分布式启动"></a>分布式启动</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#通过文档自学</span><br><span class="line">redis-cli --cluster help</span><br><span class="line">#分布式启动</span><br><span class="line">redis-cli --cluster  create 127.0.0.1:30001 127.0.0.1:30002 127.0.0.1:30003 127.0.0.1:30004 127.0.0.1:30005 127.0.0.1:30006  --cluster-replicas 1</span><br><span class="line">#自定义分配槽位(可以解决数据倾斜问题)</span><br><span class="line">redis-cli --cluster reshard 127.0.0.1:30001</span><br><span class="line">#看集群中的服务信息</span><br><span class="line">redis-cli --cluster check 127.0.0.1:30001</span><br><span class="line">redis-cli --cluster info 127.0.0.1:30001</span><br></pre></td></tr></table></figure>
-
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639625216058-1639665162378.png" alt="1639625216058"></p>
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639626265073-1639665162379.png" alt="1639626265073"></p>
-<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639626489398.png" alt="1639626489398"></p>
-]]></content>
-      <categories>
-        <category>从网络到分布式</category>
-      </categories>
-      <tags>
-        <tag>redis</tag>
-        <tag>redis集群</tag>
-        <tag>redis实操</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>二分法</title>
     <url>/posts/db6.html</url>
     <content><![CDATA[<h2 id="二分法"><a href="#二分法" class="headerlink" title="二分法"></a>二分法</h2><ul>
@@ -2331,49 +2273,167 @@
       </tags>
   </entry>
   <entry>
-    <title>基础排序</title>
-    <url>/posts/c9b0.html</url>
-    <content><![CDATA[<h2 id="1-基本排序"><a href="#1-基本排序" class="headerlink" title="1.基本排序"></a>1.基本排序</h2><ul>
-<li><h3 id="冒泡排序"><a href="#冒泡排序" class="headerlink" title="冒泡排序"></a><strong>冒泡排序</strong></h3><ul>
-<li><p>0~N-1</p>
-</li>
-<li><p>0~N-2</p>
-</li>
-<li><p>0~N-3</p>
-</li>
-</ul>
-<p>相邻的两个数两两比较,将较大的数排在前面</p>
-</li>
-</ul>
+    <title>布隆过滤器和redis作为缓存的使用</title>
+    <url>/posts/3ae1.html</url>
+    <content><![CDATA[<h2 id="一、布隆过滤器"><a href="#一、布隆过滤器" class="headerlink" title="一、布隆过滤器"></a>一、布隆过滤器</h2><p>在我们学习中,可以去redis的官方文档,点击module,这里面有很多三方的程序,供我们学习</p>
+<p>网站:     <a href="https://redis.io/modules">https://redis.io/modules</a></p>
+<h3 id="1-概念"><a href="#1-概念" class="headerlink" title="1.概念"></a>1.概念</h3><p>布隆过滤器(Probabilistic Data Structures for Redis):    <strong>redis概率数据结构</strong></p>
+<p>RedisBloom模块提供四种数据结构:一个可伸缩的Bloom过滤器、一个布谷鸟过滤器、一个count-min草图和一个top-k。这些数据结构用完美的准确性换取了极高的内存效率，因此它们对大数据和流应用程序特别有用。</p>
 <span id="more"></span>
 
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">bubbleSort</span><span class="params">(<span class="keyword">int</span>[] arr)</span> </span>&#123;</span><br><span class="line">		<span class="comment">// 0 ~ N-1</span></span><br><span class="line">		<span class="comment">// 0 ~ N-2</span></span><br><span class="line">		<span class="comment">// 0 ~ N-3</span></span><br><span class="line">		<span class="keyword">if</span> (arr == <span class="keyword">null</span> || arr.length &lt; <span class="number">2</span>) &#123;</span><br><span class="line">			<span class="keyword">return</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">int</span> N = arr.length;</span><br><span class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> end = N - <span class="number">1</span>; end &gt;= <span class="number">0</span>; end--) &#123;</span><br><span class="line">			<span class="keyword">for</span> (<span class="keyword">int</span> second = <span class="number">1</span>; second &lt;= end; second++) &#123;</span><br><span class="line">				<span class="keyword">if</span> (arr[second - <span class="number">1</span>] &gt; arr[second]) &#123;</span><br><span class="line">					swap(arr, second - <span class="number">1</span>, second);</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
-
-
-
+<h3 id="2-作用"><a href="#2-作用" class="headerlink" title="2.作用"></a>2.作用</h3><p>使用Bloom和cuckoo过滤器来确定一个元素是否属于一个集合的成员，具有很高的确定性</p>
 <ul>
-<li><h3 id="选择排序"><a href="#选择排序" class="headerlink" title="选择排序"></a><strong>选择排序</strong></h3><ul>
-<li>0~N-1</li>
-<li>1~N-1</li>
-<li>2~N-1</li>
+<li><p>场景</p>
+<p><strong>常用来解决redis缓存穿透问题</strong></p>
+</li>
 </ul>
-<p>默认第一个数为最小数的索引,然后将该数与它后面的数进行比较,如果遇到比他小的数,则最小索引的标记指向该数,全部比较之后最小数的索引跟最前一个数进行交换</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">selectionSort</span><span class="params">(<span class="keyword">int</span>[] arr)</span> </span>&#123;</span><br><span class="line">		<span class="comment">// 0 ~ N-1</span></span><br><span class="line">		<span class="comment">// 1 ~ N-1</span></span><br><span class="line">		<span class="comment">// 2 ~ N-1</span></span><br><span class="line">		<span class="keyword">if</span> (arr == <span class="keyword">null</span> || arr.length &lt; <span class="number">2</span>) &#123;</span><br><span class="line">			<span class="keyword">return</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">int</span> N = arr.length;</span><br><span class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; N; i++) &#123;</span><br><span class="line">			<span class="keyword">int</span> minNumIndex = i;</span><br><span class="line">			<span class="keyword">for</span> (<span class="keyword">int</span> j = i + <span class="number">1</span>; j &lt; N; j++) &#123;</span><br><span class="line">				minNumIndex = arr[minNumIndex] &lt; arr[j] ? minNumIndex : j;</span><br><span class="line">			&#125;</span><br><span class="line">			swap(arr, minNumIndex, i);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure></li>
-<li><h3 id="插入排序"><a href="#插入排序" class="headerlink" title="插入排序"></a><strong>插入排序</strong></h3><ul>
-<li>0~N-1</li>
-<li>1~N-1</li>
-<li>2~N-1</li>
+<h3 id="3-安装"><a href="#3-安装" class="headerlink" title="3.安装"></a>3.安装</h3><figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">1.访问redis.io</span><br><span class="line">2.点击modules</span><br><span class="line">3.访问RedisBloom的github      https://github.com/RedisBloom/RedisBloom</span><br><span class="line">4.linux中wget  <span class="emphasis">*.zip</span></span><br><span class="line"><span class="emphasis">5.yum install unzip</span></span><br><span class="line"><span class="emphasis">6.unzip *</span>.zip</span><br><span class="line">7.make</span><br><span class="line">8.cp bloom.so  /opt/lei/redis5/</span><br><span class="line">9.redis-server --loadmodule  /opt/lei/redis5/redisbloom.so </span><br><span class="line">10.redis-cli  </span><br><span class="line"><span class="code">	后续就可以进行使用了</span></span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638762477000.png" alt="1638762477000"></p>
+<h3 id="4-使用"><a href="#4-使用" class="headerlink" title="4.使用"></a>4.使用</h3><figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">1.通过添加一个新项目创建一个新的bloom过滤器</span><br><span class="line"><span class="code">	BF.ADD newFilter foo	//(integer) 1</span></span><br><span class="line"><span class="code"></span></span><br><span class="line">2.找出过滤器中是否存在一个项目</span><br><span class="line"><span class="code">	BF.EXISTS newFilter foo	//(integer) 1</span></span><br><span class="line"><span class="code">3.在本例中，1意味着foo最有可能出现在newFilter所表示的集合中。但请记住，使用Bloom过滤器可能会出现误报</span></span><br><span class="line"><span class="code">	BF.EXISTS newFilter bar	//(integer) 0</span></span><br><span class="line"><span class="code">	</span></span><br><span class="line"><span class="code">	注意:值0表示bar肯定不在集合中。布隆过滤器不允许假阴性</span></span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638600949104.png" alt="1638600949104"></p>
+<h3 id="5-弊端及原因"><a href="#5-弊端及原因" class="headerlink" title="5.弊端及原因"></a>5.弊端及原因</h3><p>布隆过滤器是使用概率数据结构来进行数据的过滤,也就是概率解决问题</p>
+<ul>
+<li><p>概率解决问题的特性</p>
+<ol>
+<li>不可能百分百阻挡 (&gt;1%)</li>
+<li>你有啥,有的就像bitmap中标记</li>
+<li>请求可能被误标记</li>
+<li>但是,一定概率会大量减少放行(穿透)</li>
+<li>成本低</li>
+</ol>
+</li>
+<li><p>布隆过滤器过滤原理</p>
+<p>添加一个元素的时候会通过映射函数在bitmap也就是二进制位上进行标记</p>
+<p>如果查找这个元素是否存在的时候就会反过来去bitmap上面去找</p>
+</li>
 </ul>
-<p>当前指定的数与之前的数进行对比,如果前面的数比当前数大,那么就交换后不在比较,换另外个数比较</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">insertoinSort</span><span class="params">(<span class="keyword">int</span>[] arr)</span> </span>&#123;</span><br><span class="line">		<span class="comment">// 0 ~ 0 有序</span></span><br><span class="line">		<span class="comment">// 0 ~ 1 有序</span></span><br><span class="line">		<span class="comment">// 0 ~ 2 有序</span></span><br><span class="line">		<span class="comment">// 0 ~ N-1有序</span></span><br><span class="line">		<span class="keyword">if</span> (arr == <span class="keyword">null</span> || arr.length &lt; <span class="number">2</span>) &#123;</span><br><span class="line">			<span class="keyword">return</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">int</span> N = arr.length;</span><br><span class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; N; i++) &#123;</span><br><span class="line">			<span class="keyword">for</span> (<span class="keyword">int</span> pre = i - <span class="number">1</span>; pre &gt;= <span class="number">0</span> &amp;&amp; arr[pre] &gt; arr[pre + <span class="number">1</span>]; pre--) &#123;</span><br><span class="line">				swap(arr, pre, pre + <span class="number">1</span>);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure></li>
-<li><h3 id="对数器"><a href="#对数器" class="headerlink" title="对数器"></a><strong>对数器</strong></h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"> <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span></span>&#123;</span><br><span class="line">        <span class="keyword">int</span> testTimes =<span class="number">10000</span>;</span><br><span class="line">        <span class="keyword">int</span> maxSize = <span class="number">20</span>;</span><br><span class="line">        <span class="keyword">int</span> maxValue = <span class="number">8</span>;</span><br><span class="line">        System.out.println(<span class="string">&quot;test begin&quot;</span>);</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>;i&lt;testTimes;i++)&#123;</span><br><span class="line">            <span class="keyword">int</span>[] arr = generateArr(maxSize, maxValue);</span><br><span class="line">            <span class="keyword">int</span>[] copyArr = copyArr(arr);</span><br><span class="line">            bubbleSort(arr);</span><br><span class="line">            insertionSort(copyArr);</span><br><span class="line"><span class="comment">//           selectionSort(copyArr);</span></span><br><span class="line">            <span class="keyword">if</span> (!isEqual(arr, copyArr)) &#123;</span><br><span class="line">                System.out.println(Arrays.toString(arr));</span><br><span class="line">                System.out.println(Arrays.toString(copyArr));</span><br><span class="line">                System.out.println(<span class="string">&quot;fail&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        System.out.println(<span class="string">&quot;test end&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">isEqual</span><span class="params">(<span class="keyword">int</span>[] arr1, <span class="keyword">int</span>[] arr2)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>;i&lt;arr1.length;i++)&#123;</span><br><span class="line">            <span class="keyword">if</span> (arr1[i] != arr2[i])&#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span>[] generateArr(<span class="keyword">int</span> maxSize, <span class="keyword">int</span> maxValue) &#123;</span><br><span class="line">        <span class="keyword">int</span>[] arr = <span class="keyword">new</span> <span class="keyword">int</span>[(<span class="keyword">int</span>) (Math.random() * (maxSize + <span class="number">1</span>))];</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">            arr[i] = (<span class="keyword">int</span>) (Math.random() * (maxValue + <span class="number">1</span>)) - (<span class="keyword">int</span>) (Math.random() * (maxValue + <span class="number">1</span>));</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> arr;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span>[] copyArr(<span class="keyword">int</span>[] arr) &#123;</span><br><span class="line">        <span class="keyword">int</span>[] newArr = <span class="keyword">new</span> <span class="keyword">int</span>[arr.length];</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; newArr.length; i++) &#123;</span><br><span class="line">            newArr[i] = arr[i];</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> newArr;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure></li>
+<p><strong>注意: 可能会出现bitmap上可能被其他元素标记,会误认为已经存在</strong></p>
+<p><img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638602107076.png" alt="1638602107076"></p>
+<h2 id="二、redis作为缓存的使用"><a href="#二、redis作为缓存的使用" class="headerlink" title="二、redis作为缓存的使用"></a>二、redis作为缓存的使用</h2><h3 id="1-问题引入"><a href="#1-问题引入" class="headerlink" title="1.问题引入"></a>1.问题引入</h3><ul>
+<li><p>问题1: redis作为数据库或缓存的区别是什么?</p>
+<ol>
+<li>缓存数据没那么重要</li>
+<li>缓存不是全量数据</li>
+<li>缓存应该随着访问变化</li>
+<li>一般放的是热数据</li>
+</ol>
+</li>
+<li><p>问题2: redis作为缓存应该考虑什么?</p>
+<ol>
+<li>redis里的数据怎么能随着业务变化,只保留热数据</li>
+<li>原因是内存大小有限,有瓶颈</li>
+</ol>
+</li>
 </ul>
-]]></content>
+<h3 id="2-特性"><a href="#2-特性" class="headerlink" title="2.特性"></a>2.特性</h3><p>参考资料: <a href="http://redis.cn/topics/lru-cache.html">将Redis当做使用LRU算法的缓存来使用</a> </p>
+<p><img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638773788965.png" alt="1638773788965"></p>
+<ul>
+<li><p>业务逻辑</p>
+<p><strong>key的有效期的操作</strong>,如下图所示</p>
+<p>详情请参考: <a href="http://redis.cn/commands/expire.html">过期（Expires）</a> </p>
+</li>
+</ul>
+<p><img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638772714618.png" alt="1638772714618"></p>
+<blockquote>
+<p>总结:</p>
+<ol>
+<li>key的有效期不能随着访问延长</li>
+<li>发生写,会剔除过期时间</li>
+<li>EXPIRE-倒计时,且redis不能延长时间</li>
+<li>EXPIREAT-定时</li>
+</ol>
+</blockquote>
+<ul>
+<li><p>业务运转</p>
+<p>内存是有限的,所以redis有自己的淘汰机制,用来淘汰冷数据</p>
+<p><a href="http://redis.cn/topics/lru-cache.html">将Redis当做使用LRU算法的缓存来使用</a> </p>
+<p>在redis_6379.conf文件中可以设置</p>
+<ol>
+<li>maxmemory <bytes></li>
+<li>maxmemory-policy noeviction<ul>
+<li>LFU   碰了多少次</li>
+<li>LRU  多久没碰他</li>
+</ul>
+</li>
+</ol>
+</li>
+</ul>
+<h3 id="3-过期判断原理"><a href="#3-过期判断原理" class="headerlink" title="3.过期判断原理"></a>3.过期判断原理</h3><p>​    <img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638774303657.png" alt="1638774303657"></p>
+<h4 id="1-被动访问是判定-被动"><a href="#1-被动访问是判定-被动" class="headerlink" title="1.被动访问是判定(被动)"></a>1.被动访问是判定(被动)</h4><p>​    服务器中key已经过期但是已经保存,当用户访问的时候通过时间戳和访问的key的时间戳来判定是否过期,如        果过期则返回用户已过期,并将这个数据给删除</p>
+<h4 id="2-周期轮询判定-主动"><a href="#2-周期轮询判定-主动" class="headerlink" title="2.周期轮询判定(主动)"></a>2.周期轮询判定(主动)</h4><p>​    当然，这样是不够的，因为有些过期的keys，永远不会访问他们。 无论如何，这些keys应该过期，所以定时随机测试设置keys的过期时间。所有这些过期的keys将会从密钥空间删除。</p>
+<p>具体就是Redis每秒10次做的事情：</p>
+<ol>
+<li>测试随机的20个keys进行相关过期检测。</li>
+<li>删除所有已经过期的keys。</li>
+<li>如果有多于25%的keys过期，重复步奏1.</li>
+</ol>
+<p>这是一个平凡的概率算法，基本上的假设是，我们的样本是这个密钥控件，并且我们不断重复过期检测，直到过期的keys的百分百低于25%,这意味着，在任何给定的时刻，最多会清除1/4的过期keys</p>
+<h2 id=""><a href="#" class="headerlink" title=""></a></h2>]]></content>
       <categories>
-        <category>算法</category>
+        <category>从网络到分布式</category>
       </categories>
       <tags>
-        <tag>基础排序</tag>
+        <tag>redis</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>代理分片机制-twemproxy|predixy实操和redis集群实操</title>
+    <url>/posts/7dc0.html</url>
+    <content><![CDATA[<h2 id="代理分片机制实操"><a href="#代理分片机制实操" class="headerlink" title="代理分片机制实操"></a>代理分片机制实操</h2><p>对于这种开源的项目,我们要养成在github上看文档的习惯,所以这里不会逐一的分析,写个学习看文档的方式</p>
+<h3 id="twemprxy"><a href="#twemprxy" class="headerlink" title="twemprxy"></a>twemprxy</h3><h4 id="下载并配置文件"><a href="#下载并配置文件" class="headerlink" title="下载并配置文件"></a>下载并配置文件</h4><p><a href="https://github.com/twitter/twemproxy">twemprxy</a>的资料都在README.md文件中</p>
+<span id="more"></span>
+
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">git clone git@github.com:twitter/twemproxy.git</span><br><span class="line">cd twemproxy</span><br><span class="line">autoreconf -fvi</span><br><span class="line">./configure --enable-debug=full</span><br><span class="line">make</span><br><span class="line">cd scripts</span><br><span class="line">cp nutcracker.init /etc/init.d/twemproxy</span><br><span class="line">#加执行权限</span><br><span class="line">chmod +x twemproxy</span><br><span class="line">vim /etc/init.d/twemproxy  #查看期望配置文件的位置 OPTIONS=&quot;-d -c /etc/nutcracker/nutcracker.yml</span><br><span class="line">#所以在对应的位置创建文件夹</span><br><span class="line">mkdir /etc/nutcracker</span><br><span class="line">#它已经给你准备好了配置文件在conf目录中</span><br><span class="line">cp /twemproxy/conf/* /etc/nutcracker/</span><br><span class="line">#在src下有一个make之后的可执行程序nutcracker,把它放到 /usr/bin 则可以全局使用这个命令</span><br><span class="line">cp nutcracker /usr/bin</span><br><span class="line">#编辑配置文件</span><br><span class="line">vim /etc/nutcracker/nutcracker.yml</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215215646634.png" alt="image-20211215215646634"></p>
+<h4 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#通过客户端关闭service</span><br><span class="line">redis-cli -p 6379 shutdown</span><br><span class="line"></span><br><span class="line">#开启服务</span><br><span class="line">redis-server --port 6379</span><br><span class="line">redis-server --port 6380</span><br><span class="line"></span><br><span class="line">#开启twemprxy分片代理</span><br><span class="line">service twemproxy start</span><br><span class="line"></span><br><span class="line">#进入twemprxy进行操作</span><br><span class="line">redis-cli -p 22121</span><br><span class="line">#在之后执行命令,会根据算法分配到对应的库中</span><br><span class="line"></span><br><span class="line">#因为数据已经分支了,所以在代理层调用一下命令是不支持的</span><br><span class="line">keys *</span><br><span class="line">watch k1</span><br><span class="line">multi</span><br></pre></td></tr></table></figure>
+
+<h3 id="predixy"><a href="#predixy" class="headerlink" title="predixy"></a>predixy</h3><p><a href="https://github.com/joyieldInc/predixy/releases">predixy</a></p>
+<h4 id="下载并配置文件-1"><a href="#下载并配置文件-1" class="headerlink" title="下载并配置文件"></a>下载并配置文件</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">mkdir predixy</span><br><span class="line">wget https://github.com/joyieldInc/predixy/releases/download/1.0.5/predixy-1.0.5-bin-amd64-linux.tar.gz</span><br><span class="line">vim predixy.conf </span><br><span class="line">	-#开启哨兵配置文件	Include sentinel.conf</span><br><span class="line">vim sentinel.conf #见下图配置</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215230230542.png" alt="image-20211215230230542"></p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#配置哨兵配置文件</span><br><span class="line">vim 26379.conf</span><br><span class="line">vim 26380.conf</span><br><span class="line">vim 26381.conf</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215230938246.png" alt="image-20211215230938246"></p>
+<h4 id="验证-1"><a href="#验证-1" class="headerlink" title="验证"></a>验证</h4><h5 id="启动哨兵"><a href="#启动哨兵" class="headerlink" title="启动哨兵"></a>启动哨兵</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">redis-server 26379.conf --sentinel</span><br><span class="line">redis-server 26380.conf --sentinel</span><br><span class="line">redis-server 26381.conf --sentinel</span><br></pre></td></tr></table></figure>
+
+<h5 id="启动主从"><a href="#启动主从" class="headerlink" title="启动主从"></a>启动主从</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">mkdir 36379</span><br><span class="line">mkdir 36380</span><br><span class="line">mkdir 46379</span><br><span class="line">mkdir 36380</span><br><span class="line">cd 36379</span><br><span class="line">redis-server --port 36379</span><br><span class="line">cd 36380</span><br><span class="line">redis-server --port 36380 --replicaof 127.0.0.1 36379</span><br><span class="line"></span><br><span class="line">cd 46379</span><br><span class="line">redis-server --port 46379</span><br><span class="line">cd 46380</span><br><span class="line">redis-server --port 46380 --replicaof 127.0.0.1 46379</span><br></pre></td></tr></table></figure>
+
+<h5 id="启动predixy"><a href="#启动predixy" class="headerlink" title="启动predixy"></a>启动predixy</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">./predixy ../conf/predixy.conf</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/image-20211215232319988.png" alt="image-20211215232319988"></p>
+<h5 id="操作验证"><a href="#操作验证" class="headerlink" title="操作验证"></a>操作验证</h5><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#代理上进行简单添加操作</span><br><span class="line">redi-cli -p 7617</span><br><span class="line">set k1 sadad</span><br><span class="line">set k2 asca</span><br><span class="line">set k3 214sd</span><br><span class="line"></span><br><span class="line">#在36379上查找数据</span><br><span class="line">redi-cli -p 36379</span><br><span class="line">key *</span><br><span class="line">   --&quot;k1&quot;</span><br><span class="line">   --&quot;k3&quot;</span><br><span class="line">   </span><br><span class="line">#在46379上查找数据</span><br><span class="line">redi-cli -p 46379</span><br><span class="line">key *</span><br><span class="line">   --&quot;k2&quot;</span><br><span class="line"></span><br><span class="line">#代理上进行含逻辑名key的添加操作</span><br><span class="line">redi-cli -p 7617</span><br><span class="line">set &#123;oo&#125;k1 sadad</span><br><span class="line">set &#123;oo&#125;k2 ascaasfasf</span><br><span class="line">#最终会发现设置的两者在同一个主机上</span><br><span class="line"></span><br><span class="line">#代理上进行watch等事务操作</span><br><span class="line">watch &#123;oo&#125;k2</span><br><span class="line">multi</span><br><span class="line">#结果会发现不支持,原因:peidixy支持事务但是支持在单个标签的时候</span><br><span class="line">#解决: 删除sentinel.conf中的一组xxoo</span><br><span class="line">#结果: 数据将只会在ooxx中写,相当于降级了,有两套但只写到一套里面</span><br><span class="line">#修改之后重新启动predixy,执行以下命令</span><br><span class="line">watch k1</span><br><span class="line">multi</span><br><span class="line">get k1 </span><br><span class="line">set k2 asdasd</span><br><span class="line">exec</span><br><span class="line">#结果:可以执行</span><br></pre></td></tr></table></figure>
+
+<h2 id="redis集群实操"><a href="#redis集群实操" class="headerlink" title="redis集群实操"></a>redis集群实操</h2><p><a href="http://redis.cn/topics/cluster-tutorial.html">redis集群</a></p>
+<h3 id="快速入门"><a href="#快速入门" class="headerlink" title="快速入门"></a>快速入门</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#redis中提供了一个创建集群的脚本,详情可看该文件夹中的README文件</span><br><span class="line">cd /utils/create-cluster</span><br><span class="line">vim create-cluster</span><br><span class="line">	--NODES=6  #服务数量</span><br><span class="line">	--REPLICAS=1 #副本数量</span><br><span class="line">	#这里其实启动6台机器,6/(1+1)=3台主机,3台从机</span><br><span class="line"></span><br><span class="line">./create-cluster start</span><br><span class="line">./create-cluster create </span><br></pre></td></tr></table></figure>
+
+<p>启动后的效果如下:</p>
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639623932939.png" alt="1639623932939"></p>
+<ul>
+<li>问题: 在30001开启了事务multi,但执行一些命令之后跳转到30003,最后在30003执行EXEC,最终执行事务失败</li>
+</ul>
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639624412919.png" alt="1639624412919"></p>
+<ul>
+<li><p>解决</p>
+<p>通过人为设置值来控制</p>
+</li>
+</ul>
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639624898095.png" alt="1639624898095"></p>
+<h3 id="分布式启动"><a href="#分布式启动" class="headerlink" title="分布式启动"></a>分布式启动</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#通过文档自学</span><br><span class="line">redis-cli --cluster help</span><br><span class="line">#分布式启动</span><br><span class="line">redis-cli --cluster  create 127.0.0.1:30001 127.0.0.1:30002 127.0.0.1:30003 127.0.0.1:30004 127.0.0.1:30005 127.0.0.1:30006  --cluster-replicas 1</span><br><span class="line">#自定义分配槽位(可以解决数据倾斜问题)</span><br><span class="line">redis-cli --cluster reshard 127.0.0.1:30001</span><br><span class="line">#看集群中的服务信息</span><br><span class="line">redis-cli --cluster check 127.0.0.1:30001</span><br><span class="line">redis-cli --cluster info 127.0.0.1:30001</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639625216058-1639665162378.png" alt="1639625216058"></p>
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639626265073-1639665162379.png" alt="1639626265073"></p>
+<p><img data-src="../images/%E4%BB%A3%E7%90%86%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6-twemproxy-predixy%E5%AE%9E%E6%93%8D%E5%92%8Credis%E9%9B%86%E7%BE%A4%E5%AE%9E%E6%93%8D.asset/1639626489398.png" alt="1639626489398"></p>
+]]></content>
+      <categories>
+        <category>从网络到分布式</category>
+      </categories>
+      <tags>
+        <tag>redis</tag>
+        <tag>redis集群</tag>
+        <tag>redis实操</tag>
       </tags>
   </entry>
   <entry>
@@ -2576,109 +2636,109 @@
       </tags>
   </entry>
   <entry>
-    <title>布隆过滤器和redis作为缓存的使用</title>
-    <url>/posts/3ae1.html</url>
-    <content><![CDATA[<h2 id="一、布隆过滤器"><a href="#一、布隆过滤器" class="headerlink" title="一、布隆过滤器"></a>一、布隆过滤器</h2><p>在我们学习中,可以去redis的官方文档,点击module,这里面有很多三方的程序,供我们学习</p>
-<p>网站:     <a href="https://redis.io/modules">https://redis.io/modules</a></p>
-<h3 id="1-概念"><a href="#1-概念" class="headerlink" title="1.概念"></a>1.概念</h3><p>布隆过滤器(Probabilistic Data Structures for Redis):    <strong>redis概率数据结构</strong></p>
-<p>RedisBloom模块提供四种数据结构:一个可伸缩的Bloom过滤器、一个布谷鸟过滤器、一个count-min草图和一个top-k。这些数据结构用完美的准确性换取了极高的内存效率，因此它们对大数据和流应用程序特别有用。</p>
+    <title>基础排序</title>
+    <url>/posts/c9b0.html</url>
+    <content><![CDATA[<h2 id="1-基本排序"><a href="#1-基本排序" class="headerlink" title="1.基本排序"></a>1.基本排序</h2><ul>
+<li><h3 id="冒泡排序"><a href="#冒泡排序" class="headerlink" title="冒泡排序"></a><strong>冒泡排序</strong></h3><ul>
+<li><p>0~N-1</p>
+</li>
+<li><p>0~N-2</p>
+</li>
+<li><p>0~N-3</p>
+</li>
+</ul>
+<p>相邻的两个数两两比较,将较大的数排在前面</p>
+</li>
+</ul>
 <span id="more"></span>
 
-<h3 id="2-作用"><a href="#2-作用" class="headerlink" title="2.作用"></a>2.作用</h3><p>使用Bloom和cuckoo过滤器来确定一个元素是否属于一个集合的成员，具有很高的确定性</p>
-<ul>
-<li><p>场景</p>
-<p><strong>常用来解决redis缓存穿透问题</strong></p>
-</li>
-</ul>
-<h3 id="3-安装"><a href="#3-安装" class="headerlink" title="3.安装"></a>3.安装</h3><figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">1.访问redis.io</span><br><span class="line">2.点击modules</span><br><span class="line">3.访问RedisBloom的github      https://github.com/RedisBloom/RedisBloom</span><br><span class="line">4.linux中wget  <span class="emphasis">*.zip</span></span><br><span class="line"><span class="emphasis">5.yum install unzip</span></span><br><span class="line"><span class="emphasis">6.unzip *</span>.zip</span><br><span class="line">7.make</span><br><span class="line">8.cp bloom.so  /opt/lei/redis5/</span><br><span class="line">9.redis-server --loadmodule  /opt/lei/redis5/redisbloom.so </span><br><span class="line">10.redis-cli  </span><br><span class="line"><span class="code">	后续就可以进行使用了</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">bubbleSort</span><span class="params">(<span class="keyword">int</span>[] arr)</span> </span>&#123;</span><br><span class="line">		<span class="comment">// 0 ~ N-1</span></span><br><span class="line">		<span class="comment">// 0 ~ N-2</span></span><br><span class="line">		<span class="comment">// 0 ~ N-3</span></span><br><span class="line">		<span class="keyword">if</span> (arr == <span class="keyword">null</span> || arr.length &lt; <span class="number">2</span>) &#123;</span><br><span class="line">			<span class="keyword">return</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">int</span> N = arr.length;</span><br><span class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> end = N - <span class="number">1</span>; end &gt;= <span class="number">0</span>; end--) &#123;</span><br><span class="line">			<span class="keyword">for</span> (<span class="keyword">int</span> second = <span class="number">1</span>; second &lt;= end; second++) &#123;</span><br><span class="line">				<span class="keyword">if</span> (arr[second - <span class="number">1</span>] &gt; arr[second]) &#123;</span><br><span class="line">					swap(arr, second - <span class="number">1</span>, second);</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
 
-<p><img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638762477000.png" alt="1638762477000"></p>
-<h3 id="4-使用"><a href="#4-使用" class="headerlink" title="4.使用"></a>4.使用</h3><figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">1.通过添加一个新项目创建一个新的bloom过滤器</span><br><span class="line"><span class="code">	BF.ADD newFilter foo	//(integer) 1</span></span><br><span class="line"><span class="code"></span></span><br><span class="line">2.找出过滤器中是否存在一个项目</span><br><span class="line"><span class="code">	BF.EXISTS newFilter foo	//(integer) 1</span></span><br><span class="line"><span class="code">3.在本例中，1意味着foo最有可能出现在newFilter所表示的集合中。但请记住，使用Bloom过滤器可能会出现误报</span></span><br><span class="line"><span class="code">	BF.EXISTS newFilter bar	//(integer) 0</span></span><br><span class="line"><span class="code">	</span></span><br><span class="line"><span class="code">	注意:值0表示bar肯定不在集合中。布隆过滤器不允许假阴性</span></span><br></pre></td></tr></table></figure>
 
-<p><img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638600949104.png" alt="1638600949104"></p>
-<h3 id="5-弊端及原因"><a href="#5-弊端及原因" class="headerlink" title="5.弊端及原因"></a>5.弊端及原因</h3><p>布隆过滤器是使用概率数据结构来进行数据的过滤,也就是概率解决问题</p>
+
 <ul>
-<li><p>概率解决问题的特性</p>
-<ol>
-<li>不可能百分百阻挡 (&gt;1%)</li>
-<li>你有啥,有的就像bitmap中标记</li>
-<li>请求可能被误标记</li>
-<li>但是,一定概率会大量减少放行(穿透)</li>
-<li>成本低</li>
-</ol>
-</li>
-<li><p>布隆过滤器过滤原理</p>
-<p>添加一个元素的时候会通过映射函数在bitmap也就是二进制位上进行标记</p>
-<p>如果查找这个元素是否存在的时候就会反过来去bitmap上面去找</p>
-</li>
+<li><h3 id="选择排序"><a href="#选择排序" class="headerlink" title="选择排序"></a><strong>选择排序</strong></h3><ul>
+<li>0~N-1</li>
+<li>1~N-1</li>
+<li>2~N-1</li>
 </ul>
-<p><strong>注意: 可能会出现bitmap上可能被其他元素标记,会误认为已经存在</strong></p>
-<p><img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638602107076.png" alt="1638602107076"></p>
-<h2 id="二、redis作为缓存的使用"><a href="#二、redis作为缓存的使用" class="headerlink" title="二、redis作为缓存的使用"></a>二、redis作为缓存的使用</h2><h3 id="1-问题引入"><a href="#1-问题引入" class="headerlink" title="1.问题引入"></a>1.问题引入</h3><ul>
-<li><p>问题1: redis作为数据库或缓存的区别是什么?</p>
-<ol>
-<li>缓存数据没那么重要</li>
-<li>缓存不是全量数据</li>
-<li>缓存应该随着访问变化</li>
-<li>一般放的是热数据</li>
-</ol>
-</li>
-<li><p>问题2: redis作为缓存应该考虑什么?</p>
-<ol>
-<li>redis里的数据怎么能随着业务变化,只保留热数据</li>
-<li>原因是内存大小有限,有瓶颈</li>
-</ol>
-</li>
+<p>默认第一个数为最小数的索引,然后将该数与它后面的数进行比较,如果遇到比他小的数,则最小索引的标记指向该数,全部比较之后最小数的索引跟最前一个数进行交换</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">selectionSort</span><span class="params">(<span class="keyword">int</span>[] arr)</span> </span>&#123;</span><br><span class="line">		<span class="comment">// 0 ~ N-1</span></span><br><span class="line">		<span class="comment">// 1 ~ N-1</span></span><br><span class="line">		<span class="comment">// 2 ~ N-1</span></span><br><span class="line">		<span class="keyword">if</span> (arr == <span class="keyword">null</span> || arr.length &lt; <span class="number">2</span>) &#123;</span><br><span class="line">			<span class="keyword">return</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">int</span> N = arr.length;</span><br><span class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; N; i++) &#123;</span><br><span class="line">			<span class="keyword">int</span> minNumIndex = i;</span><br><span class="line">			<span class="keyword">for</span> (<span class="keyword">int</span> j = i + <span class="number">1</span>; j &lt; N; j++) &#123;</span><br><span class="line">				minNumIndex = arr[minNumIndex] &lt; arr[j] ? minNumIndex : j;</span><br><span class="line">			&#125;</span><br><span class="line">			swap(arr, minNumIndex, i);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure></li>
+<li><h3 id="插入排序"><a href="#插入排序" class="headerlink" title="插入排序"></a><strong>插入排序</strong></h3><ul>
+<li>0~N-1</li>
+<li>1~N-1</li>
+<li>2~N-1</li>
 </ul>
-<h3 id="2-特性"><a href="#2-特性" class="headerlink" title="2.特性"></a>2.特性</h3><p>参考资料: <a href="http://redis.cn/topics/lru-cache.html">将Redis当做使用LRU算法的缓存来使用</a> </p>
-<p><img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638773788965.png" alt="1638773788965"></p>
-<ul>
-<li><p>业务逻辑</p>
-<p><strong>key的有效期的操作</strong>,如下图所示</p>
-<p>详情请参考: <a href="http://redis.cn/commands/expire.html">过期（Expires）</a> </p>
-</li>
+<p>当前指定的数与之前的数进行对比,如果前面的数比当前数大,那么就交换后不在比较,换另外个数比较</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">insertoinSort</span><span class="params">(<span class="keyword">int</span>[] arr)</span> </span>&#123;</span><br><span class="line">		<span class="comment">// 0 ~ 0 有序</span></span><br><span class="line">		<span class="comment">// 0 ~ 1 有序</span></span><br><span class="line">		<span class="comment">// 0 ~ 2 有序</span></span><br><span class="line">		<span class="comment">// 0 ~ N-1有序</span></span><br><span class="line">		<span class="keyword">if</span> (arr == <span class="keyword">null</span> || arr.length &lt; <span class="number">2</span>) &#123;</span><br><span class="line">			<span class="keyword">return</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">int</span> N = arr.length;</span><br><span class="line">		<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; N; i++) &#123;</span><br><span class="line">			<span class="keyword">for</span> (<span class="keyword">int</span> pre = i - <span class="number">1</span>; pre &gt;= <span class="number">0</span> &amp;&amp; arr[pre] &gt; arr[pre + <span class="number">1</span>]; pre--) &#123;</span><br><span class="line">				swap(arr, pre, pre + <span class="number">1</span>);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure></li>
+<li><h3 id="对数器"><a href="#对数器" class="headerlink" title="对数器"></a><strong>对数器</strong></h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"> <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span></span>&#123;</span><br><span class="line">        <span class="keyword">int</span> testTimes =<span class="number">10000</span>;</span><br><span class="line">        <span class="keyword">int</span> maxSize = <span class="number">20</span>;</span><br><span class="line">        <span class="keyword">int</span> maxValue = <span class="number">8</span>;</span><br><span class="line">        System.out.println(<span class="string">&quot;test begin&quot;</span>);</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>;i&lt;testTimes;i++)&#123;</span><br><span class="line">            <span class="keyword">int</span>[] arr = generateArr(maxSize, maxValue);</span><br><span class="line">            <span class="keyword">int</span>[] copyArr = copyArr(arr);</span><br><span class="line">            bubbleSort(arr);</span><br><span class="line">            insertionSort(copyArr);</span><br><span class="line"><span class="comment">//           selectionSort(copyArr);</span></span><br><span class="line">            <span class="keyword">if</span> (!isEqual(arr, copyArr)) &#123;</span><br><span class="line">                System.out.println(Arrays.toString(arr));</span><br><span class="line">                System.out.println(Arrays.toString(copyArr));</span><br><span class="line">                System.out.println(<span class="string">&quot;fail&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        System.out.println(<span class="string">&quot;test end&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">isEqual</span><span class="params">(<span class="keyword">int</span>[] arr1, <span class="keyword">int</span>[] arr2)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>;i&lt;arr1.length;i++)&#123;</span><br><span class="line">            <span class="keyword">if</span> (arr1[i] != arr2[i])&#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span>[] generateArr(<span class="keyword">int</span> maxSize, <span class="keyword">int</span> maxValue) &#123;</span><br><span class="line">        <span class="keyword">int</span>[] arr = <span class="keyword">new</span> <span class="keyword">int</span>[(<span class="keyword">int</span>) (Math.random() * (maxSize + <span class="number">1</span>))];</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">            arr[i] = (<span class="keyword">int</span>) (Math.random() * (maxValue + <span class="number">1</span>)) - (<span class="keyword">int</span>) (Math.random() * (maxValue + <span class="number">1</span>));</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> arr;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span>[] copyArr(<span class="keyword">int</span>[] arr) &#123;</span><br><span class="line">        <span class="keyword">int</span>[] newArr = <span class="keyword">new</span> <span class="keyword">int</span>[arr.length];</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; newArr.length; i++) &#123;</span><br><span class="line">            newArr[i] = arr[i];</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> newArr;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure></li>
 </ul>
-<p><img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638772714618.png" alt="1638772714618"></p>
-<blockquote>
-<p>总结:</p>
-<ol>
-<li>key的有效期不能随着访问延长</li>
-<li>发生写,会剔除过期时间</li>
-<li>EXPIRE-倒计时,且redis不能延长时间</li>
-<li>EXPIREAT-定时</li>
-</ol>
-</blockquote>
-<ul>
-<li><p>业务运转</p>
-<p>内存是有限的,所以redis有自己的淘汰机制,用来淘汰冷数据</p>
-<p><a href="http://redis.cn/topics/lru-cache.html">将Redis当做使用LRU算法的缓存来使用</a> </p>
-<p>在redis_6379.conf文件中可以设置</p>
-<ol>
-<li>maxmemory <bytes></li>
-<li>maxmemory-policy noeviction<ul>
-<li>LFU   碰了多少次</li>
-<li>LRU  多久没碰他</li>
-</ul>
-</li>
-</ol>
-</li>
-</ul>
-<h3 id="3-过期判断原理"><a href="#3-过期判断原理" class="headerlink" title="3.过期判断原理"></a>3.过期判断原理</h3><p>​    <img data-src="../images/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8%E5%92%8Credis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E4%BD%BF%E7%94%A8.asset/1638774303657.png" alt="1638774303657"></p>
-<h4 id="1-被动访问是判定-被动"><a href="#1-被动访问是判定-被动" class="headerlink" title="1.被动访问是判定(被动)"></a>1.被动访问是判定(被动)</h4><p>​    服务器中key已经过期但是已经保存,当用户访问的时候通过时间戳和访问的key的时间戳来判定是否过期,如        果过期则返回用户已过期,并将这个数据给删除</p>
-<h4 id="2-周期轮询判定-主动"><a href="#2-周期轮询判定-主动" class="headerlink" title="2.周期轮询判定(主动)"></a>2.周期轮询判定(主动)</h4><p>​    当然，这样是不够的，因为有些过期的keys，永远不会访问他们。 无论如何，这些keys应该过期，所以定时随机测试设置keys的过期时间。所有这些过期的keys将会从密钥空间删除。</p>
-<p>具体就是Redis每秒10次做的事情：</p>
-<ol>
-<li>测试随机的20个keys进行相关过期检测。</li>
-<li>删除所有已经过期的keys。</li>
-<li>如果有多于25%的keys过期，重复步奏1.</li>
-</ol>
-<p>这是一个平凡的概率算法，基本上的假设是，我们的样本是这个密钥控件，并且我们不断重复过期检测，直到过期的keys的百分百低于25%,这意味着，在任何给定的时刻，最多会清除1/4的过期keys</p>
-<h2 id=""><a href="#" class="headerlink" title=""></a></h2>]]></content>
+]]></content>
       <categories>
-        <category>从网络到分布式</category>
+        <category>算法</category>
       </categories>
       <tags>
-        <tag>redis</tag>
+        <tag>基础排序</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>异或运算</title>
+    <url>/posts/e3fe.html</url>
+    <content><![CDATA[<span id="more"></span>
+
+<h2 id="异或运算"><a href="#异或运算" class="headerlink" title="异或运算"></a>异或运算</h2><blockquote>
+<p>概念:    </p>
+<ul>
+<li>异或运算：相同为0，不同为1</li>
+<li>同或运算：相同以1，不同为0</li>
+<li>总结:异或运算 = 无进位相加</li>
+</ul>
+<p>性质:</p>
+<ul>
+<li>0^N == N</li>
+<li>N^N == 0</li>
+<li>满足交换律和结合律</li>
+</ul>
+</blockquote>
+<ul>
+<li><h3 id="如何不用额外变量交换两个数"><a href="#如何不用额外变量交换两个数" class="headerlink" title="如何不用额外变量交换两个数"></a>如何不用额外变量交换两个数</h3><p>灵活运用异或的两个性质,如果是数组交换的话必须保证互换的两个索引值不相同</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a = <span class="number">19</span>;</span><br><span class="line">    <span class="keyword">int</span> b = <span class="number">6000</span>;</span><br><span class="line">    System.out.println(a);</span><br><span class="line">    System.out.println(b);</span><br><span class="line">    <span class="comment">// 不用额外变量交换两个数</span></span><br><span class="line">    <span class="comment">// 异或:不进位相加</span></span><br><span class="line">    a = a ^ b;</span><br><span class="line">    b = a ^ b; <span class="comment">// b = a ^ b ^ b = a ^ 0 = a</span></span><br><span class="line">    a = a ^ b; <span class="comment">// a = a ^ b ^ a = 0 ^ b = b</span></span><br><span class="line"></span><br><span class="line">    System.out.println(a);</span><br><span class="line">    System.out.println(b);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 注意: i 和 j不能相同,如果相同的话就全是0了</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">swap</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> i, <span class="keyword">int</span> j)</span> </span>&#123;</span><br><span class="line">    arr[i] = arr[i] ^ arr[j];</span><br><span class="line">    arr[j] = arr[i] ^ arr[j];</span><br><span class="line">    arr[i] = arr[i] ^ arr[j];</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><h3 id="一个数组中有一种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这种数"><a href="#一个数组中有一种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这种数" class="headerlink" title="一个数组中有一种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这种数"></a>一个数组中有一种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这种数</h3><p>定义返回结果ans,遍历数组进行异或则可得到出现奇数次的数</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 原理: 使用的也是异或的性质 例: 11 3333 55 66 7777 8</span></span><br><span class="line"><span class="comment">// 只要是偶数个,那么就为0,如果只有一个奇数则说明其他的都是偶数,那么他们的异或最终为0然后再和奇数异或,最终得到这个奇数</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">printOddTimesNum1</span><span class="params">(<span class="keyword">int</span>[] arr)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> ans = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">        ans ^= arr[i];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> ans;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><h3 id="一个数组中有两种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这两种数"><a href="#一个数组中有两种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这两种数" class="headerlink" title="一个数组中有两种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这两种数"></a>一个数组中有两种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这两种数</h3><ul>
+<li><p>遍历数组进行异或获得最终结果,也就是a^b</p>
+</li>
+<li><p>算出a^b这个数的最右侧的1</p>
+<blockquote>
+<p>(a&amp;(~a+1),意味着a,b在这一位是不同的) </p>
+</blockquote>
+</li>
+<li><p>遍历数组,判断当前数是否有最右侧的数,如果有则进行异或处理,最终得到的则是这两个数中的一个</p>
+</li>
+<li><p>得到的数与a^b进行异或则获得另外一个数</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">prinOddTimesNum2</span><span class="params">(<span class="keyword">int</span>[] arr)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> eor = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">        eor ^= arr[i];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 最终res = a ^ b,因为a,b是两种数所以eor != 0</span></span><br><span class="line">    <span class="comment">// 取res最右侧的1,代表着a,b的这一位是不相同的因为异或不同才为1</span></span><br><span class="line">    <span class="comment">// 例: 00110010110111000</span></span><br><span class="line">    <span class="comment">// rightOne: 00000000000001000</span></span><br><span class="line">    <span class="keyword">int</span> rightOne = eor &amp; (~eor + <span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 这里就将a,b分离开了</span></span><br><span class="line">    <span class="keyword">int</span> onlyOne = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">        <span class="comment">// arr[1] = 111100011110000</span></span><br><span class="line">        <span class="comment">// rightOne= 000000000010000</span></span><br><span class="line">        <span class="comment">// 如果数组中的数的最右侧这一位不存在则进行异或,不存在就不异或</span></span><br><span class="line">        <span class="comment">// 存在 一个奇数 偶数....所以异或之后就是其中一个奇数</span></span><br><span class="line">        <span class="keyword">if</span> ((arr[i] &amp; rightOne) != <span class="number">0</span>) &#123;</span><br><span class="line">            onlyOne ^= arr[i];</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    System.out.println(onlyOne + <span class="string">&quot; &quot;</span> + (eor ^ onlyOne));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><h3 id="一个数组中有一种数出现K次，其他数都出现了M次，M-gt-1-K-lt-M找到，出现了K次的数，要求，额外空间复杂度O-1-，时间复杂度O-N"><a href="#一个数组中有一种数出现K次，其他数都出现了M次，M-gt-1-K-lt-M找到，出现了K次的数，要求，额外空间复杂度O-1-，时间复杂度O-N" class="headerlink" title="一个数组中有一种数出现K次，其他数都出现了M次，M &gt; 1,  K &lt; M找到，出现了K次的数，要求，额外空间复杂度O(1)，时间复杂度O(N)"></a>一个数组中有一种数出现K次，其他数都出现了M次，M &gt; 1,  K &lt; M找到，出现了K次的数，要求，额外空间复杂度O(1)，时间复杂度O(N)</h3><ul>
+<li><p>自定义一个数组记录数组中每一个数每一位出现的次数</p>
+</li>
+<li><p>遍历数组,每个数的每一位是否存在,如果存在就加在对应的位数上</p>
+</li>
+<li><p>定义返回的结果值ans,遍历自定义的数组,拿到数组中对应的值与m进行模运算,如果等于0就将对应位的值赋值到ans中</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">onlyTimes</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> k, <span class="keyword">int</span> m)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 用数组来表示每位的个数</span></span><br><span class="line">    <span class="keyword">int</span>[] t = <span class="keyword">new</span> <span class="keyword">int</span>[<span class="number">32</span>];</span><br><span class="line">    <span class="comment">// t[0] 0位置的1出现了几个</span></span><br><span class="line">    <span class="comment">// t[i] i位置的1出现了几个</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> num : arr) &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">32</span>; i++) &#123;</span><br><span class="line">            <span class="comment">// 不为0,则num在i位上为1</span></span><br><span class="line">            <span class="comment">//				if (((num &gt;&gt; i) &amp; i) != 0) &#123;</span></span><br><span class="line">            <span class="comment">//					t[i]++;</span></span><br><span class="line">            <span class="comment">//				&#125;</span></span><br><span class="line">            <span class="comment">// 优化:如果为0,加了个寂寞</span></span><br><span class="line">            t[i] += (num &gt;&gt; i) &amp; <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">int</span> ans = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">// 看每一位上的数与m取模是否为0,如果不为0则说明有k</span></span><br><span class="line">    <span class="comment">// 分析:如果其他数出现m次,那么应该为0,不为0则说明有出现K次的数</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">32</span>; i++) &#123;</span><br><span class="line">        <span class="keyword">if</span> (t[i] % m != <span class="number">0</span>) &#123; <span class="comment">// 第i位上有1</span></span><br><span class="line">            ans |= (<span class="number">1</span> &lt;&lt; i);<span class="comment">// 把1设置上去</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> ans;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><h3 id="KM题扩展-如果另一个数不为K次-则结果返回-1"><a href="#KM题扩展-如果另一个数不为K次-则结果返回-1" class="headerlink" title="KM题扩展:如果另一个数不为K次,则结果返回-1"></a>KM题扩展:如果另一个数不为K次,则结果返回-1</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">onlyTimes2</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> k, <span class="keyword">int</span> m)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 用数组来表示每位的个数</span></span><br><span class="line">    <span class="keyword">int</span>[] t = <span class="keyword">new</span> <span class="keyword">int</span>[<span class="number">32</span>];</span><br><span class="line">    <span class="comment">// t[0] 0位置的1出现了几个</span></span><br><span class="line">    <span class="comment">// t[i] i位置的1出现了几个</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> num : arr) &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">32</span>; i++) &#123;</span><br><span class="line">            t[i] += (num &gt;&gt; i) &amp; <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">int</span> ans = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">// 看每一位上的数与m取模是否为0,如果不为0则说明有k</span></span><br><span class="line">    <span class="comment">// 分析:如果其他数出现m次,那么应该为0,不为0则说明有出现K次的数</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">32</span>; i++) &#123;</span><br><span class="line">        <span class="comment">// 模完等于0,说明这一位不含有1</span></span><br><span class="line">        <span class="keyword">if</span> (t[i] % m == <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 出现k次才统计进去</span></span><br><span class="line">        <span class="keyword">if</span> (t[i] % m == k) &#123;</span><br><span class="line">            ans |= (<span class="number">1</span> &lt;&lt; i);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;<span class="comment">// 出现的不是k次</span></span><br><span class="line">            <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (ans == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">int</span> count = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> num : arr) &#123;</span><br><span class="line">            <span class="keyword">if</span> (num == <span class="number">0</span>) &#123;</span><br><span class="line">                count++;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (count != k) &#123;</span><br><span class="line">            <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> ans;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><h3 id="对数器-以最后一道题为例"><a href="#对数器-以最后一道题为例" class="headerlink" title="对数器(以最后一道题为例)"></a>对数器(以最后一道题为例)</h3></li>
+</ul>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//对数器</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> testTimes = <span class="number">10000</span>;</span><br><span class="line">    <span class="keyword">int</span> maxValue = <span class="number">100</span>;</span><br><span class="line">    <span class="keyword">int</span> kinds = <span class="number">10</span>;</span><br><span class="line">    <span class="keyword">int</span> k = <span class="number">8</span>;</span><br><span class="line">    <span class="keyword">int</span> m = <span class="number">14</span>;</span><br><span class="line">    System.out.println(<span class="string">&quot;test begin&quot;</span>);</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; testTimes; i++) &#123;</span><br><span class="line">        <span class="keyword">int</span>[] arr = generateArr(kinds, k, m, maxValue);</span><br><span class="line">        <span class="keyword">int</span> orgin = onlyTimes(arr, k, m);</span><br><span class="line">        <span class="keyword">int</span> test = test(arr, k);</span><br><span class="line">        <span class="keyword">if</span> (orgin != test) &#123;</span><br><span class="line">            System.out.println(<span class="string">&quot;fail&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    System.out.println(<span class="string">&quot;test end&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">test</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> k)</span> </span>&#123;</span><br><span class="line">    Map&lt;Integer, Integer&gt; map = <span class="keyword">new</span> HashMap&lt;&gt;();</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> num : arr) &#123;</span><br><span class="line">        <span class="keyword">if</span> (map.containsKey(num)) &#123;</span><br><span class="line">            map.put(num, map.get(num) + <span class="number">1</span>);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            map.put(num, <span class="number">1</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">for</span> (Integer num : map.keySet()) &#123;</span><br><span class="line">        <span class="keyword">if</span> (map.get(num) == k) &#123;</span><br><span class="line">            <span class="keyword">return</span> num;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 一个数组中有一种数出现K次，其他数都出现了M次， M &gt; 1, K &lt; M 找到，出现了K次的数， 要求，额外空间复杂度O(1)，时间复杂度O(N)</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">int</span>[] generateArr(<span class="keyword">int</span> kinds, <span class="keyword">int</span> k, <span class="keyword">int</span> m, <span class="keyword">int</span> maxValue) &#123;</span><br><span class="line">    <span class="keyword">int</span> len = (k * <span class="number">1</span>) + ((kinds - <span class="number">1</span>) * m);</span><br><span class="line">    <span class="keyword">int</span>[] arr = <span class="keyword">new</span> <span class="keyword">int</span>[len];</span><br><span class="line"></span><br><span class="line">    <span class="keyword">int</span> index = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">int</span> kTimesValue = (<span class="keyword">int</span>) (Math.random() * (maxValue + <span class="number">1</span>)) - (<span class="keyword">int</span>) (Math.random() * (maxValue + <span class="number">1</span>));</span><br><span class="line">    <span class="keyword">for</span> (; index &lt; k; index++) &#123;</span><br><span class="line">        arr[index] = kTimesValue;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    kinds--;</span><br><span class="line"></span><br><span class="line">    HashSet&lt;Integer&gt; set = <span class="keyword">new</span> HashSet&lt;&gt;();</span><br><span class="line">    set.add(kTimesValue);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span> (kinds != <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">int</span> curValue = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">do</span> &#123;</span><br><span class="line">            curValue = (<span class="keyword">int</span>) (Math.random() * (maxValue + <span class="number">1</span>)) - (<span class="keyword">int</span>) (Math.random() * (maxValue + <span class="number">1</span>));</span><br><span class="line">        &#125; <span class="keyword">while</span> (set.contains(curValue));</span><br><span class="line">        set.add(curValue);</span><br><span class="line">        kinds--;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; m; i++) &#123;</span><br><span class="line">            arr[index++] = curValue;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">        <span class="keyword">int</span> j = (<span class="keyword">int</span>) Math.random() * arr.length;</span><br><span class="line">        <span class="keyword">int</span> temp = arr[i];</span><br><span class="line">        arr[i] = arr[j];</span><br><span class="line">        arr[j] = temp;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> arr;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>算法</category>
+      </categories>
+      <tags>
+        <tag>异或运算</tag>
       </tags>
   </entry>
   <entry>
@@ -2745,66 +2805,6 @@
       </categories>
       <tags>
         <tag>归并排序</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>异或运算</title>
-    <url>/posts/e3fe.html</url>
-    <content><![CDATA[<span id="more"></span>
-
-<h2 id="异或运算"><a href="#异或运算" class="headerlink" title="异或运算"></a>异或运算</h2><blockquote>
-<p>概念:    </p>
-<ul>
-<li>异或运算：相同为0，不同为1</li>
-<li>同或运算：相同以1，不同为0</li>
-<li>总结:异或运算 = 无进位相加</li>
-</ul>
-<p>性质:</p>
-<ul>
-<li>0^N == N</li>
-<li>N^N == 0</li>
-<li>满足交换律和结合律</li>
-</ul>
-</blockquote>
-<ul>
-<li><h3 id="如何不用额外变量交换两个数"><a href="#如何不用额外变量交换两个数" class="headerlink" title="如何不用额外变量交换两个数"></a>如何不用额外变量交换两个数</h3><p>灵活运用异或的两个性质,如果是数组交换的话必须保证互换的两个索引值不相同</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a = <span class="number">19</span>;</span><br><span class="line">    <span class="keyword">int</span> b = <span class="number">6000</span>;</span><br><span class="line">    System.out.println(a);</span><br><span class="line">    System.out.println(b);</span><br><span class="line">    <span class="comment">// 不用额外变量交换两个数</span></span><br><span class="line">    <span class="comment">// 异或:不进位相加</span></span><br><span class="line">    a = a ^ b;</span><br><span class="line">    b = a ^ b; <span class="comment">// b = a ^ b ^ b = a ^ 0 = a</span></span><br><span class="line">    a = a ^ b; <span class="comment">// a = a ^ b ^ a = 0 ^ b = b</span></span><br><span class="line"></span><br><span class="line">    System.out.println(a);</span><br><span class="line">    System.out.println(b);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 注意: i 和 j不能相同,如果相同的话就全是0了</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">swap</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> i, <span class="keyword">int</span> j)</span> </span>&#123;</span><br><span class="line">    arr[i] = arr[i] ^ arr[j];</span><br><span class="line">    arr[j] = arr[i] ^ arr[j];</span><br><span class="line">    arr[i] = arr[i] ^ arr[j];</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-<li><h3 id="一个数组中有一种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这种数"><a href="#一个数组中有一种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这种数" class="headerlink" title="一个数组中有一种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这种数"></a>一个数组中有一种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这种数</h3><p>定义返回结果ans,遍历数组进行异或则可得到出现奇数次的数</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 原理: 使用的也是异或的性质 例: 11 3333 55 66 7777 8</span></span><br><span class="line"><span class="comment">// 只要是偶数个,那么就为0,如果只有一个奇数则说明其他的都是偶数,那么他们的异或最终为0然后再和奇数异或,最终得到这个奇数</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">printOddTimesNum1</span><span class="params">(<span class="keyword">int</span>[] arr)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> ans = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">        ans ^= arr[i];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> ans;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-<li><h3 id="一个数组中有两种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这两种数"><a href="#一个数组中有两种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这两种数" class="headerlink" title="一个数组中有两种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这两种数"></a>一个数组中有两种数出现了奇数次，其他数都出现了偶数次，怎么找到并打印这两种数</h3><ul>
-<li><p>遍历数组进行异或获得最终结果,也就是a^b</p>
-</li>
-<li><p>算出a^b这个数的最右侧的1</p>
-<blockquote>
-<p>(a&amp;(~a+1),意味着a,b在这一位是不同的) </p>
-</blockquote>
-</li>
-<li><p>遍历数组,判断当前数是否有最右侧的数,如果有则进行异或处理,最终得到的则是这两个数中的一个</p>
-</li>
-<li><p>得到的数与a^b进行异或则获得另外一个数</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">prinOddTimesNum2</span><span class="params">(<span class="keyword">int</span>[] arr)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> eor = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">        eor ^= arr[i];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 最终res = a ^ b,因为a,b是两种数所以eor != 0</span></span><br><span class="line">    <span class="comment">// 取res最右侧的1,代表着a,b的这一位是不相同的因为异或不同才为1</span></span><br><span class="line">    <span class="comment">// 例: 00110010110111000</span></span><br><span class="line">    <span class="comment">// rightOne: 00000000000001000</span></span><br><span class="line">    <span class="keyword">int</span> rightOne = eor &amp; (~eor + <span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 这里就将a,b分离开了</span></span><br><span class="line">    <span class="keyword">int</span> onlyOne = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">        <span class="comment">// arr[1] = 111100011110000</span></span><br><span class="line">        <span class="comment">// rightOne= 000000000010000</span></span><br><span class="line">        <span class="comment">// 如果数组中的数的最右侧这一位不存在则进行异或,不存在就不异或</span></span><br><span class="line">        <span class="comment">// 存在 一个奇数 偶数....所以异或之后就是其中一个奇数</span></span><br><span class="line">        <span class="keyword">if</span> ((arr[i] &amp; rightOne) != <span class="number">0</span>) &#123;</span><br><span class="line">            onlyOne ^= arr[i];</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    System.out.println(onlyOne + <span class="string">&quot; &quot;</span> + (eor ^ onlyOne));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-<li><h3 id="一个数组中有一种数出现K次，其他数都出现了M次，M-gt-1-K-lt-M找到，出现了K次的数，要求，额外空间复杂度O-1-，时间复杂度O-N"><a href="#一个数组中有一种数出现K次，其他数都出现了M次，M-gt-1-K-lt-M找到，出现了K次的数，要求，额外空间复杂度O-1-，时间复杂度O-N" class="headerlink" title="一个数组中有一种数出现K次，其他数都出现了M次，M &gt; 1,  K &lt; M找到，出现了K次的数，要求，额外空间复杂度O(1)，时间复杂度O(N)"></a>一个数组中有一种数出现K次，其他数都出现了M次，M &gt; 1,  K &lt; M找到，出现了K次的数，要求，额外空间复杂度O(1)，时间复杂度O(N)</h3><ul>
-<li><p>自定义一个数组记录数组中每一个数每一位出现的次数</p>
-</li>
-<li><p>遍历数组,每个数的每一位是否存在,如果存在就加在对应的位数上</p>
-</li>
-<li><p>定义返回的结果值ans,遍历自定义的数组,拿到数组中对应的值与m进行模运算,如果等于0就将对应位的值赋值到ans中</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">onlyTimes</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> k, <span class="keyword">int</span> m)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 用数组来表示每位的个数</span></span><br><span class="line">    <span class="keyword">int</span>[] t = <span class="keyword">new</span> <span class="keyword">int</span>[<span class="number">32</span>];</span><br><span class="line">    <span class="comment">// t[0] 0位置的1出现了几个</span></span><br><span class="line">    <span class="comment">// t[i] i位置的1出现了几个</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> num : arr) &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">32</span>; i++) &#123;</span><br><span class="line">            <span class="comment">// 不为0,则num在i位上为1</span></span><br><span class="line">            <span class="comment">//				if (((num &gt;&gt; i) &amp; i) != 0) &#123;</span></span><br><span class="line">            <span class="comment">//					t[i]++;</span></span><br><span class="line">            <span class="comment">//				&#125;</span></span><br><span class="line">            <span class="comment">// 优化:如果为0,加了个寂寞</span></span><br><span class="line">            t[i] += (num &gt;&gt; i) &amp; <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">int</span> ans = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">// 看每一位上的数与m取模是否为0,如果不为0则说明有k</span></span><br><span class="line">    <span class="comment">// 分析:如果其他数出现m次,那么应该为0,不为0则说明有出现K次的数</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">32</span>; i++) &#123;</span><br><span class="line">        <span class="keyword">if</span> (t[i] % m != <span class="number">0</span>) &#123; <span class="comment">// 第i位上有1</span></span><br><span class="line">            ans |= (<span class="number">1</span> &lt;&lt; i);<span class="comment">// 把1设置上去</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> ans;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-<li><h3 id="KM题扩展-如果另一个数不为K次-则结果返回-1"><a href="#KM题扩展-如果另一个数不为K次-则结果返回-1" class="headerlink" title="KM题扩展:如果另一个数不为K次,则结果返回-1"></a>KM题扩展:如果另一个数不为K次,则结果返回-1</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">onlyTimes2</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> k, <span class="keyword">int</span> m)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 用数组来表示每位的个数</span></span><br><span class="line">    <span class="keyword">int</span>[] t = <span class="keyword">new</span> <span class="keyword">int</span>[<span class="number">32</span>];</span><br><span class="line">    <span class="comment">// t[0] 0位置的1出现了几个</span></span><br><span class="line">    <span class="comment">// t[i] i位置的1出现了几个</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> num : arr) &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">32</span>; i++) &#123;</span><br><span class="line">            t[i] += (num &gt;&gt; i) &amp; <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">int</span> ans = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">// 看每一位上的数与m取模是否为0,如果不为0则说明有k</span></span><br><span class="line">    <span class="comment">// 分析:如果其他数出现m次,那么应该为0,不为0则说明有出现K次的数</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">32</span>; i++) &#123;</span><br><span class="line">        <span class="comment">// 模完等于0,说明这一位不含有1</span></span><br><span class="line">        <span class="keyword">if</span> (t[i] % m == <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 出现k次才统计进去</span></span><br><span class="line">        <span class="keyword">if</span> (t[i] % m == k) &#123;</span><br><span class="line">            ans |= (<span class="number">1</span> &lt;&lt; i);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;<span class="comment">// 出现的不是k次</span></span><br><span class="line">            <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (ans == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">int</span> count = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> num : arr) &#123;</span><br><span class="line">            <span class="keyword">if</span> (num == <span class="number">0</span>) &#123;</span><br><span class="line">                count++;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (count != k) &#123;</span><br><span class="line">            <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> ans;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-<li><h3 id="对数器-以最后一道题为例"><a href="#对数器-以最后一道题为例" class="headerlink" title="对数器(以最后一道题为例)"></a>对数器(以最后一道题为例)</h3></li>
-</ul>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//对数器</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> testTimes = <span class="number">10000</span>;</span><br><span class="line">    <span class="keyword">int</span> maxValue = <span class="number">100</span>;</span><br><span class="line">    <span class="keyword">int</span> kinds = <span class="number">10</span>;</span><br><span class="line">    <span class="keyword">int</span> k = <span class="number">8</span>;</span><br><span class="line">    <span class="keyword">int</span> m = <span class="number">14</span>;</span><br><span class="line">    System.out.println(<span class="string">&quot;test begin&quot;</span>);</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; testTimes; i++) &#123;</span><br><span class="line">        <span class="keyword">int</span>[] arr = generateArr(kinds, k, m, maxValue);</span><br><span class="line">        <span class="keyword">int</span> orgin = onlyTimes(arr, k, m);</span><br><span class="line">        <span class="keyword">int</span> test = test(arr, k);</span><br><span class="line">        <span class="keyword">if</span> (orgin != test) &#123;</span><br><span class="line">            System.out.println(<span class="string">&quot;fail&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    System.out.println(<span class="string">&quot;test end&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">test</span><span class="params">(<span class="keyword">int</span>[] arr, <span class="keyword">int</span> k)</span> </span>&#123;</span><br><span class="line">    Map&lt;Integer, Integer&gt; map = <span class="keyword">new</span> HashMap&lt;&gt;();</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> num : arr) &#123;</span><br><span class="line">        <span class="keyword">if</span> (map.containsKey(num)) &#123;</span><br><span class="line">            map.put(num, map.get(num) + <span class="number">1</span>);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            map.put(num, <span class="number">1</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">for</span> (Integer num : map.keySet()) &#123;</span><br><span class="line">        <span class="keyword">if</span> (map.get(num) == k) &#123;</span><br><span class="line">            <span class="keyword">return</span> num;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 一个数组中有一种数出现K次，其他数都出现了M次， M &gt; 1, K &lt; M 找到，出现了K次的数， 要求，额外空间复杂度O(1)，时间复杂度O(N)</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">int</span>[] generateArr(<span class="keyword">int</span> kinds, <span class="keyword">int</span> k, <span class="keyword">int</span> m, <span class="keyword">int</span> maxValue) &#123;</span><br><span class="line">    <span class="keyword">int</span> len = (k * <span class="number">1</span>) + ((kinds - <span class="number">1</span>) * m);</span><br><span class="line">    <span class="keyword">int</span>[] arr = <span class="keyword">new</span> <span class="keyword">int</span>[len];</span><br><span class="line"></span><br><span class="line">    <span class="keyword">int</span> index = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">int</span> kTimesValue = (<span class="keyword">int</span>) (Math.random() * (maxValue + <span class="number">1</span>)) - (<span class="keyword">int</span>) (Math.random() * (maxValue + <span class="number">1</span>));</span><br><span class="line">    <span class="keyword">for</span> (; index &lt; k; index++) &#123;</span><br><span class="line">        arr[index] = kTimesValue;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    kinds--;</span><br><span class="line"></span><br><span class="line">    HashSet&lt;Integer&gt; set = <span class="keyword">new</span> HashSet&lt;&gt;();</span><br><span class="line">    set.add(kTimesValue);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span> (kinds != <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">int</span> curValue = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">do</span> &#123;</span><br><span class="line">            curValue = (<span class="keyword">int</span>) (Math.random() * (maxValue + <span class="number">1</span>)) - (<span class="keyword">int</span>) (Math.random() * (maxValue + <span class="number">1</span>));</span><br><span class="line">        &#125; <span class="keyword">while</span> (set.contains(curValue));</span><br><span class="line">        set.add(curValue);</span><br><span class="line">        kinds--;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; m; i++) &#123;</span><br><span class="line">            arr[index++] = curValue;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arr.length; i++) &#123;</span><br><span class="line">        <span class="keyword">int</span> j = (<span class="keyword">int</span>) Math.random() * arr.length;</span><br><span class="line">        <span class="keyword">int</span> temp = arr[i];</span><br><span class="line">        arr[i] = arr[j];</span><br><span class="line">        arr[j] = temp;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> arr;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-]]></content>
-      <categories>
-        <category>算法</category>
-      </categories>
-      <tags>
-        <tag>异或运算</tag>
       </tags>
   </entry>
   <entry>
@@ -3075,6 +3075,23 @@
       </tags>
   </entry>
   <entry>
+    <title>自定义异常和全局异常处理</title>
+    <url>/posts/5367.html</url>
+    <content><![CDATA[<span id="more"></span>
+
+<h3 id="自定义异常"><a href="#自定义异常" class="headerlink" title="自定义异常"></a>自定义异常</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">OpenapiSignatureException</span> <span class="keyword">extends</span> <span class="title">BaseScfException</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> String exceptionCode;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = <span class="number">1L</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的模块异常</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String mcode, ECBCExceptionEnum e)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(ECBCConstants.ECBC, mcode, e.getCode(), e.getMessage());</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = e.getCode();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的模块异常(带异常级别)</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String mcode, ECBCExceptionEnum e, BaseScfExceptionLevelEnum level)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(ECBCConstants.ECBC, mcode, e.getCode(), e.getMessage(), level);</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = e.getCode();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的模块异常-带堆栈信息</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String mcode, ECBCExceptionEnum e, Throwable cause)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(ECBCConstants.ECBC, mcode, e.getCode(), e.getMessage(), cause);</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = e.getCode();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的模块异常-带堆栈信息(带异常级别)</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String mcode, ECBCExceptionEnum e, BaseScfExceptionLevelEnum level, Throwable cause)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(ECBCConstants.ECBC, mcode, e.getCode(), e.getMessage(), level, cause);</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = e.getCode();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的自定义异常</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> error</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String code, String error)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(code, error);</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = code;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的自定义异常(带异常级别)</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> error</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String code, String error, BaseScfExceptionLevelEnum level)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(code, error, level);</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = code;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 只抛出异常信息</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> error</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String error)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(error);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 公共异常</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(BaseScfExceptionEnum e)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(e);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">getExceptionCode</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> exceptionCode;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="全局异常处理类"><a href="#全局异常处理类" class="headerlink" title="全局异常处理类"></a>全局异常处理类</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@RestControllerAdvice</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">OpenApiGlobalExceptionHandler</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * ECBC业务异常返回</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@ResponseStatus(HttpStatus.OK)</span></span><br><span class="line">    <span class="meta">@ExceptionHandler(value = ECBCException.class)</span></span><br><span class="line">    <span class="keyword">public</span> OpenapiResponse&lt;?&gt; handleECBCException(ECBCException ex) &#123;</span><br><span class="line">        OpenapiResponse&lt;String&gt; response = <span class="keyword">new</span> OpenapiResponse&lt;String&gt;();</span><br><span class="line">        <span class="comment">// ECBC业务异常</span></span><br><span class="line">        BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">        <span class="keyword">return</span> response.failure(ex.getMessage());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 权限异常返回</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@ResponseStatus(HttpStatus.FORBIDDEN)</span></span><br><span class="line">    <span class="meta">@ExceptionHandler(value = AccessDeniedException.class)</span></span><br><span class="line">    <span class="keyword">public</span> OpenapiResponse&lt;?&gt; handleAccessDeniedException(AccessDeniedException ex) &#123;</span><br><span class="line">        OpenapiResponse&lt;String&gt; response = <span class="keyword">new</span> OpenapiResponse&lt;String&gt;();</span><br><span class="line">        <span class="comment">// 权限异常</span></span><br><span class="line">        BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">        <span class="keyword">return</span> response.failure(ex.getMessage());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 请求参数异常返回</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@ResponseStatus(HttpStatus.BAD_REQUEST)</span></span><br><span class="line">    <span class="meta">@ExceptionHandler(value = &#123;HttpMessageNotReadableException.class, MissingServletRequestParameterException.class, MissingServletRequestPartException.class&#125;)</span></span><br><span class="line">    <span class="keyword">public</span> OpenapiResponse&lt;?&gt; handleRequestException(Exception ex) &#123;</span><br><span class="line">        OpenapiResponse&lt;String&gt; response = <span class="keyword">new</span> OpenapiResponse&lt;String&gt;();</span><br><span class="line">        <span class="comment">// 参数异常</span></span><br><span class="line">        BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">        <span class="keyword">return</span> response.failure(HttpCodeEnum.INVALID_REQUEST.getMessage());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 验签异常返回</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@ResponseStatus(HttpStatus.UNAUTHORIZED)</span></span><br><span class="line">    <span class="meta">@ExceptionHandler(value = OpenapiSignatureException.class)</span></span><br><span class="line">    <span class="keyword">public</span> OpenapiResponse&lt;?&gt; handleOpenapiSignatureException(OpenapiSignatureException ex) &#123;</span><br><span class="line">        OpenapiResponse&lt;String&gt; response = <span class="keyword">new</span> OpenapiResponse&lt;String&gt;();</span><br><span class="line">        <span class="comment">// 验签异常</span></span><br><span class="line">        BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">        <span class="keyword">return</span> response.failure(ECBCExceptionEnum.OPENAPI_CONFIRMATION_SIGNATURE_FAIL.getMessage());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 服务器异常</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)</span></span><br><span class="line">    <span class="meta">@ExceptionHandler(value = Exception.class)</span></span><br><span class="line">    <span class="keyword">public</span> OpenapiResponse&lt;?&gt; handleException(Exception ex) &#123;</span><br><span class="line">        OpenapiResponse&lt;String&gt; response = <span class="keyword">new</span> OpenapiResponse&lt;String&gt;();</span><br><span class="line">        <span class="comment">// 其他模块业务异常</span></span><br><span class="line">        <span class="keyword">if</span> (ex <span class="keyword">instanceof</span> BaseScfException) &#123;</span><br><span class="line">            BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">            <span class="keyword">return</span> response.failure(ex.getMessage());</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 其他服务异常</span></span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">            <span class="keyword">return</span> response.failure(HttpCodeEnum.INTERNAL_SERVER_ERROR.getMessage());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>工具</category>
+      </categories>
+      <tags>
+        <tag>自定义异常和全局异常处理</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>自定义切面和注解</title>
     <url>/posts/41ef.html</url>
     <content><![CDATA[<p>在OpenAPi的验签方面使用自定义注解和切面来进行验签操作,首先回忆一下注解和切面的一些理论知识</p>
@@ -3134,23 +3151,6 @@
       </categories>
       <tags>
         <tag>自定义切面和注解</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>自定义异常和全局异常处理</title>
-    <url>/posts/5367.html</url>
-    <content><![CDATA[<span id="more"></span>
-
-<h3 id="自定义异常"><a href="#自定义异常" class="headerlink" title="自定义异常"></a>自定义异常</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">OpenapiSignatureException</span> <span class="keyword">extends</span> <span class="title">BaseScfException</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> String exceptionCode;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = <span class="number">1L</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的模块异常</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String mcode, ECBCExceptionEnum e)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(ECBCConstants.ECBC, mcode, e.getCode(), e.getMessage());</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = e.getCode();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的模块异常(带异常级别)</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String mcode, ECBCExceptionEnum e, BaseScfExceptionLevelEnum level)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(ECBCConstants.ECBC, mcode, e.getCode(), e.getMessage(), level);</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = e.getCode();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的模块异常-带堆栈信息</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String mcode, ECBCExceptionEnum e, Throwable cause)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(ECBCConstants.ECBC, mcode, e.getCode(), e.getMessage(), cause);</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = e.getCode();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的模块异常-带堆栈信息(带异常级别)</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String mcode, ECBCExceptionEnum e, BaseScfExceptionLevelEnum level, Throwable cause)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(ECBCConstants.ECBC, mcode, e.getCode(), e.getMessage(), level, cause);</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = e.getCode();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的自定义异常</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> error</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String code, String error)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(code, error);</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = code;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 指定的自定义异常(带异常级别)</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> error</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String code, String error, BaseScfExceptionLevelEnum level)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(code, error, level);</span><br><span class="line">        <span class="keyword">this</span>.exceptionCode = code;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 只抛出异常信息</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> error</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(String error)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(error);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 公共异常</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OpenapiSignatureException</span><span class="params">(BaseScfExceptionEnum e)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(e);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">getExceptionCode</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> exceptionCode;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="全局异常处理类"><a href="#全局异常处理类" class="headerlink" title="全局异常处理类"></a>全局异常处理类</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@RestControllerAdvice</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">OpenApiGlobalExceptionHandler</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * ECBC业务异常返回</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@ResponseStatus(HttpStatus.OK)</span></span><br><span class="line">    <span class="meta">@ExceptionHandler(value = ECBCException.class)</span></span><br><span class="line">    <span class="keyword">public</span> OpenapiResponse&lt;?&gt; handleECBCException(ECBCException ex) &#123;</span><br><span class="line">        OpenapiResponse&lt;String&gt; response = <span class="keyword">new</span> OpenapiResponse&lt;String&gt;();</span><br><span class="line">        <span class="comment">// ECBC业务异常</span></span><br><span class="line">        BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">        <span class="keyword">return</span> response.failure(ex.getMessage());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 权限异常返回</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@ResponseStatus(HttpStatus.FORBIDDEN)</span></span><br><span class="line">    <span class="meta">@ExceptionHandler(value = AccessDeniedException.class)</span></span><br><span class="line">    <span class="keyword">public</span> OpenapiResponse&lt;?&gt; handleAccessDeniedException(AccessDeniedException ex) &#123;</span><br><span class="line">        OpenapiResponse&lt;String&gt; response = <span class="keyword">new</span> OpenapiResponse&lt;String&gt;();</span><br><span class="line">        <span class="comment">// 权限异常</span></span><br><span class="line">        BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">        <span class="keyword">return</span> response.failure(ex.getMessage());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 请求参数异常返回</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@ResponseStatus(HttpStatus.BAD_REQUEST)</span></span><br><span class="line">    <span class="meta">@ExceptionHandler(value = &#123;HttpMessageNotReadableException.class, MissingServletRequestParameterException.class, MissingServletRequestPartException.class&#125;)</span></span><br><span class="line">    <span class="keyword">public</span> OpenapiResponse&lt;?&gt; handleRequestException(Exception ex) &#123;</span><br><span class="line">        OpenapiResponse&lt;String&gt; response = <span class="keyword">new</span> OpenapiResponse&lt;String&gt;();</span><br><span class="line">        <span class="comment">// 参数异常</span></span><br><span class="line">        BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">        <span class="keyword">return</span> response.failure(HttpCodeEnum.INVALID_REQUEST.getMessage());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 验签异常返回</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@ResponseStatus(HttpStatus.UNAUTHORIZED)</span></span><br><span class="line">    <span class="meta">@ExceptionHandler(value = OpenapiSignatureException.class)</span></span><br><span class="line">    <span class="keyword">public</span> OpenapiResponse&lt;?&gt; handleOpenapiSignatureException(OpenapiSignatureException ex) &#123;</span><br><span class="line">        OpenapiResponse&lt;String&gt; response = <span class="keyword">new</span> OpenapiResponse&lt;String&gt;();</span><br><span class="line">        <span class="comment">// 验签异常</span></span><br><span class="line">        BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">        <span class="keyword">return</span> response.failure(ECBCExceptionEnum.OPENAPI_CONFIRMATION_SIGNATURE_FAIL.getMessage());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 服务器异常</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)</span></span><br><span class="line">    <span class="meta">@ExceptionHandler(value = Exception.class)</span></span><br><span class="line">    <span class="keyword">public</span> OpenapiResponse&lt;?&gt; handleException(Exception ex) &#123;</span><br><span class="line">        OpenapiResponse&lt;String&gt; response = <span class="keyword">new</span> OpenapiResponse&lt;String&gt;();</span><br><span class="line">        <span class="comment">// 其他模块业务异常</span></span><br><span class="line">        <span class="keyword">if</span> (ex <span class="keyword">instanceof</span> BaseScfException) &#123;</span><br><span class="line">            BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">            <span class="keyword">return</span> response.failure(ex.getMessage());</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 其他服务异常</span></span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            BaseScfLogger.error(ex.getMessage(), ex);</span><br><span class="line">            <span class="keyword">return</span> response.failure(HttpCodeEnum.INTERNAL_SERVER_ERROR.getMessage());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-]]></content>
-      <categories>
-        <category>工具</category>
-      </categories>
-      <tags>
-        <tag>自定义异常和全局异常处理</tag>
       </tags>
   </entry>
   <entry>
@@ -3248,8 +3248,8 @@
       </tags>
   </entry>
   <entry>
-    <title>设计模式-Bridage</title>
-    <url>/posts/e45c.html</url>
+    <title>设计模式-Adapter</title>
+    <url>/posts/89d9.html</url>
     <content><![CDATA[<span id="more"></span>]]></content>
       <categories>
         <category>工具</category>
@@ -3320,8 +3320,8 @@
       </tags>
   </entry>
   <entry>
-    <title>设计模式-Adapter</title>
-    <url>/posts/89d9.html</url>
+    <title>设计模式-Bridage</title>
+    <url>/posts/e45c.html</url>
     <content><![CDATA[<span id="more"></span>]]></content>
       <categories>
         <category>工具</category>
@@ -3353,6 +3353,17 @@
       </tags>
   </entry>
   <entry>
+    <title>设计模式-Composite</title>
+    <url>/posts/83f9.html</url>
+    <content><![CDATA[<span id="more"></span>]]></content>
+      <categories>
+        <category>工具</category>
+      </categories>
+      <tags>
+        <tag>HTTP请求接口工具</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>设计模式-Decorator</title>
     <url>/posts/e181.html</url>
     <content><![CDATA[<span id="more"></span>]]></content>
@@ -3364,8 +3375,8 @@
       </tags>
   </entry>
   <entry>
-    <title>设计模式-Composite</title>
-    <url>/posts/83f9.html</url>
+    <title>设计模式-Facade_0807</title>
+    <url>/posts/ae5f.html</url>
     <content><![CDATA[<span id="more"></span>]]></content>
       <categories>
         <category>工具</category>
@@ -3439,30 +3450,8 @@
       </tags>
   </entry>
   <entry>
-    <title>设计模式-Facade_0807</title>
-    <url>/posts/ae5f.html</url>
-    <content><![CDATA[<span id="more"></span>]]></content>
-      <categories>
-        <category>工具</category>
-      </categories>
-      <tags>
-        <tag>HTTP请求接口工具</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>设计模式-Interpreter</title>
     <url>/posts/3342.html</url>
-    <content><![CDATA[<span id="more"></span>]]></content>
-      <categories>
-        <category>工具</category>
-      </categories>
-      <tags>
-        <tag>HTTP请求接口工具</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>设计模式-Memento</title>
-    <url>/posts/cbed.html</url>
     <content><![CDATA[<span id="more"></span>]]></content>
       <categories>
         <category>工具</category>
@@ -3494,8 +3483,8 @@
       </tags>
   </entry>
   <entry>
-    <title>设计模式-Proxy</title>
-    <url>/posts/5de5.html</url>
+    <title>设计模式-Memento</title>
+    <url>/posts/cbed.html</url>
     <content><![CDATA[<span id="more"></span>]]></content>
       <categories>
         <category>工具</category>
@@ -3554,17 +3543,6 @@
       </categories>
       <tags>
         <tag>设计模式-原型</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>设计模式-State</title>
-    <url>/posts/dfc4.html</url>
-    <content><![CDATA[<span id="more"></span>]]></content>
-      <categories>
-        <category>工具</category>
-      </categories>
-      <tags>
-        <tag>HTTP请求接口工具</tag>
       </tags>
   </entry>
   <entry>
@@ -3680,8 +3658,8 @@
       </tags>
   </entry>
   <entry>
-    <title>设计模式-Visitor</title>
-    <url>/posts/6a06.html</url>
+    <title>设计模式-State</title>
+    <url>/posts/dfc4.html</url>
     <content><![CDATA[<span id="more"></span>]]></content>
       <categories>
         <category>工具</category>
@@ -3691,8 +3669,8 @@
       </tags>
   </entry>
   <entry>
-    <title>设计模式-Template Method</title>
-    <url>/posts/1e17.html</url>
+    <title>设计模式-Proxy</title>
+    <url>/posts/5de5.html</url>
     <content><![CDATA[<span id="more"></span>]]></content>
       <categories>
         <category>工具</category>
@@ -3829,6 +3807,28 @@
       </categories>
       <tags>
         <tag>高并发和负载均衡</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>设计模式-Template Method</title>
+    <url>/posts/1e17.html</url>
+    <content><![CDATA[<span id="more"></span>]]></content>
+      <categories>
+        <category>工具</category>
+      </categories>
+      <tags>
+        <tag>HTTP请求接口工具</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>设计模式-Visitor</title>
+    <url>/posts/6a06.html</url>
+    <content><![CDATA[<span id="more"></span>]]></content>
+      <categories>
+        <category>工具</category>
+      </categories>
+      <tags>
+        <tag>HTTP请求接口工具</tag>
       </tags>
   </entry>
   <entry>
