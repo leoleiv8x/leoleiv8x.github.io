@@ -189,7 +189,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/868b.html">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/47b6.html">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.jpg">
@@ -203,7 +203,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/posts/868b.html" class="post-title-link" itemprop="url">网络分层及通信过程</a>
+            <a href="/posts/47b6.html" class="post-title-link" itemprop="url">分布式锁</a>
         </h2>
 
         <div class="post-meta">
@@ -212,10 +212,523 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2021-12-12 15:53:48 / 修改时间：19:57:46" itemprop="dateCreated datePublished" datetime="2021-12-12T15:53:48+08:00">2021-12-12</time>
+              <time title="创建时间：2021-12-21 22:53:29" itemprop="dateCreated datePublished" datetime="2021-12-21T22:53:29+08:00">2021-12-21</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-28 10:33:05" itemprop="dateModified" datetime="2021-12-28T10:33:05+08:00">2021-12-28</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>4.5k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>4 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img data-src="ZooKeeper%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81.assets/1640597397016.png" alt="1640597397016"></p>
+<h3 id="LockTest"><a href="#LockTest" class="headerlink" title="LockTest"></a>LockTest</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * zookeeper当做分布式锁</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> lil</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LockTest</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    ZooKeeper zk ;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Before</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">conn</span> <span class="params">()</span></span>&#123;</span><br><span class="line">        zk  = ZKUtils.getZK();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@After</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">close</span> <span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            zk.close();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Test</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">lock</span><span class="params">()</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">10</span>; i++) &#123;</span><br><span class="line">            <span class="keyword">new</span> Thread()&#123;</span><br><span class="line">                <span class="meta">@Override</span></span><br><span class="line">                <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">                    WatchCallBack watchCallBack = <span class="keyword">new</span> WatchCallBack();</span><br><span class="line">                    watchCallBack.setZk(zk);</span><br><span class="line">                    String threadName = Thread.currentThread().getName();</span><br><span class="line">                    watchCallBack.setThreadName(threadName);</span><br><span class="line"></span><br><span class="line">                    <span class="comment">//每一个线程：</span></span><br><span class="line">                    <span class="comment">//抢锁</span></span><br><span class="line">                    watchCallBack.tryLock();</span><br><span class="line">                    <span class="comment">//干活</span></span><br><span class="line">                    System.out.println(threadName+<span class="string">&quot; working...&quot;</span>);</span><br><span class="line">                    <span class="keyword">try</span> &#123;</span><br><span class="line">                        Thread.sleep(<span class="number">2000</span>);</span><br><span class="line">                    &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">                        e.printStackTrace();</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="comment">//释放锁</span></span><br><span class="line">                    watchCallBack.unLock();</span><br><span class="line"></span><br><span class="line">                &#125;</span><br><span class="line">            &#125;.start();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">while</span>(<span class="keyword">true</span>)&#123;</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="WatchCallBack"><a href="#WatchCallBack" class="headerlink" title="WatchCallBack"></a>WatchCallBack</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> lil</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">WatchCallBack</span> <span class="keyword">implements</span> <span class="title">Watcher</span>, <span class="title">AsyncCallback</span>.<span class="title">StringCallback</span>, <span class="title">AsyncCallback</span>.<span class="title">Children2Callback</span>, <span class="title">AsyncCallback</span>.<span class="title">StatCallback</span>, <span class="title">AsyncCallback</span>.<span class="title">DataCallback</span> </span>&#123;</span><br><span class="line">    ZooKeeper zk;</span><br><span class="line">    CountDownLatch cd = <span class="keyword">new</span> CountDownLatch(<span class="number">1</span>);</span><br><span class="line">    String pathName;</span><br><span class="line">    String threadName;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 锁重入</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">tryLock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line"></span><br><span class="line">            ZkUtils.lOGGER.info(<span class="string">&quot;&#123;&#125; create lock...&quot;</span>, threadName);</span><br><span class="line"></span><br><span class="line">            zk.create(<span class="string">&quot;/lock&quot;</span>, threadName.getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL, <span class="keyword">this</span>, threadName);</span><br><span class="line"></span><br><span class="line">            cd.await();</span><br><span class="line"></span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            ZkUtils.lOGGER.error(e.getMessage());</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 释放锁</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">unLock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            zk.delete(pathName, -<span class="number">1</span>);</span><br><span class="line">            System.out.println(threadName + <span class="string">&quot; over work....&quot;</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException | KeeperException e) &#123;</span><br><span class="line">            ZkUtils.lOGGER.error(e.getMessage());</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> ZooKeeper <span class="title">getZk</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> zk;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setZk</span><span class="params">(ZooKeeper zk)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.zk = zk;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> CountDownLatch <span class="title">getCd</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> cd;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setCd</span><span class="params">(CountDownLatch cd)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.cd = cd;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">getPathName</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> pathName;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setPathName</span><span class="params">(String pathName)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.pathName = pathName;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">getThreadName</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> threadName;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setThreadName</span><span class="params">(String threadName)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.threadName = threadName;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * watch</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> watchedEvent</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">process</span><span class="params">(WatchedEvent watchedEvent)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//如果第一个哥们，那个锁释放了，其实只有第二个收到了回调事件！！</span></span><br><span class="line">        <span class="comment">//如果，不是第一个哥们，某一个，挂了，也能造成他后边的收到这个通知，从而让他后边那个跟去watch挂掉这个哥们前边的。。。</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (watchedEvent.getType() == Event.EventType.NodeDeleted) &#123;</span><br><span class="line">            zk.getChildren(<span class="string">&quot;/&quot;</span>, <span class="keyword">false</span>, <span class="keyword">this</span>, <span class="string">&quot;NodeDeleted&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * stringCallBack</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">processResult</span><span class="params">(<span class="keyword">int</span> rc, String path, Object ctx, String name)</span> </span>&#123;</span><br><span class="line">        <span class="comment">//每个线程创建锁,get锁目录的所有孩子,不注册watch在所目录</span></span><br><span class="line">        <span class="keyword">if</span> (name != <span class="keyword">null</span>) &#123;</span><br><span class="line">            System.out.println(threadName + <span class="string">&quot;  create node : &quot;</span> + name);</span><br><span class="line">            pathName = name;</span><br><span class="line">            zk.getChildren(<span class="string">&quot;/&quot;</span>, <span class="keyword">false</span>, <span class="keyword">this</span>, <span class="string">&quot;sdf&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Children2Callback</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">processResult</span><span class="params">(<span class="keyword">int</span> rc, String path, Object ctx, List&lt;String&gt; children, Stat stat)</span> </span>&#123;</span><br><span class="line">        <span class="comment">//一定能看到自己前边的。。</span></span><br><span class="line"></span><br><span class="line">        System.out.println(threadName + <span class="string">&quot;look locks.....&quot;</span>);</span><br><span class="line"><span class="comment">//        for (String child : children) &#123;</span></span><br><span class="line"><span class="comment">//            System.out.println(child);</span></span><br><span class="line"><span class="comment">//        &#125;</span></span><br><span class="line"></span><br><span class="line">        Collections.sort(children);</span><br><span class="line">        <span class="keyword">int</span> i = children.indexOf(pathName.substring(<span class="number">1</span>));</span><br><span class="line"></span><br><span class="line">        <span class="comment">//是不是第一个</span></span><br><span class="line">        <span class="keyword">if</span> (i == <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="comment">//yes</span></span><br><span class="line">            System.out.println(threadName + <span class="string">&quot; i am first....&quot;</span>);</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                zk.setData(<span class="string">&quot;/&quot;</span>, threadName.getBytes(), -<span class="number">1</span>);</span><br><span class="line">                cd.countDown();</span><br><span class="line"></span><br><span class="line">            &#125; <span class="keyword">catch</span> (KeeperException | InterruptedException e) &#123;</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">//no</span></span><br><span class="line">            zk.exists(<span class="string">&quot;/&quot;</span> + children.get(i - <span class="number">1</span>), <span class="keyword">this</span>, <span class="keyword">this</span>, <span class="string">&quot;sdf&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">processResult</span><span class="params">(<span class="keyword">int</span> rc, String path, Object ctx, Stat stat)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">processResult</span><span class="params">(<span class="keyword">int</span> rc, String path, Object ctx, <span class="keyword">byte</span>[] data, Stat stat)</span> </span>&#123;</span><br><span class="line">        <span class="comment">//监控失败</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="ZkUtils"><a href="#ZkUtils" class="headerlink" title="ZkUtils"></a>ZkUtils</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ZKUtils</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span>  <span class="keyword">static</span> ZooKeeper zk;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> String address = <span class="string">&quot;81.70.10.141:2181/testLock&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> DefaultWatch watch = <span class="keyword">new</span> DefaultWatch();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> CountDownLatch init  =  <span class="keyword">new</span> CountDownLatch(<span class="number">1</span>);</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> ZooKeeper  <span class="title">getZK</span><span class="params">()</span></span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            zk = <span class="keyword">new</span> ZooKeeper(address,<span class="number">1000</span>,watch);</span><br><span class="line">            watch.setInit(init);</span><br><span class="line">            init.await();</span><br><span class="line"></span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> zk;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/8278.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/posts/8278.html" class="post-title-link" itemprop="url">分布式配置注册发现</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-12-21 22:53:15" itemprop="dateCreated datePublished" datetime="2021-12-21T22:53:15+08:00">2021-12-21</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-27 17:37:55" itemprop="dateModified" datetime="2021-12-27T17:37:55+08:00">2021-12-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>8.4k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>8 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <span id="more"></span>
+
+<p><img data-src="ZooKeeper%E5%88%86%E5%B8%83%E5%BC%8F%E9%85%8D%E7%BD%AE%E6%B3%A8%E5%86%8C%E5%8F%91%E7%8E%B0.assets/1640597358087.png" alt="1640597358087"></p>
+<h2 id="快速入门"><a href="#快速入门" class="headerlink" title="快速入门"></a>快速入门</h2><h3 id="App"><a href="#App" class="headerlink" title="App"></a>App</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> lil</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">App</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 日志对象</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Logger LOGGER = LoggerFactory.getLogger(App.class);</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">        CountDownLatch cd = <span class="keyword">new</span> CountDownLatch(<span class="number">1</span>);</span><br><span class="line">        ZooKeeper zooKeeper = <span class="keyword">new</span> ZooKeeper(<span class="string">&quot;81.70.10.141:2181&quot;</span>, <span class="number">3000</span>, <span class="keyword">new</span> Watcher() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">process</span><span class="params">(WatchedEvent watchedEvent)</span> </span>&#123;</span><br><span class="line">                LOGGER.info(watchedEvent.toString());</span><br><span class="line">                Event.KeeperState state = watchedEvent.getState();</span><br><span class="line">                String path = watchedEvent.getPath();</span><br><span class="line">                LOGGER.info(path);</span><br><span class="line">                Event.EventType type = watchedEvent.getType();</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">                <span class="keyword">switch</span> (state) &#123;</span><br><span class="line">                    <span class="keyword">case</span> Unknown:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> Disconnected:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> NoSyncConnected:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> SyncConnected:</span><br><span class="line">                        LOGGER.info(<span class="string">&quot;连接成功!&quot;</span>);</span><br><span class="line">                        cd.countDown();</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> AuthFailed:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> ConnectedReadOnly:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> SaslAuthenticated:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> Expired:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">default</span>:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="comment">//需要先阻塞</span></span><br><span class="line">        cd.await();</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="comment">//zk connected state</span></span><br><span class="line">        ZooKeeper.States state = zooKeeper.getState();</span><br><span class="line">        <span class="keyword">switch</span> (state) &#123;</span><br><span class="line">            <span class="keyword">case</span> CONNECTING:</span><br><span class="line">                LOGGER.info(<span class="string">&quot;CONNECTING&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> ASSOCIATING:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> CONNECTED:</span><br><span class="line">                LOGGER.info(<span class="string">&quot;CONNECTED&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> CONNECTEDREADONLY:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> CLOSED:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> AUTH_FAILED:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> NOT_CONNECTED:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">default</span>:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//demo2是否存在</span></span><br><span class="line">        Stat exists = zooKeeper.exists(<span class="string">&quot;/demo2&quot;</span>, <span class="keyword">new</span> Watcher() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">process</span><span class="params">(WatchedEvent watchedEvent)</span> </span>&#123;</span><br><span class="line">                LOGGER.info(watchedEvent.toString());</span><br><span class="line"></span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125;);</span><br><span class="line"></span><br><span class="line">        <span class="comment">//创建节点</span></span><br><span class="line">        <span class="keyword">if</span> (exists == <span class="keyword">null</span>) &#123;</span><br><span class="line">            String pathName = <span class="keyword">null</span>;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                pathName = zooKeeper.create(<span class="string">&quot;/demo2&quot;</span>, <span class="string">&quot;oldData&quot;</span>.getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);</span><br><span class="line">            &#125; <span class="keyword">catch</span> (KeeperException | InterruptedException e) &#123;</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">            &#125;</span><br><span class="line">            LOGGER.info(<span class="string">&quot;创建节点成功,pathName:&#123;&#125;&quot;</span>, pathName);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="comment">//获取节点</span></span><br><span class="line">        <span class="keyword">final</span> Stat stat = <span class="keyword">new</span> Stat();</span><br><span class="line">        <span class="keyword">byte</span>[] data = zooKeeper.getData(<span class="string">&quot;/demo2&quot;</span>, <span class="keyword">new</span> Watcher() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">process</span><span class="params">(WatchedEvent watchedEvent)</span> </span>&#123;</span><br><span class="line">                LOGGER.info(<span class="string">&quot;getData watch:&quot;</span> + watchedEvent.toString());</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    <span class="comment">//watch单次有效,需重新注册监听</span></span><br><span class="line">                    zooKeeper.getData(<span class="string">&quot;/demo1&quot;</span>, <span class="keyword">this</span>, stat);</span><br><span class="line">                &#125; <span class="keyword">catch</span> (KeeperException | InterruptedException e) &#123;</span><br><span class="line">                    e.printStackTrace();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;, stat);</span><br><span class="line"></span><br><span class="line">        <span class="comment">//触发回调</span></span><br><span class="line">        Stat stat1 = zooKeeper.setData(<span class="string">&quot;/demo2&quot;</span>, <span class="string">&quot;newData1&quot;</span>.getBytes(), stat.getVersion());</span><br><span class="line"></span><br><span class="line">        <span class="comment">//第二次触发回调?</span></span><br><span class="line">        Stat stat2 = zooKeeper.setData(<span class="string">&quot;/demo2&quot;</span>, <span class="string">&quot;newData2&quot;</span>.getBytes(), stat1.getVersion());</span><br><span class="line"></span><br><span class="line">        <span class="comment">//异步回调</span></span><br><span class="line">        zooKeeper.getData(<span class="string">&quot;/demo2&quot;</span>, <span class="keyword">false</span>, <span class="keyword">new</span> AsyncCallback.DataCallback() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">processResult</span><span class="params">(<span class="keyword">int</span> i, String s, Object o, <span class="keyword">byte</span>[] bytes, Stat stat)</span> </span>&#123;</span><br><span class="line">                LOGGER.info(<span class="string">&quot;ctx==&gt;&#123;&#125;&quot;</span>,o.toString());</span><br><span class="line">                LOGGER.info(<span class="string">&quot;bytes==&gt;&#123;&#125;&quot;</span>,<span class="keyword">new</span> String(bytes));</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;, <span class="string">&quot;testCtx&quot;</span>);</span><br><span class="line"></span><br><span class="line">        Stat stat3 = zooKeeper.setData(<span class="string">&quot;/demo2&quot;</span>, <span class="string">&quot;newData4&quot;</span>.getBytes(), stat2.getVersion());</span><br><span class="line">        <span class="comment">//阻塞</span></span><br><span class="line">        System.in.read();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="注册配置"><a href="#注册配置" class="headerlink" title="注册配置"></a>注册配置</h2><h3 id="DefaultWatch"><a href="#DefaultWatch" class="headerlink" title="DefaultWatch"></a>DefaultWatch</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 因为一次watch只能处理一下,所以我们自定义一个watch</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> lil</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">DefaultWatch</span> <span class="keyword">implements</span> <span class="title">Watcher</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    CountDownLatch init;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">process</span><span class="params">(WatchedEvent watchedEvent)</span> </span>&#123;</span><br><span class="line">        Event.KeeperState state = watchedEvent.getState();</span><br><span class="line">        <span class="keyword">switch</span> (state) &#123;</span><br><span class="line">            <span class="keyword">case</span> Disconnected:</span><br><span class="line">                ZkUtils.lOGGER.error(<span class="string">&quot;Disconnected&quot;</span>);</span><br><span class="line">                init = <span class="keyword">new</span> CountDownLatch(<span class="number">1</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> SyncConnected:</span><br><span class="line">                ZkUtils.lOGGER.info(<span class="string">&quot;SyncConnected&quot;</span>);</span><br><span class="line">                init.countDown();</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> Expired:</span><br><span class="line">                ZkUtils.lOGGER.error(<span class="string">&quot;Expired&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">default</span>:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> CountDownLatch <span class="title">getInit</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> init;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setInit</span><span class="params">(CountDownLatch init)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.init = init;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="MyConf"><a href="#MyConf" class="headerlink" title="MyConf"></a>MyConf</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> lil</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MyConf</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    String conf;</span><br><span class="line"><span class="comment">//getter,setter方法自动生成</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="WatchCallBack"><a href="#WatchCallBack" class="headerlink" title="WatchCallBack"></a>WatchCallBack</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> lil</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">WatchCallBack</span> <span class="keyword">implements</span> <span class="title">Watcher</span>, <span class="title">AsyncCallback</span>.<span class="title">StatCallback</span>, <span class="title">AsyncCallback</span>.<span class="title">DataCallback</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> ZooKeeper zk;</span><br><span class="line">    <span class="keyword">private</span> String watchPath;</span><br><span class="line">    <span class="keyword">private</span> CountDownLatch init;</span><br><span class="line">    <span class="keyword">private</span> MyConf confMsg;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">aWait</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            zk.exists(watchPath, <span class="keyword">this</span>, <span class="keyword">this</span>, <span class="string">&quot;initExists&quot;</span>);</span><br><span class="line">            init.await();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception ex) &#123;</span><br><span class="line">            ZkUtils.lOGGER.error(ex.getMessage());</span><br><span class="line">            ex.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setInit</span><span class="params">(<span class="keyword">int</span> init)</span> </span>&#123;</span><br><span class="line">        ZkUtils.lOGGER.info(<span class="string">&quot;set init....&quot;</span>);</span><br><span class="line">        <span class="keyword">this</span>.init = <span class="keyword">new</span> CountDownLatch(init);</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            TimeUnit.SECONDS.sleep(<span class="number">1</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            ZkUtils.lOGGER.error(e.getMessage());</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Watch</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> watchedEvent</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">process</span><span class="params">(WatchedEvent watchedEvent)</span> </span>&#123;</span><br><span class="line">        ZkUtils.lOGGER.info(watchedEvent.toString());</span><br><span class="line"></span><br><span class="line">        Event.EventType type = watchedEvent.getType();</span><br><span class="line">        <span class="keyword">switch</span> (type) &#123;</span><br><span class="line">            <span class="keyword">case</span> None:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> NodeCreated:</span><br><span class="line">                ZkUtils.lOGGER.info(<span class="string">&quot;NodeCreated&quot;</span>);</span><br><span class="line">                zk.getData(watchPath, <span class="keyword">this</span>, <span class="keyword">this</span>, <span class="string">&quot;NodeCreated&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> NodeDeleted:</span><br><span class="line">                ZkUtils.lOGGER.info(<span class="string">&quot;NodeDeleted&quot;</span>);</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    confMsg.setConf(<span class="string">&quot;&quot;</span>);</span><br><span class="line">                    <span class="comment">//防止中途删除node</span></span><br><span class="line">                    init = <span class="keyword">new</span> CountDownLatch(<span class="number">1</span>);</span><br><span class="line">                &#125; <span class="keyword">catch</span> (Exception ex) &#123;</span><br><span class="line">                    ZkUtils.lOGGER.error(ex.getMessage());</span><br><span class="line">                    ex.printStackTrace();</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> NodeDataChanged:</span><br><span class="line">                ZkUtils.lOGGER.info(<span class="string">&quot;NodeDataChanged&quot;</span>);</span><br><span class="line">                zk.getData(watchPath, <span class="keyword">this</span>, <span class="keyword">this</span>, <span class="string">&quot;NodeChanged&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> NodeChildrenChanged:</span><br><span class="line">                ZkUtils.lOGGER.info(<span class="string">&quot;NodeChildrenChanged&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">default</span>:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * StatCallBack</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">processResult</span><span class="params">(<span class="keyword">int</span> rc, String path, Object ctx, Stat stat)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (stat != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                zk.getData(watchPath, <span class="keyword">this</span>, <span class="keyword">this</span>, <span class="string">&quot;ex&quot;</span>);</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                ZkUtils.lOGGER.error(e.getMessage());</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * dataCallBack</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">processResult</span><span class="params">(<span class="keyword">int</span> rc, String path, Object ctx, <span class="keyword">byte</span>[] data, Stat stat)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (data != <span class="keyword">null</span>) &#123;</span><br><span class="line">            confMsg.setConf(<span class="keyword">new</span> String(data));</span><br><span class="line">            init.countDown();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">	<span class="comment">//getter,setter方法自动生成</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="ZkConf"><a href="#ZkConf" class="headerlink" title="ZkConf"></a>ZkConf</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ZkConf</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> String address;</span><br><span class="line">    <span class="keyword">private</span> Integer sessionTime;</span><br><span class="line">	<span class="comment">//getter,setter方法</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="ZkUtils"><a href="#ZkUtils" class="headerlink" title="ZkUtils"></a>ZkUtils</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> lil</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ZkUtils</span> </span>&#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span>  <span class="keyword">final</span> Logger lOGGER = LoggerFactory.getLogger(DefaultWatch.class);</span><br><span class="line">    <span class="keyword">static</span> ZooKeeper zk;</span><br><span class="line">    <span class="keyword">static</span> ZkConf zkConf;</span><br><span class="line">    <span class="keyword">static</span> DefaultWatch watch;</span><br><span class="line">    <span class="keyword">static</span> CountDownLatch c = <span class="keyword">new</span> CountDownLatch(<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 配置zk设置</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> conf</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">setConf</span><span class="params">(ZkConf conf)</span> </span>&#123;</span><br><span class="line">        ZkUtils.zkConf = conf;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 设置watch监听器</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> watch</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">setWatch</span><span class="params">(DefaultWatch watch)</span> </span>&#123;</span><br><span class="line">        watch.setInit(c);</span><br><span class="line">        ZkUtils.watch = watch;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获取zk</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> ZooKeeper <span class="title">getZk</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            zk = <span class="keyword">new</span> ZooKeeper(<span class="string">&quot;81.70.10.141&quot;</span>, <span class="number">3000</span>, watch);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> zk;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 关闭zk</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">closeZk</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (zk != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                zk.close();</span><br><span class="line">            &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="ZkTest"><a href="#ZkTest" class="headerlink" title="ZkTest"></a>ZkTest</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 分布式配置注册发现</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> lil</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ZkTest</span> </span>&#123;</span><br><span class="line">    ZooKeeper zk;</span><br><span class="line">    ZkConf zkConf;</span><br><span class="line">    DefaultWatch defaultWatch;</span><br><span class="line">    MyConf confMsg = <span class="keyword">new</span> MyConf();</span><br><span class="line">    WatchCallBack watchCallBack = <span class="keyword">new</span> WatchCallBack();</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Before</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">conn</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">//配置zk</span></span><br><span class="line">        zkConf = <span class="keyword">new</span> ZkConf();</span><br><span class="line">        zkConf.setAddress(<span class="string">&quot;81.70.10.141&quot;</span>);</span><br><span class="line">        zkConf.setSessionTime(<span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">//初始化监听器</span></span><br><span class="line">        defaultWatch = <span class="keyword">new</span> DefaultWatch();</span><br><span class="line"></span><br><span class="line">        ZkUtils.setWatch(defaultWatch);</span><br><span class="line">        ZkUtils.setConf(zkConf);</span><br><span class="line"></span><br><span class="line">        zk = ZkUtils.getZk();</span><br><span class="line">        ZkUtils.lOGGER.info(<span class="string">&quot;zk状态 ==&gt; &#123;&#125;&quot;</span>, zk.getState().name());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@After</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">close</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        ZkUtils.closeZk();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Test</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">getConfigFromZk</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">//程序的配置来源：本地文件系统，数据库，redis，zk。。一切程序可以连接的地方</span></span><br><span class="line">        <span class="comment">//配置内容的提供、变更、响应：本地，数据库等等，都是需要心跳判断，或者手工调用触发</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">//我是程序A 我需要配置：1，zk中别人是不是填充了配置；2，别人填充、更改了配置之后我怎么办</span></span><br><span class="line">        watchCallBack.setConfMsg(confMsg);</span><br><span class="line">        watchCallBack.setInit(<span class="number">1</span>);</span><br><span class="line">        watchCallBack.setZk(zk);</span><br><span class="line">        watchCallBack.setWatchPath(<span class="string">&quot;/appConf&quot;</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line"></span><br><span class="line">            watchCallBack.aWait();</span><br><span class="line"></span><br><span class="line">            <span class="comment">//获取数据</span></span><br><span class="line">            <span class="keyword">while</span> (<span class="keyword">true</span>) &#123;</span><br><span class="line">                <span class="keyword">if</span> (<span class="string">&quot;&quot;</span>.equals(confMsg.getConf()) || <span class="keyword">null</span> == confMsg.getConf()) &#123;</span><br><span class="line">                    ZkUtils.lOGGER.error(<span class="string">&quot;Conf Data is miss....&quot;</span>);</span><br><span class="line">                    watchCallBack.aWait();</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    ZkUtils.lOGGER.info(<span class="string">&quot;confMsg ==&gt; &#123;&#125;&quot;</span>, confMsg.getConf());</span><br><span class="line">                &#125;</span><br><span class="line">                TimeUnit.SECONDS.sleep(<span class="number">1</span>);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception ex) &#123;</span><br><span class="line">            ZkUtils.lOGGER.error(ex.getMessage());</span><br><span class="line">            ex.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id=""><a href="#" class="headerlink" title=""></a></h3>
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/fdaf.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/posts/fdaf.html" class="post-title-link" itemprop="url">ZooKeeper的API详解</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-12-21 22:53:00" itemprop="dateCreated datePublished" datetime="2021-12-21T22:53:00+08:00">2021-12-21</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-23 23:45:32" itemprop="dateModified" datetime="2021-12-23T23:45:32+08:00">2021-12-23</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.8k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>3 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h2 id="原生API"><a href="#原生API" class="headerlink" title="原生API"></a>原生API</h2><h4 id="创建会话"><a href="#创建会话" class="headerlink" title="创建会话"></a>创建会话</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">createZkSession</span><span class="params">()</span></span>&#123;</span><br><span class="line">      	<span class="comment">//zk是有session概念的，没有连接池的概念</span></span><br><span class="line">        <span class="comment">//watch:观察，回调</span></span><br><span class="line">        <span class="comment">//watch的注册值发生在 读类型调用，get，exites。。。</span></span><br><span class="line">        <span class="comment">//第一类：new zk 时候，传入的watch，这个watch，session级别的，跟path 、node没有关系。</span></span><br><span class="line">        <span class="keyword">final</span> CountDownLatch cd = <span class="keyword">new</span> CountDownLatch(<span class="number">1</span>);</span><br><span class="line">        ZooKeeper zk = <span class="keyword">new</span> ZooKeeper(<span class="string">&quot;192.168.150.11:2181,192.168.150.12:2181,192.168.150.13:2181,192.168.150.14:2181&quot;</span>,</span><br><span class="line">                <span class="number">3000</span>, <span class="keyword">new</span> Watcher() &#123;</span><br><span class="line">            <span class="comment">//Watch 的回调方法！</span></span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">process</span><span class="params">(WatchedEvent event)</span> </span>&#123;</span><br><span class="line">                Event.KeeperState state = event.getState();</span><br><span class="line">                <span class="keyword">switch</span> (state) &#123;</span><br><span class="line">                    <span class="keyword">case</span> Disconnected:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> SyncConnected:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> AuthFailed:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> ConnectedReadOnly:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> SaslAuthenticated:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> Expired:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                &lt;!--more--&gt;</span><br><span class="line">                Event.EventType type = event.getType();</span><br><span class="line">                <span class="keyword">switch</span> (type) &#123;</span><br><span class="line">                    <span class="keyword">case</span> None:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> NodeCreated:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> NodeDeleted:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> NodeDataChanged:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    <span class="keyword">case</span> NodeChildrenChanged:</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                String path = event.getPath();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">        cd.await();</span><br><span class="line">        <span class="comment">//CONNECTED</span></span><br><span class="line">        ZooKeeper.States state = zk.getState();</span><br><span class="line">        <span class="keyword">switch</span> (state) &#123;</span><br><span class="line">            <span class="keyword">case</span> CONNECTING:</span><br><span class="line">                System.out.println(<span class="string">&quot;CONNECTING......&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> ASSOCIATING:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> CONNECTED:</span><br><span class="line">                System.out.println(<span class="string">&quot;CONNECTED........&quot;</span>);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> CONNECTEDREADONLY:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> CLOSED:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> AUTH_FAILED:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> NOT_CONNECTED:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="创建数据节点"><a href="#创建数据节点" class="headerlink" title="创建数据节点"></a>创建数据节点</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//创建znode(二进制安全)</span></span><br><span class="line">       zk.create(<span class="string">&quot;/lei&quot;</span>, <span class="string">&quot;oldData&quot;</span>.getBytes(StandardCharsets.UTF_8), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);</span><br></pre></td></tr></table></figure>
+
+<h4 id="读取数据节点"><a href="#读取数据节点" class="headerlink" title="读取数据节点"></a>读取数据节点</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//获取znode数据</span></span><br><span class="line">        Stat stat = <span class="keyword">new</span> Stat();</span><br><span class="line">        <span class="keyword">byte</span>[] node = zk.getData(<span class="string">&quot;/lei&quot;</span>, <span class="keyword">new</span> Watcher() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="comment">//wacher一次性</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">process</span><span class="params">(WatchedEvent event)</span> </span>&#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;getData watch: &quot;</span> + event.toString());</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    <span class="comment">//true   default Watch  被重新注册   new zk的那个watch</span></span><br><span class="line">                    zk.getData(<span class="string">&quot;/ooxx&quot;</span>, <span class="keyword">this</span>, stat);</span><br><span class="line">                &#125; <span class="keyword">catch</span> (KeeperException e) &#123;</span><br><span class="line">                    e.printStackTrace();</span><br><span class="line">                &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">                    e.printStackTrace();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;, stat);</span><br><span class="line">        System.out.println(<span class="keyword">new</span> String(node));</span><br><span class="line"></span><br><span class="line">		<span class="comment">//触发回调</span></span><br><span class="line">        Stat stat1 = zk.setData(<span class="string">&quot;/ooxx&quot;</span>, <span class="string">&quot;newdata&quot;</span>.getBytes(), <span class="number">0</span>);</span><br><span class="line">        <span class="comment">//还会触发吗？</span></span><br><span class="line">        Stat stat2 = zk.setData(<span class="string">&quot;/ooxx&quot;</span>, <span class="string">&quot;newdata01&quot;</span>.getBytes(), stat1.getVersion());</span><br></pre></td></tr></table></figure>
+
+<h4 id="异步回调"><a href="#异步回调" class="headerlink" title="异步回调"></a>异步回调</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">System.out.println(<span class="string">&quot;-------async start----------&quot;</span>);</span><br><span class="line">       zk.getData(<span class="string">&quot;/ooxx&quot;</span>, <span class="keyword">false</span>, <span class="keyword">new</span> AsyncCallback.DataCallback() &#123;</span><br><span class="line">           <span class="meta">@Override</span></span><br><span class="line">           <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">processResult</span><span class="params">(<span class="keyword">int</span> rc, String path, Object ctx, <span class="keyword">byte</span>[] data, Stat stat)</span> </span>&#123;</span><br><span class="line">               System.out.println(<span class="string">&quot;-------async call back----------&quot;</span>);</span><br><span class="line">               System.out.println(ctx.toString());</span><br><span class="line">               System.out.println(<span class="keyword">new</span> String(data));</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;,<span class="string">&quot;abc&quot;</span>);</span><br><span class="line">       System.out.println(<span class="string">&quot;-------async over----------&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="Curator"><a href="#Curator" class="headerlink" title="Curator"></a>Curator</h2><h3 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h3><p>Curator是Netflix公司开源的一套zookeeper客户端框架，解决了很多Zookeeper客户端非常底层的细节开发工作，包括连接重连、反复注册Watcher和NodeExistsException异常等等。</p>
+<p><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/db65b64f38aa">curator基本使用</a></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/49ea.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/posts/49ea.html" class="post-title-link" itemprop="url">ZooKeeper的Watch机制</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-12-21 22:52:32" itemprop="dateCreated datePublished" datetime="2021-12-21T22:52:32+08:00">2021-12-21</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-23 23:45:32" itemprop="dateModified" datetime="2021-12-23T23:45:32+08:00">2021-12-23</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.3k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>2 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h2 id="wathcer事件机制原理"><a href="#wathcer事件机制原理" class="headerlink" title="wathcer事件机制原理"></a>wathcer事件机制原理</h2><p>zk是有统一的视图的,所以怎么保证这个视图呢?</p>
+<ul>
+<li><p>方式一</p>
+<p>我们可以通过自己写心跳验证来实现</p>
+<p><strong>缺点</strong></p>
+<ul>
+<li><p>get客户端每次发送心跳给set的客户端(方向性)</p>
+</li>
+<li><p>发送心跳是由一个时间间隔的,在这个时间间隔可能会出意外,无法监控到(时效性)</p>
+</li>
+</ul>
+</li>
+<li><p>方式二</p>
+<p>ZK中的watch机制,解决了方式一的问题</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/posts/49ea.html#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/5c4.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/posts/5c4.html" class="post-title-link" itemprop="url">ZooKeeper原理</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-12-21 22:51:02" itemprop="dateCreated datePublished" datetime="2021-12-21T22:51:02+08:00">2021-12-21</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-25 12:41:57" itemprop="dateModified" datetime="2021-12-25T12:41:57+08:00">2021-12-25</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>259</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>1 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>我们已经知道ZooKeeper是一个分布式的协调框架,它具有以下特点</p>
+<ul>
+<li>扩展</li>
+<li>可靠性</li>
+<li>时序性</li>
+<li>快速</li>
+</ul>
+<p>下面我们从扩展性和可靠性两个方面来分析</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/posts/5c4.html#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/7fb0.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/posts/7fb0.html" class="post-title-link" itemprop="url">ZooKeeper安装验证和简单使用</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-12-21 22:50:36" itemprop="dateCreated datePublished" datetime="2021-12-21T22:50:36+08:00">2021-12-21</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-25 14:07:37" itemprop="dateModified" datetime="2021-12-25T14:07:37+08:00">2021-12-25</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -251,11 +764,12 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h2 id="一、网络分层结构"><a href="#一、网络分层结构" class="headerlink" title="一、网络分层结构"></a>一、网络分层结构</h2><p>注意:<strong>网络的每一层都会执行自己负责的功能之后阻塞然后调用下一层要执行的功能,从而达到解耦的效果</strong></p>
-<p><img data-src="../images/%E7%BD%91%E7%BB%9C%E5%88%86%E5%B1%82%E5%8F%8A%E9%80%9A%E4%BF%A1%E8%BF%87%E7%A8%8B.asset/image-20211212174515971.png" alt="image-20211212174515971"></p>
+          <h2 id="安装配置"><a href="#安装配置" class="headerlink" title="安装配置"></a>安装配置</h2><h3 id="zookeeper安装"><a href="#zookeeper安装" class="headerlink" title="zookeeper安装"></a><a target="_blank" rel="noopener" href="https://www.runoob.com/w3cnote/zookeeper-setup.html">zookeeper安装</a></h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">#准备 node01~node04	安装JDK,并配置JAVA_HOME</span><br><span class="line">wget https://mirror.bit.edu.cn/apache/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz</span><br><span class="line">tar -zxvf zookeeper-3.4.14.tar.gz</span><br><span class="line">mkdir /opt/lei</span><br><span class="line">mv  zookeeper  /opt/lei</span><br><span class="line">vi /etc/profile</span><br><span class="line">	export ZOOKEEPER_HOME=/opt/lei/zookeeper-3.4.6       </span><br><span class="line">	export PATH=$PATH:$ZOOKEEPER_HOME/bin</span><br><span class="line">cd zookeeper/conf</span><br><span class="line">cp zoo_sample.cfg zoo.cfg</span><br><span class="line">vi zoo.cfg</span><br><span class="line">	dataDir=/var/lei/zk     </span><br><span class="line">	server.1=node01:2888:3888</span><br><span class="line">mkdir -p /var/lei/zk     </span><br><span class="line">echo 1 &gt;  /var/lei/zk/myid</span><br><span class="line">#远程拷贝</span><br><span class="line">cd /opt  &amp;&amp;  scp -r ./lei/  node02:`pwd`</span><br><span class="line">#同理node02~node04   创建 myid</span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/ZooKeeper%E5%AE%89%E8%A3%85%E5%8F%8A%E5%BA%94%E7%94%A8.asset/image-20211225140730070.png" alt="image-20211225140730070"></p>
           <!--noindex-->
             <div class="post-button">
-              <a class="btn" href="/posts/868b.html#more" rel="contents">
+              <a class="btn" href="/posts/7fb0.html#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
@@ -279,7 +793,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/3ecf.html">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/1cac.html">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.jpg">
@@ -293,483 +807,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/posts/3ecf.html" class="post-title-link" itemprop="url">高可用及DR-HA实操</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2021-12-12 15:53:42 / 修改时间：19:57:10" itemprop="dateCreated datePublished" datetime="2021-12-12T15:53:42+08:00">2021-12-12</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
-                </span>
-            </span>
-
-          <br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>3.5k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>3 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h3 id="一、高可用理论"><a href="#一、高可用理论" class="headerlink" title="一、高可用理论"></a>一、高可用理论</h3><p><img data-src="../images/%E9%AB%98%E5%8F%AF%E7%94%A8%E5%8F%8ADR-HA%E5%AE%9E%E6%93%8D.asset/1637748893465.png" alt="1637748893465"></p>
-<h4 id="1-问题引入"><a href="#1-问题引入" class="headerlink" title="1.问题引入"></a>1.问题引入</h4><ul>
-<li><p><strong>如果LVS挂掉了(单点故障)怎么办,会出现什么问题?</strong></p>
-<p>所有用户都看不到,业务下线</p>
-</li>
-<li><p><strong>如果RS挂掉的话,会出现什么问题?</strong></p>
-<p>一部分用户会访问异常,LVS还存有RS的负载记录</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/posts/3ecf.html#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/552f.html">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="Lei">
-      <meta itemprop="description" content="The Art of Code Documentation">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="LENO">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/posts/552f.html" class="post-title-link" itemprop="url">负载均衡模型与实现</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2021-12-12 15:53:36 / 修改时间：19:56:58" itemprop="dateCreated datePublished" datetime="2021-12-12T15:53:36+08:00">2021-12-12</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
-                </span>
-            </span>
-
-          <br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>1.6k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>1 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="负载均衡模型"><a href="#负载均衡模型" class="headerlink" title="负载均衡模型"></a>负载均衡模型</h2><h3 id="一、问题引入"><a href="#一、问题引入" class="headerlink" title="一、问题引入"></a>一、问题引入</h3><p>​        <strong>如果有多个用户来访问服务器,要想要减轻服务器的压力,应该怎么办呢?</strong></p>
-<ol>
-<li><p>首先想到的方法就是用多个服务器来分担</p>
-<p>问题:两台计算机通信最终是通过ip,如果客户端连接多台服务器,服务器这里是不能够都配相同的ip地址了(IP冲突),因为这里如果进行三次握手的话也乱了</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/posts/552f.html#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/2036.html">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="Lei">
-      <meta itemprop="description" content="The Art of Code Documentation">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="LENO">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/posts/2036.html" class="post-title-link" itemprop="url">LVS及LVS_DR模型实践</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2021-12-12 15:53:28 / 修改时间：19:58:05" itemprop="dateCreated datePublished" datetime="2021-12-12T15:53:28+08:00">2021-12-12</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
-                </span>
-            </span>
-
-          <br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>2.6k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>2 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="LVS"><a href="#LVS" class="headerlink" title="LVS"></a>LVS</h2><h3 id="一、简介"><a href="#一、简介" class="headerlink" title="一、简介"></a>一、简介</h3><ul>
-<li><p>概念</p>
-<p>LVS（<a target="_blank" rel="noopener" href="https://so.csdn.net/so/search?from=pc_blog_highlight&q=Linux">Linux</a> Virtual Server）即Linux虚拟服务器，是由章文嵩博士主导的开源负载均衡项目，目前LVS已经被集成到Linux内核模块中</p>
-</li>
-<li><p>特点</p>
-<ol>
-<li><p>数据包转发级别(特别快)</p>
-</li>
-<li><p>不会和客户端握手</p>
-</li>
-<li><p>后端服务器必须是镜像的</p>
-</li>
-<li><p>负载均衡服务器拥有偷窥能力并且记录,3次握手连接+1，四次挥手连接-1</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/posts/2036.html#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/ea2e.html">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="Lei">
-      <meta itemprop="description" content="The Art of Code Documentation">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="LENO">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/posts/ea2e.html" class="post-title-link" itemprop="url">redis中的AFK原理和CAP理论</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2021-12-12 15:37:38 / 修改时间：19:59:11" itemprop="dateCreated datePublished" datetime="2021-12-12T15:37:38+08:00">2021-12-12</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
-                </span>
-            </span>
-
-          <br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>1.2k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>1 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="一、AFK原理"><a href="#一、AFK原理" class="headerlink" title="一、AFK原理"></a>一、AFK原理</h2><blockquote>
-<p>问题引入:</p>
-<p>redis是单机单进程的,它有什么缺陷呢?</p>
-<ol>
-<li>单点故障</li>
-<li>容量有限</li>
-<li>压力</li>
-</ol>
-<p>​    <img data-src="../images/redis%E4%B8%AD%E7%9A%84AFK%E5%8E%9F%E7%90%86%E5%92%8CCAP%E7%90%86%E8%AE%BA.asset/image-20211208213841058.png" alt="image-20211208213841058"></p>
-</blockquote>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/posts/ea2e.html#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/266d.html">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="Lei">
-      <meta itemprop="description" content="The Art of Code Documentation">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="LENO">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/posts/266d.html" class="post-title-link" itemprop="url">管道和发布订阅事务</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2021-12-12 15:37:25 / 修改时间：19:57:27" itemprop="dateCreated datePublished" datetime="2021-12-12T15:37:25+08:00">2021-12-12</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
-                </span>
-            </span>
-
-          <br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>3.6k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>3 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="一、管道"><a href="#一、管道" class="headerlink" title="一、管道"></a>一、管道</h2><h3 id="1-前置知识"><a href="#1-前置知识" class="headerlink" title="1.前置知识"></a>1.前置知识</h3><p>Redis是一种基于客户端-服务端模型以及请求/响应协议的TCP服务。</p>
-<p>这意味着通常情况下一个请求会遵循以下步骤：</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/posts/266d.html#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/9093.html">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="Lei">
-      <meta itemprop="description" content="The Art of Code Documentation">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="LENO">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/posts/9093.html" class="post-title-link" itemprop="url">Redis简介及安装实操</a>
+            <a href="/posts/1cac.html" class="post-title-link" itemprop="url">ZooKeeper</a>
         </h2>
 
         <div class="post-meta">
@@ -779,14 +817,14 @@
               </span>
               <span class="post-meta-item-text">发表于</span>
 
-              <time title="创建时间：2021-12-12 15:37:11" itemprop="dateCreated datePublished" datetime="2021-12-12T15:37:11+08:00">2021-12-12</time>
+              <time title="创建时间：2021-12-21 22:19:02" itemprop="dateCreated datePublished" datetime="2021-12-21T22:19:02+08:00">2021-12-21</time>
             </span>
               <span class="post-meta-item">
                 <span class="post-meta-item-icon">
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-12-25 12:59:23" itemprop="dateModified" datetime="2021-12-25T12:59:23+08:00">2021-12-25</time>
+                <time title="修改时间：2021-12-23 23:45:32" itemprop="dateModified" datetime="2021-12-23T23:45:32+08:00">2021-12-23</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -804,7 +842,7 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>2.5k</span>
+              <span>2.7k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
@@ -823,27 +861,11 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h2 id="一、前置知识"><a href="#一、前置知识" class="headerlink" title="一、前置知识"></a>一、前置知识</h2><h3 id="一-常识"><a href="#一-常识" class="headerlink" title="(一)常识"></a>(一)常识</h3><ul>
-<li>磁盘<ol>
-<li>寻址:ms</li>
-<li>带宽:G/M</li>
-<li>I/O buffer：成本问题<ul>
-<li>磁盘有磁道和扇区，一扇区 512Byte  带来一个成本变大–索引</li>
-<li>4K：操作系统，无论你读多少，都是最少4K从磁盘取</li>
-<li>随着文件变大，磁盘I/O会成为瓶颈，导致速度变慢</li>
-</ul>
-</li>
-</ol>
-</li>
-<li>内存<ol>
-<li>寻址:ms</li>
-<li>带宽:很大</li>
-</ol>
-</li>
-</ul>
+          <h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><p>针对官方文档进行的翻译和着重,也可以参照<a target="_blank" rel="noopener" href="https://www.runoob.com/w3cnote/zookeeper-tutorial.html">菜鸟教程-zookeeper</a></p>
+<h3 id="ZooKeeper-针对分布式应用的分布式协调服务"><a href="#ZooKeeper-针对分布式应用的分布式协调服务" class="headerlink" title="ZooKeeper:针对分布式应用的分布式协调服务"></a><a target="_blank" rel="noopener" href="https://zookeeper.apache.org/doc/r3.7.0/zookeeperOver.html">ZooKeeper</a>:针对分布式应用的分布式协调服务</h3><p><a target="_blank" rel="noopener" href="https://zookeeper.apache.org/doc/r3.7.0/zookeeperOver.html">ZooKeeper</a>是一个<strong>分布式、开源的分布式应用协调服务</strong>。它公开了一组简单的原语，分布式应用程序可以在此基础上构建，以实现同步、配置维护、组和命名等更高级别的服务。它的设计是易于编程的，并使用了一个数据模型，其样式类似于熟悉的文件系统的目录树结构。它在Java中运行，并且有Java和C的绑定。众所周知，协调服务很难做好。它们特别容易出现竞争条件和死锁等错误</p>
           <!--noindex-->
             <div class="post-button">
-              <a class="btn" href="/posts/9093.html#more" rel="contents">
+              <a class="btn" href="/posts/1cac.html#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
@@ -867,7 +889,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/5e05.html">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/6a1c.html">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.jpg">
@@ -881,7 +903,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/posts/5e05.html" class="post-title-link" itemprop="url">redis的持久化机制RDB和AOF详解</a>
+            <a href="/posts/6a1c.html" class="post-title-link" itemprop="url">redis相关API代码实现</a>
         </h2>
 
         <div class="post-meta">
@@ -890,10 +912,16 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2021-12-12 15:37:01 / 修改时间：19:58:14" itemprop="dateCreated datePublished" datetime="2021-12-12T15:37:01+08:00">2021-12-12</time>
+              <time title="创建时间：2021-12-16 22:53:02" itemprop="dateCreated datePublished" datetime="2021-12-16T22:53:02+08:00">2021-12-16</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-18 20:09:46" itemprop="dateModified" datetime="2021-12-18T20:09:46+08:00">2021-12-18</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -910,7 +938,7 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>2k</span>
+              <span>2.7k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
@@ -929,23 +957,18 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h2 id="一、前置知识"><a href="#一、前置知识" class="headerlink" title="一、前置知识"></a>一、前置知识</h2><p>资料:    <a target="_blank" rel="noopener" href="http://redis.io/topics/persistence">http://redis.io/topics/persistence</a></p>
-<h3 id="1-问题引入"><a href="#1-问题引入" class="headerlink" title="1.问题引入"></a>1.问题引入</h3><blockquote>
-<p>首先我们必须明白以下知识:</p>
-<p>缓存和数据库的特性区别:</p>
+          <h2 id="API介绍"><a href="#API介绍" class="headerlink" title="API介绍"></a>API介绍</h2><p>大多数api其实是见名知意,所以可以回顾原来的<a href="https://leoleiv8x.github.io/posts/1575.html">redis的value类型</a>讲解那块儿.</p>
+<p><strong>这里我们是在本地windows连接云服务器,有几个坑</strong></p>
 <ul>
-<li>缓存: 数据可以丢,急速,但掉电易失</li>
-<li>数据库: 数据绝不能丢(速度+持久化)</li>
+<li>服务器上启动的conf文件绑定的bind注释调</li>
+<li>springboot配置的properties文件地址为外网地址</li>
+<li>systemctl status firewalld 和iptables -L  查看防火墙</li>
+<li>systemctl stop firewalld 关闭防火墙</li>
+<li>防火墙关闭也有可能被拦截 iptables -F  清除规则</li>
 </ul>
-<p>存储层分为两层:</p>
-<ul>
-<li>快照|副本</li>
-<li>日志</li>
-</ul>
-</blockquote>
           <!--noindex-->
             <div class="post-button">
-              <a class="btn" href="/posts/5e05.html#more" rel="contents">
+              <a class="btn" href="/posts/6a1c.html#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
@@ -969,7 +992,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/1575.html">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/331a.html">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.jpg">
@@ -983,7 +1006,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/posts/1575.html" class="post-title-link" itemprop="url">redis的value类型解析</a>
+            <a href="/posts/331a.html" class="post-title-link" itemprop="url">redis分布式锁介绍</a>
         </h2>
 
         <div class="post-meta">
@@ -992,10 +1015,16 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2021-12-12 15:36:52 / 修改时间：19:58:40" itemprop="dateCreated datePublished" datetime="2021-12-12T15:36:52+08:00">2021-12-12</time>
+              <time title="创建时间：2021-12-16 22:48:53" itemprop="dateCreated datePublished" datetime="2021-12-16T22:48:53+08:00">2021-12-16</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-21 14:24:29" itemprop="dateModified" datetime="2021-12-21T14:24:29+08:00">2021-12-21</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -1012,97 +1041,7 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>2.5k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>2 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>本章讲解的是redis的常用API和常见的场景,如下图所示</p>
-<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1637998686120.png" alt="1637998686120"></p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/posts/1575.html#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/3844.html">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="Lei">
-      <meta itemprop="description" content="The Art of Code Documentation">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="LENO">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/posts/3844.html" class="post-title-link" itemprop="url">redis中RDB和AOF实操</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2021-12-12 15:36:43 / 修改时间：19:59:18" itemprop="dateCreated datePublished" datetime="2021-12-12T15:36:43+08:00">2021-12-12</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
-                </span>
-            </span>
-
-          <br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>542</span>
+              <span>965</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
@@ -1121,15 +1060,107 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h2 id="RDB和AOF实操"><a href="#RDB和AOF实操" class="headerlink" title="RDB和AOF实操"></a>RDB和AOF实操</h2><h3 id="1-conf文件修改"><a href="#1-conf文件修改" class="headerlink" title="1.conf文件修改"></a>1.conf文件修改</h3><ol>
-<li>daemonize no (默认不是守护进程)</li>
-<li>注释日志文件</li>
-<li>开启rdb和aof</li>
-<li>关闭4.0的新特性,rdb和aof的混合体</li>
+          <h2 id="redis的分布式锁"><a href="#redis的分布式锁" class="headerlink" title="redis的分布式锁"></a>redis的分布式锁</h2><ol>
+<li>setnx</li>
+<li>过期时间</li>
+<li>多线程(守护线程)延长过期</li>
 </ol>
+<p>现在没有学zookeeper,所以了解不深,可以参考 <a target="_blank" rel="noopener" href="http://redis.cn/topics/distlock.html">redis分布式锁</a></p>
           <!--noindex-->
             <div class="post-button">
-              <a class="btn" href="/posts/3844.html#more" rel="contents">
+              <a class="btn" href="/posts/331a.html#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/37a4.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/posts/37a4.html" class="post-title-link" itemprop="url">corn表达式</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-12-16 22:38:12 / 修改时间：22:39:28" itemprop="dateCreated datePublished" datetime="2021-12-16T22:38:12+08:00">2021-12-16</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%B7%A5%E5%85%B7/" itemprop="url" rel="index"><span itemprop="name">工具</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>926</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>1 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h2 id="Corn表达式详解"><a href="#Corn表达式详解" class="headerlink" title="Corn表达式详解"></a>Corn表达式详解</h2><h3 id="一、简介"><a href="#一、简介" class="headerlink" title="一、简介"></a>一、简介</h3><p>Cron表达式是一个字符串，字符串以5或6个空格隔开，分为6或7个域，每一个域代表一个含义，Cron有如下两种语法格式：</p>
+<p>　　（1）<em>Seconds Minutes Hours DayofMonth Month DayofWeek Year</em></p>
+<p>　　（2）<em>Seconds Minutes Hours DayofMonth Month DayofWeek</em></p>
+<p>从左往右分别是：<br>    秒 分 小时 月份中的日期 月份 星期中的日期 年份 </p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/posts/37a4.html#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
@@ -1152,7 +1183,7 @@
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/page/3/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/3/">3</a><span class="page-number current">4</span><a class="page-number" href="/page/5/">5</a><a class="extend next" rel="next" href="/page/5/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
+    <a class="extend prev" rel="prev" href="/page/3/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/3/">3</a><span class="page-number current">4</span><a class="page-number" href="/page/5/">5</a><span class="space">&hellip;</span><a class="page-number" href="/page/7/">7</a><a class="extend next" rel="next" href="/page/5/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -1220,7 +1251,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">42</span>
+          <span class="site-state-item-count">65</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -1233,7 +1264,7 @@
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">31</span>
+        <span class="site-state-item-count">36</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -1282,13 +1313,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">140k</span>
+    <span title="站点总字数">151k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">2:07</span>
+    <span title="站点阅读时长">2:17</span>
 </div>
 
 <!-- 网站运行时间的设置 -->
