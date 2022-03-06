@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"leoleiv8x.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":true,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="本文比较粗糙,只要是有一个大致的概念,具体的概念和基本代码请参考 https:&#x2F;&#x2F;www.cnblogs.com&#x2F;xichji&#x2F;p&#x2F;11286443.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="redis的击穿|穿透|雪崩详解">
+<meta property="og:url" content="https://leoleiv8x.github.io/posts/a6fc.html">
+<meta property="og:site_name" content="LENO">
+<meta property="og:description" content="本文比较粗糙,只要是有一个大致的概念,具体的概念和基本代码请参考 https:&#x2F;&#x2F;www.cnblogs.com&#x2F;xichji&#x2F;p&#x2F;11286443.html">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F-%E9%9B%AA%E5%B4%A9%E8%AF%A6%E8%A7%A3.asset/1639635439629.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F-%E9%9B%AA%E5%B4%A9%E8%AF%A6%E8%A7%A3.asset/1639636827290.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F-%E9%9B%AA%E5%B4%A9%E8%AF%A6%E8%A7%A3.asset/1639637902057.png">
+<meta property="article:published_time" content="2021-12-16T14:33:36.000Z">
+<meta property="article:modified_time" content="2021-12-16T14:39:28.600Z">
+<meta property="article:author" content="Lei">
+<meta property="article:tag" content="redis">
+<meta property="article:tag" content="雪崩|击穿|穿透">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F-%E9%9B%AA%E5%B4%A9%E8%AF%A6%E8%A7%A3.asset/1639635439629.png">
+
+<link rel="canonical" href="https://leoleiv8x.github.io/posts/a6fc.html">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>redis的击穿|穿透|雪崩详解 | LENO</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">LENO</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Keep track of your life</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/a6fc.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          redis的击穿|穿透|雪崩详解
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-12-16 22:33:36 / 修改时间：22:39:28" itemprop="dateCreated datePublished" datetime="2021-12-16T22:33:36+08:00">2021-12-16</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.4k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>2 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>本文比较粗糙,只要是有一个大致的概念,具体的概念和基本代码请参考</p>
+<p><a target="_blank" rel="noopener" href="https://www.cnblogs.com/xichji/p/11286443.html">https://www.cnblogs.com/xichji/p/11286443.html</a></p>
+<span id="more"></span>
+
+<h2 id="redis击穿"><a href="#redis击穿" class="headerlink" title="redis击穿"></a>redis击穿</h2><h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><p><strong>击穿</strong>: 指的是<strong>单个key</strong>在缓存中查不到，去数据库查询，这样如果数据量不大或者并发不大的话是没有什么问题的。</p>
+<p> 如果数据库数据量大并且是<strong>高并发</strong>的情况下那么就可能会造成数据库压力过大而崩溃</p>
+<p><img data-src="../images/redis%E7%9A%84%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F-%E9%9B%AA%E5%B4%A9%E8%AF%A6%E8%A7%A3.asset/1639635439629.png" alt="1639635439629"></p>
+<h3 id="理解"><a href="#理解" class="headerlink" title="理解"></a>理解</h3><h4 id="前置知识"><a href="#前置知识" class="headerlink" title="前置知识"></a>前置知识</h4><ul>
+<li>并发有了,为了阻止并发到达DB</li>
+<li>redis是单进程单实例,且没有key</li>
+</ul>
+<h4 id="解决"><a href="#解决" class="headerlink" title="解决"></a>解决</h4><p>主要是setnx() -&gt; 设置锁</p>
+<ol>
+<li>get key  先获取key</li>
+<li>如果没有则setnx锁,也就是如果没有锁才设置锁</li>
+<li>如果client获取到锁则去DB</li>
+<li>如果client没有获取到则睡眠</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> String <span class="title">get</span><span class="params">(key)</span> </span>&#123;</span><br><span class="line">      String value = redis.get(key);</span><br><span class="line">      <span class="keyword">if</span> (value == <span class="keyword">null</span>) &#123; <span class="comment">//代表缓存值过期</span></span><br><span class="line">          <span class="comment">//设置3min的超时，防止del操作失败的时候，下次缓存过期一直不能load db</span></span><br><span class="line">      <span class="keyword">if</span> (redis.setnx(key_mutex, <span class="number">1</span>, <span class="number">3</span> * <span class="number">60</span>) == <span class="number">1</span>) &#123;  <span class="comment">//代表设置成功</span></span><br><span class="line">               value = db.get(key);</span><br><span class="line">                      redis.set(key, value, expire_secs);</span><br><span class="line">                      redis.del(key_mutex);</span><br><span class="line">              &#125; <span class="keyword">else</span> &#123;  <span class="comment">//这个时候代表同时候的其他线程已经load db并回设到缓存了，这时候重试获取缓存值即可</span></span><br><span class="line">                      sleep(<span class="number">50</span>);</span><br><span class="line">                      get(key);  <span class="comment">//重试</span></span><br><span class="line">              &#125;</span><br><span class="line">          &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">              <span class="keyword">return</span> value;      </span><br><span class="line">          &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="引入问题1"><a href="#引入问题1" class="headerlink" title="引入问题1"></a>引入问题1</h4><p>如果第一个人挂了?</p>
+<ul>
+<li><p>问题:    第一个人挂了,后面都等着锁返回</p>
+</li>
+<li><p>解决:    可以设置锁的过期时间,但过期时间要取决于压测</p>
+</li>
+</ul>
+<h4 id="引入问题2"><a href="#引入问题2" class="headerlink" title="引入问题2"></a>引入问题2</h4><p>如果第一个人没挂,但是锁超时了,怎么办?</p>
+<ul>
+<li><p>问题:    第一个人设置的过去时间过短,第一个人还没拿到,第二个人又设置了一把一样时间的锁,结果也在取的过程中阻塞了,这样就循环了</p>
+</li>
+<li><p>解决:    使用多线程,一个线程取DB,另一个线程监控前一个线程是否取回来,如果回来就更新锁时间</p>
+</li>
+</ul>
+<h2 id="redis穿透"><a href="#redis穿透" class="headerlink" title="redis穿透"></a>redis穿透</h2><h3 id="概念-1"><a href="#概念-1" class="headerlink" title="概念"></a>概念</h3><p><a href="https://leoleiv8x.github.io/posts/3ae1.html">redis穿透</a>恶意频繁查询才会对系统造成很大的问题: key缓存并且数据库不存在，所以每次查询都会查询数据库从而导致数据库崩溃</p>
+<p><img data-src="../images/redis%E7%9A%84%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F-%E9%9B%AA%E5%B4%A9%E8%AF%A6%E8%A7%A3.asset/1639636827290.png" alt="1639636827290"></p>
+<h3 id="解决-1"><a href="#解决-1" class="headerlink" title="解决"></a>解决</h3><ul>
+<li><a href="https://leoleiv8x.github.io/posts/3ae1.html">布隆过滤器</a><ol>
+<li>client实现bloom算法,自己承载bitmap</li>
+<li>client实现bloom算法,redis实现bitmap</li>
+<li>redis全部集成bloom算法和bitmap</li>
+</ol>
+</li>
+<li>存一个空key,设置过期时间</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//伪代码</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> object <span class="title">GetProductListNew</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> cacheTime = <span class="number">30</span>;</span><br><span class="line">    String cacheKey = <span class="string">&quot;product_list&quot;</span>;</span><br><span class="line"></span><br><span class="line">    String cacheValue = CacheHelper.Get(cacheKey);</span><br><span class="line">    <span class="keyword">if</span> (cacheValue != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> cacheValue;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    cacheValue = CacheHelper.Get(cacheKey);</span><br><span class="line">    <span class="keyword">if</span> (cacheValue != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> cacheValue;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">//数据库查询不到，为空</span></span><br><span class="line">        cacheValue = GetProductListFromDB();</span><br><span class="line">        <span class="keyword">if</span> (cacheValue == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="comment">//如果发现为空，设置个默认值，也缓存起来</span></span><br><span class="line">            cacheValue = string.Empty;</span><br><span class="line">        &#125;</span><br><span class="line">        CacheHelper.Add(cacheKey, cacheValue, cacheTime);</span><br><span class="line">        <span class="keyword">return</span> cacheValue;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h3><ul>
+<li>布隆过滤器的精确性不足</li>
+<li>布隆过滤器不能删除key<ul>
+<li>解决:    使用布谷鸟</li>
+</ul>
+</li>
+</ul>
+<h2 id="redis雪崩"><a href="#redis雪崩" class="headerlink" title="redis雪崩"></a>redis雪崩</h2><h3 id="概念-2"><a href="#概念-2" class="headerlink" title="概念"></a>概念</h3><p>雪崩指的是<strong>多个key</strong>查询并且出现<strong>高并发</strong>，缓存中失效或者查不到，然后都去db查询，从而导致db压力突然飙升，从而崩溃。</p>
+<p><img data-src="../images/redis%E7%9A%84%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F-%E9%9B%AA%E5%B4%A9%E8%AF%A6%E8%A7%A3.asset/1639637902057.png" alt="1639637902057"></p>
+<h3 id="解决-2"><a href="#解决-2" class="headerlink" title="解决"></a>解决</h3><ul>
+<li><p>加锁排队</p>
+<p>加锁排队的解决方式分布式环境的并发问题，有可能还要解决分布式锁的问题；线程还会被阻塞，用户体验很差！因此，在真正的高并发场景下很少使用！ </p>
+</li>
+<li><p>如果是跟时点性无关,可以设置随机过期时间</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//伪代码</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> object <span class="title">GetProductListNew</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> cacheTime = <span class="number">30</span>;</span><br><span class="line">    String cacheKey = <span class="string">&quot;product_list&quot;</span>;</span><br><span class="line">    <span class="comment">//缓存标记</span></span><br><span class="line">    String cacheSign = cacheKey + <span class="string">&quot;_sign&quot;</span>;</span><br><span class="line"></span><br><span class="line">    String sign = CacheHelper.Get(cacheSign);</span><br><span class="line">    <span class="comment">//获取缓存值</span></span><br><span class="line">    String cacheValue = CacheHelper.Get(cacheKey);</span><br><span class="line">    <span class="keyword">if</span> (sign != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> cacheValue; <span class="comment">//未过期，直接返回</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        CacheHelper.Add(cacheSign, <span class="string">&quot;1&quot;</span>, cacheTime);</span><br><span class="line">        ThreadPool.QueueUserWorkItem((arg) -&gt; &#123;</span><br><span class="line">      <span class="comment">//这里一般是 sql查询数据</span></span><br><span class="line">            cacheValue = GetProductListFromDB(); </span><br><span class="line">          <span class="comment">//日期设缓存时间的2倍，用于脏读</span></span><br><span class="line">          CacheHelper.Add(cacheKey, cacheValue, cacheTime * <span class="number">2</span>);                 </span><br><span class="line">        &#125;);</span><br><span class="line">        <span class="keyword">return</span> cacheValue;</span><br><span class="line">    &#125;</span><br><span class="line">&#125; </span><br></pre></td></tr></table></figure></li>
+<li><p>如果跟零点有关</p>
+<ol>
+<li>业务层加判断,零点延时</li>
+<li>强依赖击穿方案</li>
+</ol>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+             <div class="post-tags">
+              <a href="/tags/redis/" rel="tag"><i class="fa fa-tag"></i> redis</a>
+              <a href="/tags/%E9%9B%AA%E5%B4%A9-%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F/" rel="tag"><i class="fa fa-tag"></i> 雪崩|击穿|穿透</a>
+          </div>
+          <script type="text/javascript">
+            var tagsall=document.getElementsByClassName("post-tags")
+            for (var i = tagsall.length - 1; i >= 0; i--){
+                var tags=tagsall[i].getElementsByTagName("a");
+                for (var j = tags.length - 1; j >= 0; j--) {
+                    var golden_ratio = 0.618033988749895;
+                    var s = 0.5;
+                    var v = 0.999;
+                    var h = golden_ratio + Math.random()*0.8 - 0.5;
+                    var h_i = parseInt(h * 6);
+                    var f = h * 6 - h_i;
+                    var p = v * (1 - s);
+                    var q = v * (1 - f * s);
+                    var t = v * (1 - (1 - f) * s);
+                    var r, g, b;
+                    switch (h_i) {
+                        case 0:
+                            r = v;
+                            g = t;
+                            b = p;
+                            break;
+                        case 1:
+                            r = q;
+                            g = v;
+                            b = p;
+                            break;
+                        case 2:
+                            r = p;
+                            g = v;
+                            b = t;
+                            break;
+                        case 3 :
+                            r = p;
+                            g = q;
+                            b = v;
+                            break;
+                        case 4:
+                            r = t;
+                            g = p;
+                            b = v;
+                            break;
+                        case 5:
+                            r = v;
+                            g = p;
+                            b = q;
+                            break;
+                        default:
+                            r = 1;
+                            g = 1;
+                            b = 1;
+                      }
+                    tags[j].style.background = "rgba("+parseInt(r*255)+","+parseInt(g*255)+","+parseInt(b*255)+","+0.5+")";
+                }
+            }                        
+            </script>
+             <div class="post-tags">
+              <a href="/tags/redis/" rel="tag"><i class="fa fa-tag"></i> redis</a>
+              <a href="/tags/%E9%9B%AA%E5%B4%A9-%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F/" rel="tag"><i class="fa fa-tag"></i> 雪崩|击穿|穿透</a>
+          </div>
+          <script type="text/javascript">
+            var tagsall=document.getElementsByClassName("post-tags")
+            for (var i = tagsall.length - 1; i >= 0; i--){
+                var tags=tagsall[i].getElementsByTagName("a");
+                for (var j = tags.length - 1; j >= 0; j--) {
+                    var golden_ratio = 0.618033988749895;
+                    var s = 0.5;
+                    var v = 0.999;
+                    var h = golden_ratio + Math.random()*0.8 - 0.5;
+                    var h_i = parseInt(h * 6);
+                    var f = h * 6 - h_i;
+                    var p = v * (1 - s);
+                    var q = v * (1 - f * s);
+                    var t = v * (1 - (1 - f) * s);
+                    var r, g, b;
+                    switch (h_i) {
+                        case 0:
+                            r = v;
+                            g = t;
+                            b = p;
+                            break;
+                        case 1:
+                            r = q;
+                            g = v;
+                            b = p;
+                            break;
+                        case 2:
+                            r = p;
+                            g = v;
+                            b = t;
+                            break;
+                        case 3 :
+                            r = p;
+                            g = q;
+                            b = v;
+                            break;
+                        case 4:
+                            r = t;
+                            g = p;
+                            b = v;
+                            break;
+                        case 5:
+                            r = v;
+                            g = p;
+                            b = q;
+                            break;
+                        default:
+                            r = 1;
+                            g = 1;
+                            b = 1;
+                      }
+                    tags[j].style.background = "rgba("+parseInt(r*255)+","+parseInt(g*255)+","+parseInt(b*255)+","+0.5+")";
+                }
+            }                        
+            </script>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/posts/7dc0.html" rel="prev" title="代理分片机制-twemproxy|predixy实操和redis集群实操">
+      <i class="fa fa-chevron-left"></i> 代理分片机制-twemproxy|predixy实操和redis集群实操
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/posts/bf1e.html" rel="next" title="Date,String,时间戳相互转换">
+      Date,String,时间戳相互转换 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#redis%E5%87%BB%E7%A9%BF"><span class="nav-number">1.</span> <span class="nav-text">redis击穿</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5"><span class="nav-number">1.1.</span> <span class="nav-text">概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%90%86%E8%A7%A3"><span class="nav-number">1.2.</span> <span class="nav-text">理解</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%89%8D%E7%BD%AE%E7%9F%A5%E8%AF%86"><span class="nav-number">1.2.1.</span> <span class="nav-text">前置知识</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%A7%A3%E5%86%B3"><span class="nav-number">1.2.2.</span> <span class="nav-text">解决</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BC%95%E5%85%A5%E9%97%AE%E9%A2%981"><span class="nav-number">1.2.3.</span> <span class="nav-text">引入问题1</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BC%95%E5%85%A5%E9%97%AE%E9%A2%982"><span class="nav-number">1.2.4.</span> <span class="nav-text">引入问题2</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis%E7%A9%BF%E9%80%8F"><span class="nav-number">2.</span> <span class="nav-text">redis穿透</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5-1"><span class="nav-number">2.1.</span> <span class="nav-text">概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A3%E5%86%B3-1"><span class="nav-number">2.2.</span> <span class="nav-text">解决</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%97%AE%E9%A2%98"><span class="nav-number">2.3.</span> <span class="nav-text">问题</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#redis%E9%9B%AA%E5%B4%A9"><span class="nav-number">3.</span> <span class="nav-text">redis雪崩</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5-2"><span class="nav-number">3.1.</span> <span class="nav-text">概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A3%E5%86%B3-2"><span class="nav-number">3.2.</span> <span class="nav-text">解决</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Lei"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Lei</p>
+  <div class="site-description" itemprop="description">The Art of Code Documentation</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">42</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">31</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/leoleiv8x" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;leoleiv8x" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/qq_43583755" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;qq_43583755" rel="noopener" target="_blank"><i class="fab fa-telegram fa-fw"></i>CSDN</a>
+      </span>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Lei</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">140k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">2:07</span>
+</div>
+
+<!-- 网站运行时间的设置 -->
+<span id="timeDate">载入天数...</span>
+<span id="times">载入时分秒...</span>
+<script>
+    var now = new Date();
+    function createtime() {
+        var grt= new Date("12/12/2021 12:00:00");//此处修改你的建站时间或者网站上线时间
+        now.setTime(now.getTime()+250);
+        days = (now - grt ) / 1000 / 60 / 60 / 24; dnum = Math.floor(days);
+        hours = (now - grt ) / 1000 / 60 / 60 - (24 * dnum); hnum = Math.floor(hours);
+        if(String(hnum).length ==1 ){hnum = "0" + hnum;} minutes = (now - grt ) / 1000 /60 - (24 * 60 * dnum) - (60 * hnum);
+        mnum = Math.floor(minutes); if(String(mnum).length ==1 ){mnum = "0" + mnum;}
+        seconds = (now - grt ) / 1000 - (24 * 60 * 60 * dnum) - (60 * 60 * hnum) - (60 * mnum);
+        snum = Math.round(seconds); if(String(snum).length ==1 ){snum = "0" + snum;}
+        document.getElementById("timeDate").innerHTML = "本站已安全运行 "+dnum+" 天 ";
+        document.getElementById("times").innerHTML = hnum + " 小时 " + mnum + " 分 " + snum + " 秒";
+    }
+    setInterval("createtime()",250);
+</script>
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+<span><br></span> 
+
+<span class="post-meta-item-icon">
+      <i class="fa fa-user"></i>
+</span>
+<span>总访客&nbsp<span id="busuanzi_value_site_uv"></span>&nbsp人</span>
+    <span class="post-meta-divider">|</span>
+<span class="post-meta-item-icon">
+      <i class="fa fa-eye"></i>
+</span>
+    <span>总访问量&nbsp<span id="busuanzi_value_site_pv"></span>&nbsp次</span>
+
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/lozad@1/dist/lozad.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"jsonPath":"/live2dw/assets/assets/hijiki.model.json"},"display":{"position":"right","width":150,"height":300},"mobile":{"show":true},"react":{"opacity":0.7},"log":false});</script></body>
+</html>

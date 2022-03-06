@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"leoleiv8x.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":true,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一、BIO到Epoll发展如果下图是BIO到NIO的多路复用的一个发展图:">
+<meta property="og:type" content="article">
+<meta property="og:title" content="epoll发展及redis简单使用">
+<meta property="og:url" content="https://leoleiv8x.github.io/posts/90e8.html">
+<meta property="og:site_name" content="LENO">
+<meta property="og:description" content="一、BIO到Epoll发展如果下图是BIO到NIO的多路复用的一个发展图:">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637894869713.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637895046279.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637895530541.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637897732472.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637980061064.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637997558086.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637982768134.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637984096715.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637984315464.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637995445290.png">
+<meta property="article:published_time" content="2021-12-12T07:16:02.000Z">
+<meta property="article:modified_time" content="2021-12-12T11:57:56.228Z">
+<meta property="article:author" content="Lei">
+<meta property="article:tag" content="redis">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leoleiv8x.github.io/images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637894869713.png">
+
+<link rel="canonical" href="https://leoleiv8x.github.io/posts/90e8.html">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>epoll发展及redis简单使用 | LENO</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">LENO</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Keep track of your life</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/90e8.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          epoll发展及redis简单使用
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-12-12 15:16:02 / 修改时间：19:57:56" itemprop="dateCreated datePublished" datetime="2021-12-12T15:16:02+08:00">2021-12-12</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.6k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>2 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="一、BIO到Epoll发展"><a href="#一、BIO到Epoll发展" class="headerlink" title="一、BIO到Epoll发展"></a>一、BIO到Epoll发展</h2><p>如果下图是BIO到NIO的多路复用的一个发展图:</p>
+<p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637894869713.png" alt="1637894869713"></p>
+<span id="more"></span>
+
+<h3 id="一-BIO"><a href="#一-BIO" class="headerlink" title="(一)BIO"></a>(一)BIO</h3><p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637895046279.png" alt="1637895046279"></p>
+<p>客户端传来文件,服务器线程读取fd8文件标识符(read fd8),如果没有的话就会阻塞,一直等待数据包的到达,所以服务器只能开辟新的线程来读取资源才行,如果只用一个线程,即使f9的数据包已经到达,线程还是阻塞的.这样计算机的资源运用起来,所以后面内核发生了变化.</p>
+<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">问题:</span><br><span class="line"><span class="code">	1.单线程读取文件描述符,如果数据包未到达会阻塞</span></span><br><span class="line"><span class="code">	2.若用其他线程在读取其他的文件描述符,线程的切换需要消耗资源	</span></span><br><span class="line"><span class="code">扩展:</span></span><br><span class="line"><span class="code">	cpu只有1颗JVM: 一个线程的成本  1MB</span></span><br><span class="line"><span class="code">	1.线程多了调度成本CPU浪费</span></span><br><span class="line"><span class="code">	2内存成本</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="二-NIO"><a href="#二-NIO" class="headerlink" title="(二)NIO"></a>(二)NIO</h3><p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637895530541.png" alt="1637895530541"></p>
+<blockquote>
+<p>下载 yum install man man-pages (这是一个帮助文档软件,一共有8类文档)</p>
+<p>2:系统调用</p>
+<p>指令man  2 read -&gt;系统内核给程序暴露的一个方法-&gt;读取文件描述符</p>
+<p>​    原文: read - read from a file descriptor</p>
+<p>man socket -&gt; 有一个文件描述符type为SOCK_NONBLOCK</p>
+<p>​    原文: SOCK_NONBLOCK   Set  the  O_NONBLOCK  file status flag on the new open file description.  Using this flag saves extra calls to fcntl(2) to achieve the same result.</p>
+<p>因为多了一个SOCK_NONBLOCK类型的文件描述符,所以可以read多个文件描述符且线程不在阻塞了</p>
+<p>同一个线程通过轮询遍历(死循环)的方式,读取fd8,如果没有就读取fd9了,但还是同一个线程完成的,所以是同步非阻塞IO</p>
+</blockquote>
+<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">问题:</span><br><span class="line"><span class="code">	1.如果有很多文件描述符,1000fd,那么用户进程轮询调用1000次kernel,如果这1000次中只有1,2个有返回的数据包</span></span><br><span class="line"><span class="code">	这样的出现了成本问题,每次都要调用1000次</span></span><br><span class="line"><span class="code">设想:</span></span><br><span class="line"><span class="code">	如果我们知道有哪些数据包要返回?这样的话就不用调用1000次</span></span><br></pre></td></tr></table></figure>
+
+<p>11</p>
+<h3 id="三-NIO-多路复用"><a href="#三-NIO-多路复用" class="headerlink" title="(三)NIO-多路复用"></a>(三)NIO-多路复用</h3><p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637897732472.png" alt="1637897732472"></p>
+<p>内核继续发展,增加了一个系统调用叫select</p>
+<blockquote>
+<p>man 2 select</p>
+<p>原文: select()  and  pselect()  allow a program to monitor multiple file descriptors, waiting until one or<br>    more of the file descriptors become “ready” for some class of I/O operation (e.g., input  possible).<br>    A  file  descriptor  is  considered ready if it is possible to perform a cor</p>
+<p>监控,查询1000fds里面那些已经返回了,返回了的就是ready状态,然后再调用read对应已经准备好的文件描述符,这样就是只有返回数据包的文件描述符我们才read</p>
+</blockquote>
+<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">问题:</span><br><span class="line"><span class="code">	1.存在用户态和内核态,fd文件描述符相关数据拷来拷去(这里的文件描述符指的是否有传输数据的fd)</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="四-Epoll-多路复用-完整版"><a href="#四-Epoll-多路复用-完整版" class="headerlink" title="(四)Epoll-多路复用(完整版)"></a>(四)Epoll-多路复用(完整版)</h3><p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637980061064.png" alt="1637980061064"></p>
+<p>内核的升级,增加了对于用户空间和内核空间的共享空间mmap(红黑树+链表),<strong>省去了文件描述符的拷贝过程</strong></p>
+<ul>
+<li>红黑树   放1000fd</li>
+<li>链表       放ready的fd</li>
+<li>共享空间(mmap)    <ol>
+<li>原文: creates  a  new  mapping  in the virtual address space of the calling process.   The starting address for the new mapping is specified in addr.</li>
+<li><strong>该空间的修改是通过内核完成的,查询的话用户和内核均可</strong></li>
+<li>步骤<ol>
+<li>线程调用epool,会创建一个epoll的文件描述符(通过它来跟共享空间打交道)</li>
+<li>add  delete 会在红黑树中进行注册或剔除操作</li>
+<li>wait  如果链表有数据就wait之后就返回,返回的是实际的文件描述符</li>
+<li>调用read方法</li>
+</ol>
+</li>
+</ol>
+</li>
+</ul>
+<p><strong>问题:NIO和Epool的区别在哪里?</strong></p>
+<p><strong>回答:NIO每次都要select对1000个文件描述符来遍历,而Epool是在文件描述符创建的时候就会在红黑树中注册,然后内核会将返回数据包的文件描述符放到链表中,用户只需要wait等待,遍历链表并read就可以了</strong></p>
+<blockquote>
+<p>扩展:</p>
+<p>​    什么是零拷贝?</p>
+<p>​        man 2 sendfile</p>
+<ul>
+<li>原文: sendfile() copies data between one file descriptor and another.  Because this copying is done within</li>
+</ul>
+<p>​       the kernel, sendfile() is more efficient than the combination of read(2) and write(2),  which  would</p>
+<p>​    require transferring data to and from user space.</p>
+<ul>
+<li><p>理解:</p>
+<p>​    内核之间两个文件描述符的拷贝,不会通过用户,效率更高</p>
+<p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637997558086.png" alt="1637997558086"></p>
+</li>
+</ul>
+<p>sendfile(普通拷贝): file-&gt;kernel-&gt;kernel缓冲区-&gt;read-&gt;write-&gt;网卡</p>
+<p>sendfile(零拷贝): file-&gt;kernel-&gt;kernel(缓冲区)-&gt;网卡</p>
+<p>​    Kafka中的零拷贝:</p>
+<p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637982768134.png" alt="1637982768134"></p>
+<p>这里零拷贝是用户空间到内核空间减少的这个过程,通过mmap来挂载文件,消费者通过偏移量读数据,走sendfile,输入来自于文件,输出来自消费者.</p>
+</blockquote>
+<h2 id="二、redis原理"><a href="#二、redis原理" class="headerlink" title="二、redis原理"></a>二、redis原理</h2><p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637984096715.png" alt="1637984096715"></p>
+<p>​    <strong>redis是一个单线程,单实例的程序,如果我们并发很多请求,它是如何变的很快的呢?</strong></p>
+<p>​        多个客户端请求kernel,通过epoll来遍历那些传了请求,并<strong>按连接的命令顺序</strong>进行逐个处理</p>
+<p>​    如下图所示,niginx也一样:</p>
+<p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637984315464.png" alt="1637984315464"></p>
+<h2 id="三、Redis使用"><a href="#三、Redis使用" class="headerlink" title="三、Redis使用"></a>三、Redis使用</h2><figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">redis默认有16个数据库(0~15),且各个库的数据是独立的,存储的数据是key-value的键值对</span><br><span class="line"></span><br><span class="line">1.通过指令可以查看命令参数对应的信息</span><br><span class="line"><span class="code">	redis-cli -h</span></span><br><span class="line"><span class="code">2.连接端口为6379的redis服务的第8个库</span></span><br><span class="line"><span class="code">	redis-cli -p 6379 -n 8</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>问题:如何自学redis呢?</strong><br>    在redis客户端中有help命令(通过tab可补全)</p>
+<p><img data-src="../images/epoll%E5%8F%91%E5%B1%95%E5%8F%8Aredis%E7%AE%80%E5%8D%95%E4%BD%BF%E7%94%A8.asset/1637995445290.png" alt="1637995445290"></p>
+<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">指令:</span><br><span class="line"><span class="code">	1.keys *	查询所有key中指定的类型的key</span></span><br><span class="line"><span class="code">	2.flushdb 	刷新库,相当于清空</span></span><br><span class="line"><span class="code">	3.help @String|List|hash|Set|sortedSet 可查看相关操作来学习</span></span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+             <div class="post-tags">
+              <a href="/tags/redis/" rel="tag"><i class="fa fa-tag"></i> redis</a>
+          </div>
+          <script type="text/javascript">
+            var tagsall=document.getElementsByClassName("post-tags")
+            for (var i = tagsall.length - 1; i >= 0; i--){
+                var tags=tagsall[i].getElementsByTagName("a");
+                for (var j = tags.length - 1; j >= 0; j--) {
+                    var golden_ratio = 0.618033988749895;
+                    var s = 0.5;
+                    var v = 0.999;
+                    var h = golden_ratio + Math.random()*0.8 - 0.5;
+                    var h_i = parseInt(h * 6);
+                    var f = h * 6 - h_i;
+                    var p = v * (1 - s);
+                    var q = v * (1 - f * s);
+                    var t = v * (1 - (1 - f) * s);
+                    var r, g, b;
+                    switch (h_i) {
+                        case 0:
+                            r = v;
+                            g = t;
+                            b = p;
+                            break;
+                        case 1:
+                            r = q;
+                            g = v;
+                            b = p;
+                            break;
+                        case 2:
+                            r = p;
+                            g = v;
+                            b = t;
+                            break;
+                        case 3 :
+                            r = p;
+                            g = q;
+                            b = v;
+                            break;
+                        case 4:
+                            r = t;
+                            g = p;
+                            b = v;
+                            break;
+                        case 5:
+                            r = v;
+                            g = p;
+                            b = q;
+                            break;
+                        default:
+                            r = 1;
+                            g = 1;
+                            b = 1;
+                      }
+                    tags[j].style.background = "rgba("+parseInt(r*255)+","+parseInt(g*255)+","+parseInt(b*255)+","+0.5+")";
+                }
+            }                        
+            </script>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/posts/3ae1.html" rel="next" title="布隆过滤器和redis作为缓存的使用">
+      布隆过滤器和redis作为缓存的使用 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81BIO%E5%88%B0Epoll%E5%8F%91%E5%B1%95"><span class="nav-number">1.</span> <span class="nav-text">一、BIO到Epoll发展</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80-BIO"><span class="nav-number">1.1.</span> <span class="nav-text">(一)BIO</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C-NIO"><span class="nav-number">1.2.</span> <span class="nav-text">(二)NIO</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89-NIO-%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8"><span class="nav-number">1.3.</span> <span class="nav-text">(三)NIO-多路复用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9B-Epoll-%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8-%E5%AE%8C%E6%95%B4%E7%89%88"><span class="nav-number">1.4.</span> <span class="nav-text">(四)Epoll-多路复用(完整版)</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81redis%E5%8E%9F%E7%90%86"><span class="nav-number">2.</span> <span class="nav-text">二、redis原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81Redis%E4%BD%BF%E7%94%A8"><span class="nav-number">3.</span> <span class="nav-text">三、Redis使用</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Lei"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Lei</p>
+  <div class="site-description" itemprop="description">The Art of Code Documentation</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">42</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">31</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/leoleiv8x" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;leoleiv8x" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/qq_43583755" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;qq_43583755" rel="noopener" target="_blank"><i class="fab fa-telegram fa-fw"></i>CSDN</a>
+      </span>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Lei</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">140k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">2:07</span>
+</div>
+
+<!-- 网站运行时间的设置 -->
+<span id="timeDate">载入天数...</span>
+<span id="times">载入时分秒...</span>
+<script>
+    var now = new Date();
+    function createtime() {
+        var grt= new Date("12/12/2021 12:00:00");//此处修改你的建站时间或者网站上线时间
+        now.setTime(now.getTime()+250);
+        days = (now - grt ) / 1000 / 60 / 60 / 24; dnum = Math.floor(days);
+        hours = (now - grt ) / 1000 / 60 / 60 - (24 * dnum); hnum = Math.floor(hours);
+        if(String(hnum).length ==1 ){hnum = "0" + hnum;} minutes = (now - grt ) / 1000 /60 - (24 * 60 * dnum) - (60 * hnum);
+        mnum = Math.floor(minutes); if(String(mnum).length ==1 ){mnum = "0" + mnum;}
+        seconds = (now - grt ) / 1000 - (24 * 60 * 60 * dnum) - (60 * 60 * hnum) - (60 * mnum);
+        snum = Math.round(seconds); if(String(snum).length ==1 ){snum = "0" + snum;}
+        document.getElementById("timeDate").innerHTML = "本站已安全运行 "+dnum+" 天 ";
+        document.getElementById("times").innerHTML = hnum + " 小时 " + mnum + " 分 " + snum + " 秒";
+    }
+    setInterval("createtime()",250);
+</script>
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+<span><br></span> 
+
+<span class="post-meta-item-icon">
+      <i class="fa fa-user"></i>
+</span>
+<span>总访客&nbsp<span id="busuanzi_value_site_uv"></span>&nbsp人</span>
+    <span class="post-meta-divider">|</span>
+<span class="post-meta-item-icon">
+      <i class="fa fa-eye"></i>
+</span>
+    <span>总访问量&nbsp<span id="busuanzi_value_site_pv"></span>&nbsp次</span>
+
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/lozad@1/dist/lozad.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"jsonPath":"/live2dw/assets/assets/hijiki.model.json"},"display":{"position":"right","width":150,"height":300},"mobile":{"show":true},"react":{"opacity":0.7},"log":false});</script></body>
+</html>

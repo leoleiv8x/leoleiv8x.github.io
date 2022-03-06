@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"leoleiv8x.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":true,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="在接口项目中对fastJson的API和各个类型对应的json格式不熟悉,所以现在来梳理一下">
+<meta property="og:type" content="article">
+<meta property="og:title" content="FASTJSON相关API">
+<meta property="og:url" content="https://leoleiv8x.github.io/posts/eb8f.html">
+<meta property="og:site_name" content="LENO">
+<meta property="og:description" content="在接口项目中对fastJson的API和各个类型对应的json格式不熟悉,所以现在来梳理一下">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2021-12-16T14:34:30.000Z">
+<meta property="article:modified_time" content="2021-12-16T14:39:28.593Z">
+<meta property="article:author" content="Lei">
+<meta property="article:tag" content="fastJson">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://leoleiv8x.github.io/posts/eb8f.html">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>FASTJSON相关API | LENO</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">LENO</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Keep track of your life</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/eb8f.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          FASTJSON相关API
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-12-16 22:34:30 / 修改时间：22:39:28" itemprop="dateCreated datePublished" datetime="2021-12-16T22:34:30+08:00">2021-12-16</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%B7%A5%E5%85%B7/" itemprop="url" rel="index"><span itemprop="name">工具</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>8.7k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>8 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>在接口项目中对fastJson的API和各个类型对应的json格式不熟悉,所以现在来梳理一下</p>
+<span id="more"></span>
+
+<h2 id="一、简介"><a href="#一、简介" class="headerlink" title="一、简介"></a>一、简介</h2><p><strong>FastJson</strong>是用于<strong>java</strong>后台处理<strong>json</strong>格式数据的一个工具包，包括“序列化”和“反序列化”两部分，它具备如下特征<strong>：</strong> </p>
+<ul>
+<li>速度最快，测试表明，fastjson具有极快的性能，超越任其他的java json parser </li>
+<li>功能强大，完全支持java bean、集合、Map、日期、Enum，支持范型，支持自省 </li>
+<li>无依赖，能够直接运行在Java SE 5.0以上版本 </li>
+</ul>
+<p><strong>FastJson</strong>对于<strong>json</strong>格式字符串的解析主要用到了一下三个类 :</p>
+<ul>
+<li>fastJson的解析器，用于JSON格式字符串与JSON对象及javaBean之间的转换</li>
+<li>fastJson提供的json对象</li>
+<li>fastJson提供json数组对象。</li>
+</ul>
+<h2 id="二、JSONObject和Map的区别"><a href="#二、JSONObject和Map的区别" class="headerlink" title="二、JSONObject和Map的区别"></a>二、JSONObject和Map的区别</h2><ul>
+<li><p>相同</p>
+<p>二者存储的都是key-value,都可以使用put()进行保存，使用get进行获取；</p>
+</li>
+<li><p>不同</p>
+<ol>
+<li>JSONObject 不可以存空，Map可以存空 </li>
+<li>Map由jdk提供，JsonObject需要第三方架包提供 </li>
+<li>在调用各自的toString方法时数据格式不同：JsonObject对象丢调用toString()方法后得到的字符串是一个标准的json格式；而Map在调用toString()方法后仅仅是一个普通的String,所以如果想用将map转换成json格式的String需要使用相应转换工具类进行序列化 </li>
+</ol>
+</li>
+</ul>
+<h2 id="三、Java对应的json格式"><a href="#三、Java对应的json格式" class="headerlink" title="三、Java对应的json格式"></a>三、Java对应的json格式</h2><h3 id="1-list"><a href="#1-list" class="headerlink" title="1.list"></a>1.list</h3><ul>
+<li>处理前        [zhi, bing, ze]</li>
+<li>处理后       [“zhi”,”bing”,”ze”]</li>
+</ul>
+<h3 id="2-map"><a href="#2-map" class="headerlink" title="2.map"></a>2.map</h3><ul>
+<li>处理前     {1=zhi, 2=bing, 3=ze, 4=1, 5=4}</li>
+<li>处理后        {“1”:”zhi”,”2”:”bing”,”3”:”ze”,”4”:1,”5”:4}</li>
+</ul>
+<h3 id="3-javaBean"><a href="#3-javaBean" class="headerlink" title="3.javaBean"></a>3.javaBean</h3><ul>
+<li>处理前        Person{name=’张三’, age=’19’, gender=’男’}</li>
+<li>处理后        {“age”:”19”,”gender”:”男”,”name”:”张三”}</li>
+</ul>
+<h3 id="4-list中有javaBean"><a href="#4-list中有javaBean" class="headerlink" title="4.list中有javaBean"></a>4.list中有javaBean</h3><ul>
+<li><p>处理前        </p>
+<p>[Person{name=’张三’, age=’12’, gender=’男’}, Person{name=’李四’, age=’15’, gender=’女’}]</p>
+</li>
+<li><p>处理后        </p>
+<p>[{“age”:”12”,”gender”:”男”,”name”:”张三”},{“age”:”15”,”gender”:”女”,”name”:”李四”}]</p>
+</li>
+</ul>
+<p>代码如下:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 测试list,map和自定义对象对应的json格式</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">   <span class="meta">@Test</span></span><br><span class="line">   <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">JavaBean2Json</span><span class="params">()</span> </span>&#123;</span><br><span class="line">       <span class="comment">//list对应的josn格式</span></span><br><span class="line">       List&lt;String&gt; list = <span class="keyword">new</span> ArrayList&lt;&gt;();</span><br><span class="line">       list.add(<span class="string">&quot;zhi&quot;</span>);</span><br><span class="line">       list.add(<span class="string">&quot;bing&quot;</span>);</span><br><span class="line">       list.add(<span class="string">&quot;ze&quot;</span>);</span><br><span class="line">       System.out.println(<span class="string">&quot;未经json处理:&quot;</span>);</span><br><span class="line">       System.out.println(list);</span><br><span class="line">       String json = JSONArray.toJSONString(list);</span><br><span class="line">       System.out.println(<span class="string">&quot;经json处理:&quot;</span>);</span><br><span class="line">       System.out.println(json);</span><br><span class="line"></span><br><span class="line">       System.out.println(<span class="string">&quot;===================&quot;</span>);</span><br><span class="line"></span><br><span class="line">       <span class="comment">//map对应的josn格式</span></span><br><span class="line">       Map&lt;String, Object&gt; map = <span class="keyword">new</span> HashMap&lt;String, Object&gt;();</span><br><span class="line">       map.put(<span class="string">&quot;1&quot;</span>, <span class="string">&quot;zhi&quot;</span>);</span><br><span class="line">       map.put(<span class="string">&quot;2&quot;</span>, <span class="string">&quot;bing&quot;</span>);</span><br><span class="line">       map.put(<span class="string">&quot;3&quot;</span>, <span class="string">&quot;ze&quot;</span>);</span><br><span class="line">       map.put(<span class="string">&quot;4&quot;</span>, <span class="number">1</span>);</span><br><span class="line">       map.put(<span class="string">&quot;5&quot;</span>, <span class="number">4l</span>);</span><br><span class="line">       System.out.print(<span class="string">&quot;未经json处理:&quot;</span>);</span><br><span class="line">       System.out.println(map);</span><br><span class="line">       String mapJson = JSONArray.toJSONString(map);</span><br><span class="line">       System.out.print(<span class="string">&quot;经过json处理:&quot;</span>);</span><br><span class="line">       System.out.println(mapJson);</span><br><span class="line"></span><br><span class="line">       System.out.println(<span class="string">&quot;===================&quot;</span>);</span><br><span class="line">       <span class="comment">//自定义对象对应的json格式</span></span><br><span class="line">       Person person = <span class="keyword">new</span> Person();</span><br><span class="line">       person.setName(<span class="string">&quot;张三&quot;</span>);</span><br><span class="line">       person.setAge(<span class="string">&quot;19&quot;</span>);</span><br><span class="line">       person.setGender(<span class="string">&quot;男&quot;</span>);</span><br><span class="line">       System.out.print(<span class="string">&quot;未经json处理:&quot;</span>);</span><br><span class="line">       System.out.println(person);</span><br><span class="line">       String objJson = JSONArray.toJSONString(person);</span><br><span class="line">       System.out.print(<span class="string">&quot;经过json处理:&quot;</span>);</span><br><span class="line">       System.out.println(objJson);</span><br><span class="line">       System.out.println(<span class="string">&quot;===================&quot;</span>);</span><br><span class="line">       <span class="comment">//list中包含对应的自定义对象的类型</span></span><br><span class="line">       List&lt;Person&gt; personList = <span class="keyword">new</span> ArrayList&lt;&gt;();</span><br><span class="line">       personList.add(<span class="keyword">new</span> Person(<span class="string">&quot;张三&quot;</span>,<span class="string">&quot;12&quot;</span>,<span class="string">&quot;男&quot;</span>));</span><br><span class="line">       personList.add(<span class="keyword">new</span> Person(<span class="string">&quot;李四&quot;</span>,<span class="string">&quot;15&quot;</span>,<span class="string">&quot;女&quot;</span>));</span><br><span class="line">       personList.add(<span class="keyword">new</span> Person(<span class="string">&quot;王五&quot;</span>,<span class="string">&quot;19&quot;</span>,<span class="string">&quot;男&quot;</span>));</span><br><span class="line">       System.out.print(<span class="string">&quot;未经json处理:&quot;</span>);</span><br><span class="line">       System.out.println(personList);</span><br><span class="line">       String modelJson = JSONArray.toJSONString(personList);</span><br><span class="line">       System.out.print(<span class="string">&quot;经过json处理:&quot;</span>);</span><br><span class="line">       System.out.println(modelJson);</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="四、使用"><a href="#四、使用" class="headerlink" title="四、使用"></a>四、使用</h2><h3 id="JAVA对象转JSON字符串"><a href="#JAVA对象转JSON字符串" class="headerlink" title="JAVA对象转JSON字符串"></a><strong>JAVA</strong>对象转<strong>JSON</strong>字符串</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//java对象转json字符串</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">beanTojson</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    Data data = <span class="keyword">new</span> Data();</span><br><span class="line">    data.setAction(<span class="string">&quot;add&quot;</span>);</span><br><span class="line">    data.setId(<span class="string">&quot;1&quot;</span>);</span><br><span class="line">    data.setOrdinal(<span class="number">8L</span>);</span><br><span class="line">    data.setOrganUnitFullName(<span class="string">&quot;testJSON&quot;</span>);</span><br><span class="line">    data.setParent(<span class="string">&quot;0&quot;</span>);</span><br><span class="line">    data.setSuborderNo(<span class="string">&quot;58961&quot;</span>);</span><br><span class="line"> </span><br><span class="line">    String s = JSON.toJSONString(data);</span><br><span class="line">    System.out.println(<span class="string">&quot;toJsonString()方法：s=&quot;</span> + s);</span><br><span class="line">    <span class="comment">//输出结果&#123;&quot;action&quot;:&quot;add&quot;,&quot;id&quot;:&quot;1&quot;,&quot;ordinal&quot;:8,&quot;organUnitFullName&quot;:&quot;testJSON&quot;,&quot;parent&quot;:&quot;0&quot;,&quot;suborderNo&quot;:&quot;58961&quot;&#125;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="JSON字符串转JSON对象"><a href="#JSON字符串转JSON对象" class="headerlink" title="JSON字符串转JSON对象"></a><strong>JSON</strong>字符串转<strong>JSON</strong>对象</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//json字符串转json对象</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">jsonToJsonBean</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    String s =<span class="string">&quot;&#123;\&quot;action\&quot;:\&quot;add\&quot;,\&quot;id\&quot;:\&quot;1\&quot;,\&quot;ordinal\&quot;:8,\&quot;organUnitFullName\&quot;:\&quot;testJSON\&quot;,\&quot;parent\&quot;:\&quot;0\&quot;,\&quot;suborderNo\&quot;:\&quot;58961\&quot;&#125;&quot;</span>;</span><br><span class="line"> </span><br><span class="line">    JSONObject jsonObject = JSON.parseObject(s);</span><br><span class="line">    String action = jsonObject.getString(<span class="string">&quot;action&quot;</span>);</span><br><span class="line">    String id = jsonObject.getString(<span class="string">&quot;id&quot;</span>);</span><br><span class="line">    System.out.println(<span class="string">&quot;action =&quot;</span>+action);<span class="comment">//add</span></span><br><span class="line">    System.out.println(<span class="string">&quot;id =&quot;</span>+id);<span class="comment">//1</span></span><br><span class="line">    System.out.println(<span class="string">&quot;jsonObject =&quot;</span>+jsonObject);</span><br><span class="line">    <span class="comment">//action =add</span></span><br><span class="line">    <span class="comment">//id =1</span></span><br><span class="line">    <span class="comment">//jsonObject =&#123;&quot;parent&quot;:&quot;0&quot;,&quot;organUnitFullName&quot;:&quot;testJSON&quot;,&quot;action&quot;:&quot;add&quot;,&quot;id&quot;:&quot;1&quot;,&quot;suborderNo&quot;:&quot;58961&quot;,&quot;ordinal&quot;:8&#125;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="复杂JSON格式字符串与JSONObject之间的转换"><a href="#复杂JSON格式字符串与JSONObject之间的转换" class="headerlink" title="复杂JSON格式字符串与JSONObject之间的转换"></a>复杂<strong>JSON</strong>格式字符串与<strong>JSONObject</strong>之间的转换</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">jsonToBean</span><span class="params">()</span> </span>&#123;</span><br><span class="line">       String str =<span class="string">&quot;&#123;\&quot;meta\&quot;:&#123;\&quot;code\&quot;:\&quot;0\&quot;,\&quot;message\&quot;:\&quot;同步成功!\&quot;&#125;,\&quot;data\&quot;:&#123;\&quot;orderno\&quot;:\&quot;U_2018062790915774\&quot;,\&quot;suborderno\&quot;:\&quot;SUB_2018062797348039\&quot;,\&quot;type\&quot;:\&quot;organunit\&quot;,\&quot;result\&quot;:&#123;\&quot;organunit\&quot;:&#123;\&quot;totalCount\&quot;:2,\&quot;successCount\&quot;:0,\&quot;failCount\&quot;:2,\&quot;errors\&quot;:[&#123;\&quot;code\&quot;:\&quot;UUM70004\&quot;,\&quot;message\&quot;:\&quot;组织单元名称不能为空\&quot;,\&quot;data\&quot;:&#123;\&quot;id\&quot;:\&quot;254\&quot;,\&quot;suborderNo\&quot;:\&quot;SUB_2018062797348039\&quot;,\&quot;organUnitType\&quot;:\&quot;部门\&quot;,\&quot;action\&quot;:\&quot;add\&quot;,\&quot;parent\&quot;:\&quot;10000\&quot;,\&quot;ordinal\&quot;:0,\&quot;organUnitFullName\&quot;:\&quot;组织单元全称\&quot;&#125;,\&quot;success\&quot;:false&#125;,&#123;\&quot;code\&quot;:\&quot;UUM70004\&quot;,\&quot;message\&quot;:\&quot;组织单元名称不能为空\&quot;,\&quot;data\&quot;:&#123;\&quot;id\&quot;:\&quot;255\&quot;,\&quot;suborderNo\&quot;:\&quot;SUB_2018062797348039\&quot;,\&quot;organUnitType\&quot;:\&quot;部门\&quot;,\&quot;action\&quot;:\&quot;add\&quot;,\&quot;parent\&quot;:\&quot;10000\&quot;,\&quot;ordinal\&quot;:0,\&quot;organUnitFullName\&quot;:\&quot;组织单元全称\&quot;&#125;,\&quot;success\&quot;:false&#125;]&#125;,\&quot;role\&quot;:&#123;\&quot;totalCount\&quot;:0,\&quot;successCount\&quot;:0,\&quot;failCount\&quot;:0,\&quot;errors\&quot;:[]&#125;,\&quot;user\&quot;:&#123;\&quot;totalCount\&quot;:0,\&quot;successCount\&quot;:0,\&quot;failCount\&quot;:0,\&quot;errors\&quot;:[]&#125;&#125;&#125;&#125;&quot;</span>;</span><br><span class="line">       JSONObject jsonObject = JSON.parseObject(str);</span><br><span class="line">       JSONObject data = jsonObject.getJSONObject(<span class="string">&quot;data&quot;</span>);</span><br><span class="line">       JSONObject result = data.getJSONObject(<span class="string">&quot;result&quot;</span>);</span><br><span class="line"></span><br><span class="line">       String organunit1 = result.getString(<span class="string">&quot;organunit&quot;</span>);</span><br><span class="line">       System.out.println(organunit1);</span><br><span class="line">       JSONObject organunit = result.getJSONObject(<span class="string">&quot;organunit&quot;</span>);</span><br><span class="line"></span><br><span class="line">       JSONArray errors2 = organunit.getJSONArray(<span class="string">&quot;errors&quot;</span>);</span><br><span class="line"></span><br><span class="line">       List&lt;Error&gt; error = JSON.parseObject(errors2.toJSONString(), <span class="keyword">new</span> TypeReference&lt;List&lt;Error&gt;&gt;() &#123;</span><br><span class="line">       &#125;);</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="JSON字符串转JAVA简单对象"><a href="#JSON字符串转JAVA简单对象" class="headerlink" title="JSON字符串转JAVA简单对象"></a><strong>JSON</strong>字符串转<strong>JAVA</strong>简单对象</h3><h4 id="方式一"><a href="#方式一" class="headerlink" title="方式一"></a>方式一</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//json字符串转java简单对象</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">jsonStrToJavaBean</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        String s =<span class="string">&quot;&#123;\&quot;action\&quot;:\&quot;add\&quot;,\&quot;id\&quot;:\&quot;1\&quot;,\&quot;ordinal\&quot;:8,\&quot;organUnitFullName\&quot;:\&quot;testJSON\&quot;,\&quot;parent\&quot;:\&quot;0\&quot;,\&quot;suborderNo\&quot;:\&quot;58961\&quot;&#125;&quot;</span>;</span><br><span class="line">        Data data = JSON.parseObject(s, Data.class);</span><br><span class="line">        System.out.println(<span class="string">&quot;data对象&quot;</span>+data.toString());</span><br><span class="line">        System.out.println(<span class="string">&quot;action=&quot;</span>+data.getAction()+<span class="string">&quot;---id=&quot;</span>+data.getId());</span><br><span class="line">        <span class="comment">//data对象Data&#123;id=&#x27;1&#x27;, suborderNo=&#x27;58961&#x27;, organUnitType=&#x27;null&#x27;, action=&#x27;add&#x27;, parent=&#x27;0&#x27;, organUnitFullName=&#x27;testJSON&#x27;, ordinal=8&#125;</span></span><br><span class="line">        <span class="comment">//action=add---id=1</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="方式二"><a href="#方式二" class="headerlink" title="方式二"></a>方式二</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">       * 另一种方式转对象</span></span><br><span class="line"><span class="comment">       */</span></span><br><span class="line">      Data dd = JSON.parseObject(s, <span class="keyword">new</span> TypeReference&lt;Data&gt;() &#123;&#125;);</span><br><span class="line">      System.out.println(<span class="string">&quot;另一种方式获取data对象&quot;</span>+dd.toString());</span><br><span class="line">      System.out.println(<span class="string">&quot;另一种方式获取=&quot;</span>+dd.getAction()+<span class="string">&quot;---id=&quot;</span>+dd.getId());</span><br><span class="line">      <span class="comment">//另一种方式获取data对象Data&#123;id=&#x27;1&#x27;, suborderNo=&#x27;58961&#x27;, organUnitType=&#x27;null&#x27;, action=&#x27;add&#x27;, parent=&#x27;0&#x27;, organUnitFullName=&#x27;testJSON&#x27;, ordinal=8&#125;</span></span><br><span class="line">      <span class="comment">//另一种方式获取=add---id=1</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="Map转JSON"><a href="#Map转JSON" class="headerlink" title="Map转JSON"></a>Map转JSON</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Map&lt;String, Object&gt; map = <span class="keyword">new</span> HashMap&lt;String, Object&gt;();</span><br><span class="line">map.put(<span class="string">&quot;a&quot;</span>, <span class="string">&quot;a&quot;</span>);</span><br><span class="line">map.put(<span class="string">&quot;b&quot;</span>, <span class="string">&quot;123&quot;</span>);</span><br><span class="line"></span><br><span class="line">JSONObject json = <span class="keyword">new</span> JSONObject(map);</span><br></pre></td></tr></table></figure>
+
+<h3 id="map转string"><a href="#map转string" class="headerlink" title="map转string"></a>map转string</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Map&lt;String, Object&gt; map = <span class="keyword">new</span> HashMap&lt;&gt;();</span><br><span class="line">map.put(<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b&quot;</span>);</span><br><span class="line">String s = JSONObject.toJSONString(map);</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="JSON转String"><a href="#JSON转String" class="headerlink" title="JSON转String"></a>JSON转String</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">JSONObject json = <span class="keyword">new</span> JSONObject();</span><br><span class="line">json.put(<span class="string">&quot;c&quot;</span>, <span class="string">&quot;v&quot;</span>);</span><br><span class="line">json.put(<span class="string">&quot;z&quot;</span>, <span class="string">&quot;123n);</span></span><br><span class="line"><span class="string">         json.toJSONString();</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="JSON转Map"><a href="#JSON转Map" class="headerlink" title="JSON转Map"></a>JSON转Map</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">JSONObject json = <span class="keyword">new</span> JSONObject();</span><br><span class="line">json.put(<span class="string">&quot;ccc&quot;</span>, <span class="string">&quot;321&quot;</span>);</span><br><span class="line">json.put(<span class="string">&quot;bbb&quot;</span>, <span class="string">&quot;123&quot;</span>);</span><br><span class="line">Map&lt;String, Object&gt; map = (Map&lt;String, Object&gt;)json;</span><br></pre></td></tr></table></figure>
+
+<h3 id="String转JSON"><a href="#String转JSON" class="headerlink" title="String转JSON"></a>String转JSON</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">String str = <span class="string">&quot;&#123;\&quot;username\&quot;:\&quot;dsad\&quot;,\&quot;qwewqe\&quot;:\&quot;123\&quot;&#125;&quot;</span>;</span><br><span class="line">JSONObject json = JSONObject.parseObject(str);</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+             <div class="post-tags">
+              <a href="/tags/fastJson/" rel="tag"><i class="fa fa-tag"></i> fastJson</a>
+          </div>
+          <script type="text/javascript">
+            var tagsall=document.getElementsByClassName("post-tags")
+            for (var i = tagsall.length - 1; i >= 0; i--){
+                var tags=tagsall[i].getElementsByTagName("a");
+                for (var j = tags.length - 1; j >= 0; j--) {
+                    var golden_ratio = 0.618033988749895;
+                    var s = 0.5;
+                    var v = 0.999;
+                    var h = golden_ratio + Math.random()*0.8 - 0.5;
+                    var h_i = parseInt(h * 6);
+                    var f = h * 6 - h_i;
+                    var p = v * (1 - s);
+                    var q = v * (1 - f * s);
+                    var t = v * (1 - (1 - f) * s);
+                    var r, g, b;
+                    switch (h_i) {
+                        case 0:
+                            r = v;
+                            g = t;
+                            b = p;
+                            break;
+                        case 1:
+                            r = q;
+                            g = v;
+                            b = p;
+                            break;
+                        case 2:
+                            r = p;
+                            g = v;
+                            b = t;
+                            break;
+                        case 3 :
+                            r = p;
+                            g = q;
+                            b = v;
+                            break;
+                        case 4:
+                            r = t;
+                            g = p;
+                            b = v;
+                            break;
+                        case 5:
+                            r = v;
+                            g = p;
+                            b = q;
+                            break;
+                        default:
+                            r = 1;
+                            g = 1;
+                            b = 1;
+                      }
+                    tags[j].style.background = "rgba("+parseInt(r*255)+","+parseInt(g*255)+","+parseInt(b*255)+","+0.5+")";
+                }
+            }                        
+            </script>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/posts/bf1e.html" rel="prev" title="Date,String,时间戳相互转换">
+      <i class="fa fa-chevron-left"></i> Date,String,时间戳相互转换
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/posts/37a4.html" rel="next" title="corn表达式">
+      corn表达式 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E7%AE%80%E4%BB%8B"><span class="nav-number">1.</span> <span class="nav-text">一、简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81JSONObject%E5%92%8CMap%E7%9A%84%E5%8C%BA%E5%88%AB"><span class="nav-number">2.</span> <span class="nav-text">二、JSONObject和Map的区别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81Java%E5%AF%B9%E5%BA%94%E7%9A%84json%E6%A0%BC%E5%BC%8F"><span class="nav-number">3.</span> <span class="nav-text">三、Java对应的json格式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-list"><span class="nav-number">3.1.</span> <span class="nav-text">1.list</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-map"><span class="nav-number">3.2.</span> <span class="nav-text">2.map</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-javaBean"><span class="nav-number">3.3.</span> <span class="nav-text">3.javaBean</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-list%E4%B8%AD%E6%9C%89javaBean"><span class="nav-number">3.4.</span> <span class="nav-text">4.list中有javaBean</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E4%BD%BF%E7%94%A8"><span class="nav-number">4.</span> <span class="nav-text">四、使用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#JAVA%E5%AF%B9%E8%B1%A1%E8%BD%ACJSON%E5%AD%97%E7%AC%A6%E4%B8%B2"><span class="nav-number">4.1.</span> <span class="nav-text">JAVA对象转JSON字符串</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#JSON%E5%AD%97%E7%AC%A6%E4%B8%B2%E8%BD%ACJSON%E5%AF%B9%E8%B1%A1"><span class="nav-number">4.2.</span> <span class="nav-text">JSON字符串转JSON对象</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%8D%E6%9D%82JSON%E6%A0%BC%E5%BC%8F%E5%AD%97%E7%AC%A6%E4%B8%B2%E4%B8%8EJSONObject%E4%B9%8B%E9%97%B4%E7%9A%84%E8%BD%AC%E6%8D%A2"><span class="nav-number">4.3.</span> <span class="nav-text">复杂JSON格式字符串与JSONObject之间的转换</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#JSON%E5%AD%97%E7%AC%A6%E4%B8%B2%E8%BD%ACJAVA%E7%AE%80%E5%8D%95%E5%AF%B9%E8%B1%A1"><span class="nav-number">4.4.</span> <span class="nav-text">JSON字符串转JAVA简单对象</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%96%B9%E5%BC%8F%E4%B8%80"><span class="nav-number">4.4.1.</span> <span class="nav-text">方式一</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%96%B9%E5%BC%8F%E4%BA%8C"><span class="nav-number">4.4.2.</span> <span class="nav-text">方式二</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Map%E8%BD%ACJSON"><span class="nav-number">4.5.</span> <span class="nav-text">Map转JSON</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#map%E8%BD%ACstring"><span class="nav-number">4.6.</span> <span class="nav-text">map转string</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#JSON%E8%BD%ACString"><span class="nav-number">4.7.</span> <span class="nav-text">JSON转String</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#JSON%E8%BD%ACMap"><span class="nav-number">4.8.</span> <span class="nav-text">JSON转Map</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#String%E8%BD%ACJSON"><span class="nav-number">4.9.</span> <span class="nav-text">String转JSON</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Lei"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Lei</p>
+  <div class="site-description" itemprop="description">The Art of Code Documentation</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">42</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">31</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/leoleiv8x" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;leoleiv8x" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/qq_43583755" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;qq_43583755" rel="noopener" target="_blank"><i class="fab fa-telegram fa-fw"></i>CSDN</a>
+      </span>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Lei</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">140k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">2:07</span>
+</div>
+
+<!-- 网站运行时间的设置 -->
+<span id="timeDate">载入天数...</span>
+<span id="times">载入时分秒...</span>
+<script>
+    var now = new Date();
+    function createtime() {
+        var grt= new Date("12/12/2021 12:00:00");//此处修改你的建站时间或者网站上线时间
+        now.setTime(now.getTime()+250);
+        days = (now - grt ) / 1000 / 60 / 60 / 24; dnum = Math.floor(days);
+        hours = (now - grt ) / 1000 / 60 / 60 - (24 * dnum); hnum = Math.floor(hours);
+        if(String(hnum).length ==1 ){hnum = "0" + hnum;} minutes = (now - grt ) / 1000 /60 - (24 * 60 * dnum) - (60 * hnum);
+        mnum = Math.floor(minutes); if(String(mnum).length ==1 ){mnum = "0" + mnum;}
+        seconds = (now - grt ) / 1000 - (24 * 60 * 60 * dnum) - (60 * 60 * hnum) - (60 * mnum);
+        snum = Math.round(seconds); if(String(snum).length ==1 ){snum = "0" + snum;}
+        document.getElementById("timeDate").innerHTML = "本站已安全运行 "+dnum+" 天 ";
+        document.getElementById("times").innerHTML = hnum + " 小时 " + mnum + " 分 " + snum + " 秒";
+    }
+    setInterval("createtime()",250);
+</script>
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+<span><br></span> 
+
+<span class="post-meta-item-icon">
+      <i class="fa fa-user"></i>
+</span>
+<span>总访客&nbsp<span id="busuanzi_value_site_uv"></span>&nbsp人</span>
+    <span class="post-meta-divider">|</span>
+<span class="post-meta-item-icon">
+      <i class="fa fa-eye"></i>
+</span>
+    <span>总访问量&nbsp<span id="busuanzi_value_site_pv"></span>&nbsp次</span>
+
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/lozad@1/dist/lozad.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"jsonPath":"/live2dw/assets/assets/hijiki.model.json"},"display":{"position":"right","width":150,"height":300},"mobile":{"show":true},"react":{"opacity":0.7},"log":false});</script></body>
+</html>

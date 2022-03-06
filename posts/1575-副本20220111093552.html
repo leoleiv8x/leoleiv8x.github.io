@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"leoleiv8x.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":true,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="本章讲解的是redis的常用API和常见的场景,如下图所示">
+<meta property="og:type" content="article">
+<meta property="og:title" content="redis的value类型解析">
+<meta property="og:url" content="https://leoleiv8x.github.io/posts/1575.html">
+<meta property="og:site_name" content="LENO">
+<meta property="og:description" content="本章讲解的是redis的常用API和常见的场景,如下图所示">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1637998686120.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128202540989.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638000624143.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638000926518.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638001173047.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638001545120.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638002224112.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638002458992.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638176278061.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128151649493.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638003274165.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638003845796.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128151433771.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128154528738.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128155633153.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128152434516.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128152528523.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128202637232.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638154213403.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128200037607.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128195726893.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128201543625.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128201701012.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128202002296.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128202257417.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638154598316.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638154981515.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638155697036.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638155886884.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638156194292.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638156671341.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638158201777.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638158371343.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638167112710.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638170880938.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638170861034.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638168037040.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638172713521.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638172803779.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638173078107.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638173743122.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638179087443.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129201925402.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129201954441.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638177564552.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638177609700.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638178076945.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638178367680.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638178523331.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129203224465.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129203208056.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129205139379.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129211537765.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129211845952.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129211946576.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129212415472.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129212747620.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129221416280.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129222611683.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129222931630.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129223108111.png">
+<meta property="article:published_time" content="2021-12-12T07:36:52.000Z">
+<meta property="article:modified_time" content="2021-12-12T11:58:40.891Z">
+<meta property="article:author" content="Lei">
+<meta property="article:tag" content="redis">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leoleiv8x.github.io/images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1637998686120.png">
+
+<link rel="canonical" href="https://leoleiv8x.github.io/posts/1575.html">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>redis的value类型解析 | LENO</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">LENO</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Keep track of your life</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://leoleiv8x.github.io/posts/1575.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Lei">
+      <meta itemprop="description" content="The Art of Code Documentation">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="LENO">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          redis的value类型解析
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-12-12 15:36:52 / 修改时间：19:58:40" itemprop="dateCreated datePublished" datetime="2021-12-12T15:36:52+08:00">2021-12-12</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%BB%8E%E7%BD%91%E7%BB%9C%E5%88%B0%E5%88%86%E5%B8%83%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">从网络到分布式</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.5k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>2 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>本章讲解的是redis的常用API和常见的场景,如下图所示</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1637998686120.png" alt="1637998686120"></p>
+<span id="more"></span>
+
+<h2 id="一、string"><a href="#一、string" class="headerlink" title="一、string"></a>一、string</h2><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128202540989.png" alt="image-20211128202540989"></p>
+<h3 id="1-字符串-值的基本操作"><a href="#1-字符串-值的基本操作" class="headerlink" title="1.字符串(值的基本操作)"></a>1.字符串(值的基本操作)</h3><h4 id="1-set-NX-XX-方法"><a href="#1-set-NX-XX-方法" class="headerlink" title="1.set(NX|XX)方法"></a>1.set(NX|XX)方法</h4><p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638000624143.png" alt="1638000624143"></p>
+<ul>
+<li>默认 有key覆盖,没key就创建<br>NX    Only set the key if it does not already exist.  -只能新建</li>
+<li>XX  Only set the key if it already exist. -只能更新</li>
+</ul>
+<h4 id="2-mset和mget"><a href="#2-mset和mget" class="headerlink" title="2.mset和mget"></a>2.mset和mget</h4><p>​    msetnx(原子性操作)</p>
+<p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638000926518.png" alt="1638000926518"></p>
+<h4 id="3-append"><a href="#3-append" class="headerlink" title="3.append"></a>3.append</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638001173047.png" alt="1638001173047"></p>
+<h4 id="4-setrange和getrange"><a href="#4-setrange和getrange" class="headerlink" title="4.setrange和getrange"></a>4.setrange和getrange</h4><ul>
+<li><p>正反向索引</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638001545120.png" alt="1638001545120"></p>
+<p>setrange中如果set的value值长度大于原来的值,会改变key长度并添加</p>
+</li>
+</ul>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638002224112.png" alt="1638002224112"></p>
+<h4 id="5-strlen"><a href="#5-strlen" class="headerlink" title="5.strlen"></a>5.strlen</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638002458992.png" alt="1638002458992"></p>
+<h3 id="2-数值"><a href="#2-数值" class="headerlink" title="2.数值"></a>2.数值</h3><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638176278061.png" alt="1638176278061"></p>
+<h4 id="1-redis的优化机制"><a href="#1-redis的优化机制" class="headerlink" title="1.redis的优化机制"></a>1.<strong>redis的优化机制</strong></h4><p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128151649493.png" alt="image-20211128151649493"></p>
+<h5 id="1-type"><a href="#1-type" class="headerlink" title="(1) type"></a>(1) type</h5><p>​            <strong>对于每个key都有一个type</strong></p>
+<p>​            <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638003274165.png" alt="1638003274165"></p>
+<p>​            命令是哪个分组的,set之后的value就是哪个类型的</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638003845796.png" alt="1638003845796"></p>
+<h5 id="2-encoding"><a href="#2-encoding" class="headerlink" title="(2)encoding"></a>(2)encoding</h5><p>​    随着不同的api操作encoding会改变</p>
+<h6 id="1-int"><a href="#1-int" class="headerlink" title="1.int"></a>1.int</h6><p>​                这里的set进去的string类型的k2的encoding是int类型,因为它的value是一个数值99,所以通过判断encoding类                型我们还可以进行数值对应的api操作</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128151433771.png" alt="image-20211128151433771"></p>
+<h6 id="2-embstr"><a href="#2-embstr" class="headerlink" title="2.embstr"></a>2.embstr</h6><h6 id="3-raw"><a href="#3-raw" class="headerlink" title="3.raw"></a>3.raw</h6><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128154528738.png" alt="image-20211128154528738"></p>
+<h5 id="3-原子性操作"><a href="#3-原子性操作" class="headerlink" title="(3)原子性操作"></a>(3)原子性操作</h5><p>​    mgetset原子性操作,通过一个命令进行一次通信,减少了一次通信该过程,减少了IO</p>
+<h5 id="4-二进制安全"><a href="#4-二进制安全" class="headerlink" title="(4)二进制安全"></a>(4)二进制安全</h5><p>流分为字节流和字符流.</p>
+<p>redis传输走的是字节流,只要双方有一致的编解码,数据就不会破坏,不会影响数据的存储</p>
+<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">set k1 99</span><br><span class="line">那么它会事先判断能否数字计算,如果能encoding就是int类型</span><br><span class="line">下次调用加减的时候就可以少进行一次判断,提高性能,但他底层还是二进制进行加减的</span><br></pre></td></tr></table></figure>
+
+<p>如下图,分别在k2和k3中存入了UTF8和GBK格式的’中’,启动客户端不加–raw的话就默认为asscii码,加了就是本地的编码</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128155633153.png" alt="image-20211128155633153"></p>
+<h4 id="2-APi"><a href="#2-APi" class="headerlink" title="2.APi"></a>2.APi</h4><h5 id="1-incr-incrby和incrbyfloat"><a href="#1-incr-incrby和incrbyfloat" class="headerlink" title="(1).incr,incrby和incrbyfloat"></a>(1).incr,incrby和incrbyfloat</h5><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128152434516.png" alt="image-20211128152434516"></p>
+<h5 id="2-decr-decrby"><a href="#2-decr-decrby" class="headerlink" title="(2).decr,decrby"></a>(2).decr,decrby</h5><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128152528523.png" alt="image-20211128152528523"></p>
+<h3 id="3-bitmap-重要"><a href="#3-bitmap-重要" class="headerlink" title="3.bitmap(重要)"></a>3.bitmap(重要)</h3><p><strong>bitmap算得上redis的核心了,常见场景如下图所示:</strong></p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128202637232.png" alt="image-20211128202637232"></p>
+<h4 id="1-常见场景"><a href="#1-常见场景" class="headerlink" title="1.常见场景"></a>1.常见场景</h4><ol>
+<li><p><strong>场景一:有用户系统,统计用户登录天数,且窗口随机(在某个范围内统计用户登录的天数)</strong></p>
+<p>解决方式1    :    通过mysql存表查询获取</p>
+<p>解决方式2    :    通过redis操作解决(计算速度快,节省磁盘空间)</p>
+<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">指令:</span><br><span class="line"><span class="code">	1.设置天数</span></span><br><span class="line"><span class="code">		setbit sean 1 1</span></span><br><span class="line"><span class="code">		setbit sean 7 1</span></span><br><span class="line"><span class="code">		setbit sean 364 1</span></span><br><span class="line"><span class="code">		strlen sean // 长度</span></span><br><span class="line"><span class="code">	2.统计某个范围的天数(一个字节代表能表示8天)</span></span><br><span class="line"><span class="code">    	bitcount sean -2 -1</span></span><br><span class="line"><span class="code">通过上述设置可得到结果在redis存储</span></span><br><span class="line"><span class="code">日期(第几天):	1	2	3	4	5	6	7	8	9	10 	...	   </span></span><br><span class="line"><span class="code">	jack 	    0	1	0	1	0	1	0	1	0	1 	...</span></span><br><span class="line"><span class="code">	tom	 		1	1	0	1	0	1	1	0	0	0	...</span></span><br></pre></td></tr></table></figure></li>
+<li><p><strong>场景二:618做活动送礼物,大库备货多少礼物?假设有2亿用户</strong></p>
+<blockquote>
+<p>账号存在僵尸用户(冷热用户/忠诚用户)</p>
+<p>步骤:</p>
+<ol>
+<li><p>统计活跃用户(随机窗口)</p>
+<p>比如统计 2-3号都登陆的, 连续登录要去重</p>
+<p>​    <strong>key为天数,bit每一位代表一个用户,做或预算之后在统计</strong></p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638154213403.png" alt="1638154213403"></p>
+</li>
+</ol>
+</blockquote>
+</li>
+</ol>
+<h4 id="2-API"><a href="#2-API" class="headerlink" title="2.API"></a>2.API</h4><h5 id="1-setbit"><a href="#1-setbit" class="headerlink" title="1.setbit"></a>1.setbit</h5><p>​    基于redis的二进制安全,进行的二进制位图操作</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128200037607.png" alt="image-20211128200037607"></p>
+<p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128195726893.png" alt="image-20211128195726893"></p>
+<h5 id="2-bitpos"><a href="#2-bitpos" class="headerlink" title="2.bitpos"></a>2.bitpos</h5><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128201543625.png" alt="image-20211128201543625"></p>
+<h5 id="3-bitcount"><a href="#3-bitcount" class="headerlink" title="3.bitcount"></a>3.bitcount</h5><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128201701012.png" alt="image-20211128201701012"></p>
+<h5 id="4-bittop"><a href="#4-bittop" class="headerlink" title="4.bittop"></a>4.bittop</h5><p>​    可以进行位操作</p>
+<p>​            <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128202002296.png" alt="image-20211128202002296"></p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211128202257417.png" alt="image-20211128202257417"></p>
+<h2 id="二、list"><a href="#二、list" class="headerlink" title="二、list"></a>二、list</h2><h3 id="1-结构设计"><a href="#1-结构设计" class="headerlink" title="1.结构设计"></a>1.结构设计</h3><p>key上面有head和tail指针,可以通过key进行快速的访问</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638154598316.png" alt="1638154598316"></p>
+<p>相当于一个双向链表可以实现栈,队列等命令</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638154981515.png" alt="1638154981515"></p>
+<h3 id="2-API-1"><a href="#2-API-1" class="headerlink" title="2.API"></a>2.API</h3><h4 id="1-lpush和rpush"><a href="#1-lpush和rpush" class="headerlink" title="1.lpush和rpush"></a>1.lpush和rpush</h4><h4 id="2-lpop和rpop"><a href="#2-lpop和rpop" class="headerlink" title="2.lpop和rpop"></a>2.lpop和rpop</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638155697036.png" alt="1638155697036"></p>
+<h4 id="3-lrange和rrange-array"><a href="#3-lrange和rrange-array" class="headerlink" title="3.lrange和rrange(array)"></a>3.lrange和rrange(array)</h4><p>​        这里的l是指的list的意思,相当于是查找list指定索引的数据(redis有正反索引所以查找更快速)</p>
+<p>​        <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638155886884.png" alt="1638155886884"></p>
+<h4 id="4-lindex和lset-array"><a href="#4-lindex和lset-array" class="headerlink" title="4.lindex和lset(array)"></a>4.lindex和lset(array)</h4><p>​        单个索引获取元素</p>
+<p>​        <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638156194292.png" alt="1638156194292"></p>
+<h4 id="5-lrem和linsert"><a href="#5-lrem和linsert" class="headerlink" title="5.lrem和linsert"></a>5.lrem和linsert</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638156671341.png" alt="1638156671341"></p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638158201777.png" alt="1638158201777"></p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638158371343.png" alt="1638158371343"></p>
+<p>​    删除k3中后面两个a:</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638167112710.png" alt="1638167112710"></p>
+<h4 id="6-llen和ltrim"><a href="#6-llen和ltrim" class="headerlink" title="6.llen和ltrim"></a>6.llen和ltrim</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638170880938.png" alt="1638170880938"></p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638170861034.png" alt="1638170861034"></p>
+<h4 id="7-blpop-brpop-brpoplpush"><a href="#7-blpop-brpop-brpoplpush" class="headerlink" title="7.blpop,brpop,brpoplpush"></a>7.blpop,brpop,brpoplpush</h4><figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">阻塞的单播队列:</span><br><span class="line"><span class="code">		client1:</span></span><br><span class="line"><span class="code">			blpop key1 0</span></span><br><span class="line"><span class="code">		之后就会一直阻塞知道获取到key(可自定义超时时间)</span></span><br><span class="line"><span class="code">		client2:</span></span><br><span class="line"><span class="code">			blpop key1 0</span></span><br><span class="line"><span class="code">		client3:</span></span><br><span class="line"><span class="code">			blpush key1 1  -&gt;执行之后client1获取到</span></span><br><span class="line"><span class="code">			blpush key1 1  -&gt;执行之后client2获取到</span></span><br></pre></td></tr></table></figure>
+
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638168037040.png" alt="1638168037040"></p>
+<h2 id="三、hash"><a href="#三、hash" class="headerlink" title="三、hash"></a>三、hash</h2><ul>
+<li>hash的引入原因:</li>
+</ul>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638172713521.png" alt="1638172713521"></p>
+<h3 id="1-常用场景"><a href="#1-常用场景" class="headerlink" title="1.常用场景"></a>1.常用场景</h3><ul>
+<li>点赞,收藏,详情页(对filed进行数值的计算)</li>
+</ul>
+<h3 id="2-API-2"><a href="#2-API-2" class="headerlink" title="2.API"></a>2.API</h3><h4 id="1-hset和hget"><a href="#1-hset和hget" class="headerlink" title="1.hset和hget"></a>1.hset和hget</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638172803779.png" alt="1638172803779"></p>
+<h4 id="2-hkeys-hvals-hgetall"><a href="#2-hkeys-hvals-hgetall" class="headerlink" title="2.hkeys,hvals,hgetall"></a>2.hkeys,hvals,hgetall</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638173078107.png" alt="1638173078107"></p>
+<h4 id="3-hincrby-hincrbyfloat"><a href="#3-hincrby-hincrbyfloat" class="headerlink" title="3.hincrby,hincrbyfloat"></a>3.hincrby,hincrbyfloat</h4><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638173743122.png" alt="1638173743122"></p>
+<h2 id="四、set"><a href="#四、set" class="headerlink" title="四、set"></a>四、set</h2><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638179087443.png" alt="1638179087443"></p>
+<h3 id="1-特性"><a href="#1-特性" class="headerlink" title="1.特性"></a>1.特性</h3><ul>
+<li>无序</li>
+<li>随机</li>
+<li>去重</li>
+<li>放入的多少不同,元素存储的顺序不同</li>
+</ul>
+<h3 id="2-常用场景"><a href="#2-常用场景" class="headerlink" title="2.常用场景"></a>2.常用场景</h3><ul>
+<li><p><strong>场景1:随机抽10个奖品?</strong></p>
+<ol>
+<li>用户数量是否小于奖品数量</li>
+<li>用户中奖是否重复</li>
+</ol>
+</li>
+<li><p>解决</p>
+<p>srandmember key count</p>
+<ol>
+<li><p>正数:取出一个去重的结果集(不能超过已有集,也就是<strong>一个人最多中一件礼物</strong>)</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129201925402.png" alt="image-20211129201925402"></p>
+</li>
+<li><p>负数:取出一个带重复的结果集,一定要满足你要的数量(<strong>一个人可以中多件礼物</strong>)</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129201954441.png" alt="image-20211129201954441"></p>
+</li>
+<li><p>0:不返回</p>
+</li>
+</ol>
+</li>
+</ul>
+<h3 id="3-API"><a href="#3-API" class="headerlink" title="3.API"></a>3.API</h3><h4 id="1-sadd-去重-srem-smembers"><a href="#1-sadd-去重-srem-smembers" class="headerlink" title="1.sadd(去重),srem,smembers"></a>1.sadd(去重),srem,smembers</h4><p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638177564552.png" alt="1638177564552"></p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638177609700.png" alt="1638177609700"></p>
+<h4 id="2-sinter-sinterstore-交集"><a href="#2-sinter-sinterstore-交集" class="headerlink" title="2.sinter,sinterstore(交集)"></a>2.sinter,sinterstore(交集)</h4><p>​            </p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638178076945.png" alt="1638178076945"></p>
+<h4 id="3-sunion-sunionstore-并集且去重"><a href="#3-sunion-sunionstore-并集且去重" class="headerlink" title="3.sunion,sunionstore(并集且去重)"></a>3.sunion,sunionstore(并集且去重)</h4><p>​        </p>
+<p>​        <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638178367680.png" alt="1638178367680"></p>
+<h4 id="4-sdiff-sdiffstore-差集"><a href="#4-sdiff-sdiffstore-差集" class="headerlink" title="4.sdiff,sdiffstore(差集)"></a>4.sdiff,sdiffstore(差集)</h4><p>​        以第一个为基准,没有左右之分</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/1638178523331.png" alt="1638178523331"></p>
+<h4 id="5-srandmember-spop"><a href="#5-srandmember-spop" class="headerlink" title="5.srandmember,spop"></a>5.srandmember,spop</h4><ul>
+<li><p>srandmember</p>
+<p>整数-随机不重复</p>
+<p>负数-随机重复</p>
+</li>
+</ul>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129203224465.png" alt="image-20211129203224465"></p>
+<ul>
+<li><p>spop</p>
+<p>随机弹出</p>
+</li>
+</ul>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129203208056.png" alt="image-20211129203208056"></p>
+<h2 id="五、sorted-set"><a href="#五、sorted-set" class="headerlink" title="五、sorted_set"></a>五、sorted_set</h2><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129205139379.png" alt="image-20211129205139379"></p>
+<p>可以自定义进行排序,redis通过score来进行判断如何排序,</p>
+<p><strong>默认是左小右大顺序维护,且是实时的</strong></p>
+<p>也存在正反索引,都为1    则按照字典序来排列</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129211537765.png" alt="image-20211129211537765"></p>
+<h3 id="1-zadd-zrange"><a href="#1-zadd-zrange" class="headerlink" title="1.zadd,zrange"></a>1.zadd,zrange</h3><p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129211845952.png" alt="image-20211129211845952"></p>
+<h3 id="2-zrangebyscore-zrevrange"><a href="#2-zrangebyscore-zrevrange" class="headerlink" title="2.zrangebyscore,zrevrange"></a>2.zrangebyscore,zrevrange</h3><p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129211946576.png" alt="image-20211129211946576"></p>
+<p>​            从小到大取出前两个: zrange k1 0 1</p>
+<p>​            从大到小取出前两额: zrevrange k1 0 1</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129212415472.png" alt="image-20211129212415472"></p>
+<h3 id="3-zsocre-zrank"><a href="#3-zsocre-zrank" class="headerlink" title="3.zsocre,zrank"></a>3.zsocre,zrank</h3><p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129212747620.png" alt="image-20211129212747620"></p>
+<h3 id="4-zincrby"><a href="#4-zincrby" class="headerlink" title="4.zincrby"></a>4.zincrby</h3><ul>
+<li><p>场景</p>
+<p>歌曲排行榜,实时榜单,倒序</p>
+</li>
+</ul>
+<p>​    <img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129221416280.png" alt="image-20211129221416280"></p>
+<h3 id="5-zunionstore"><a href="#5-zunionstore" class="headerlink" title="5.zunionstore"></a>5.zunionstore</h3><ol>
+<li>如果不加权重和聚合函数,默认走的是权重都为1,且聚合函数为sum求和</li>
+</ol>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129222611683.png" alt="image-20211129222611683"></p>
+<ol start="2">
+<li><p>如果加上权重,不加聚合,相当于走默认的求和,权重相当于是对于原值的比例</p>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129222931630.png" alt="image-20211129222931630"></p>
+</li>
+<li><p>不加权重,聚合函数为max,则是返回两个相同中的score最大的</p>
+</li>
+</ol>
+<p><img data-src="../images/redis%E7%9A%84value%E7%B1%BB%E5%9E%8B%E8%A7%A3%E6%9E%90.asset/image-20211129223108111.png" alt="image-20211129223108111"></p>
+<h3 id="6"><a href="#6" class="headerlink" title="6."></a>6.</h3>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+             <div class="post-tags">
+              <a href="/tags/redis/" rel="tag"><i class="fa fa-tag"></i> redis</a>
+          </div>
+          <script type="text/javascript">
+            var tagsall=document.getElementsByClassName("post-tags")
+            for (var i = tagsall.length - 1; i >= 0; i--){
+                var tags=tagsall[i].getElementsByTagName("a");
+                for (var j = tags.length - 1; j >= 0; j--) {
+                    var golden_ratio = 0.618033988749895;
+                    var s = 0.5;
+                    var v = 0.999;
+                    var h = golden_ratio + Math.random()*0.8 - 0.5;
+                    var h_i = parseInt(h * 6);
+                    var f = h * 6 - h_i;
+                    var p = v * (1 - s);
+                    var q = v * (1 - f * s);
+                    var t = v * (1 - (1 - f) * s);
+                    var r, g, b;
+                    switch (h_i) {
+                        case 0:
+                            r = v;
+                            g = t;
+                            b = p;
+                            break;
+                        case 1:
+                            r = q;
+                            g = v;
+                            b = p;
+                            break;
+                        case 2:
+                            r = p;
+                            g = v;
+                            b = t;
+                            break;
+                        case 3 :
+                            r = p;
+                            g = q;
+                            b = v;
+                            break;
+                        case 4:
+                            r = t;
+                            g = p;
+                            b = v;
+                            break;
+                        case 5:
+                            r = v;
+                            g = p;
+                            b = q;
+                            break;
+                        default:
+                            r = 1;
+                            g = 1;
+                            b = 1;
+                      }
+                    tags[j].style.background = "rgba("+parseInt(r*255)+","+parseInt(g*255)+","+parseInt(b*255)+","+0.5+")";
+                }
+            }                        
+            </script>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/posts/3844.html" rel="prev" title="redis中RDB和AOF实操">
+      <i class="fa fa-chevron-left"></i> redis中RDB和AOF实操
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/posts/5e05.html" rel="next" title="redis的持久化机制RDB和AOF详解">
+      redis的持久化机制RDB和AOF详解 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81string"><span class="nav-number">1.</span> <span class="nav-text">一、string</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%AD%97%E7%AC%A6%E4%B8%B2-%E5%80%BC%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C"><span class="nav-number">1.1.</span> <span class="nav-text">1.字符串(值的基本操作)</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-set-NX-XX-%E6%96%B9%E6%B3%95"><span class="nav-number">1.1.1.</span> <span class="nav-text">1.set(NX|XX)方法</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-mset%E5%92%8Cmget"><span class="nav-number">1.1.2.</span> <span class="nav-text">2.mset和mget</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-append"><span class="nav-number">1.1.3.</span> <span class="nav-text">3.append</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-setrange%E5%92%8Cgetrange"><span class="nav-number">1.1.4.</span> <span class="nav-text">4.setrange和getrange</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-strlen"><span class="nav-number">1.1.5.</span> <span class="nav-text">5.strlen</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E6%95%B0%E5%80%BC"><span class="nav-number">1.2.</span> <span class="nav-text">2.数值</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-redis%E7%9A%84%E4%BC%98%E5%8C%96%E6%9C%BA%E5%88%B6"><span class="nav-number">1.2.1.</span> <span class="nav-text">1.redis的优化机制</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#1-type"><span class="nav-number">1.2.1.1.</span> <span class="nav-text">(1) type</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#2-encoding"><span class="nav-number">1.2.1.2.</span> <span class="nav-text">(2)encoding</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#1-int"><span class="nav-number">1.2.1.2.1.</span> <span class="nav-text">1.int</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#2-embstr"><span class="nav-number">1.2.1.2.2.</span> <span class="nav-text">2.embstr</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#3-raw"><span class="nav-number">1.2.1.2.3.</span> <span class="nav-text">3.raw</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-%E5%8E%9F%E5%AD%90%E6%80%A7%E6%93%8D%E4%BD%9C"><span class="nav-number">1.2.1.3.</span> <span class="nav-text">(3)原子性操作</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#4-%E4%BA%8C%E8%BF%9B%E5%88%B6%E5%AE%89%E5%85%A8"><span class="nav-number">1.2.1.4.</span> <span class="nav-text">(4)二进制安全</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-APi"><span class="nav-number">1.2.2.</span> <span class="nav-text">2.APi</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#1-incr-incrby%E5%92%8Cincrbyfloat"><span class="nav-number">1.2.2.1.</span> <span class="nav-text">(1).incr,incrby和incrbyfloat</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#2-decr-decrby"><span class="nav-number">1.2.2.2.</span> <span class="nav-text">(2).decr,decrby</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-bitmap-%E9%87%8D%E8%A6%81"><span class="nav-number">1.3.</span> <span class="nav-text">3.bitmap(重要)</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E5%B8%B8%E8%A7%81%E5%9C%BA%E6%99%AF"><span class="nav-number">1.3.1.</span> <span class="nav-text">1.常见场景</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-API"><span class="nav-number">1.3.2.</span> <span class="nav-text">2.API</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#1-setbit"><span class="nav-number">1.3.2.1.</span> <span class="nav-text">1.setbit</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#2-bitpos"><span class="nav-number">1.3.2.2.</span> <span class="nav-text">2.bitpos</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-bitcount"><span class="nav-number">1.3.2.3.</span> <span class="nav-text">3.bitcount</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#4-bittop"><span class="nav-number">1.3.2.4.</span> <span class="nav-text">4.bittop</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81list"><span class="nav-number">2.</span> <span class="nav-text">二、list</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E7%BB%93%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="nav-number">2.1.</span> <span class="nav-text">1.结构设计</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-API-1"><span class="nav-number">2.2.</span> <span class="nav-text">2.API</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-lpush%E5%92%8Crpush"><span class="nav-number">2.2.1.</span> <span class="nav-text">1.lpush和rpush</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-lpop%E5%92%8Crpop"><span class="nav-number">2.2.2.</span> <span class="nav-text">2.lpop和rpop</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-lrange%E5%92%8Crrange-array"><span class="nav-number">2.2.3.</span> <span class="nav-text">3.lrange和rrange(array)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-lindex%E5%92%8Clset-array"><span class="nav-number">2.2.4.</span> <span class="nav-text">4.lindex和lset(array)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-lrem%E5%92%8Clinsert"><span class="nav-number">2.2.5.</span> <span class="nav-text">5.lrem和linsert</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#6-llen%E5%92%8Cltrim"><span class="nav-number">2.2.6.</span> <span class="nav-text">6.llen和ltrim</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#7-blpop-brpop-brpoplpush"><span class="nav-number">2.2.7.</span> <span class="nav-text">7.blpop,brpop,brpoplpush</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81hash"><span class="nav-number">3.</span> <span class="nav-text">三、hash</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%B8%B8%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-number">3.1.</span> <span class="nav-text">1.常用场景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-API-2"><span class="nav-number">3.2.</span> <span class="nav-text">2.API</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-hset%E5%92%8Chget"><span class="nav-number">3.2.1.</span> <span class="nav-text">1.hset和hget</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-hkeys-hvals-hgetall"><span class="nav-number">3.2.2.</span> <span class="nav-text">2.hkeys,hvals,hgetall</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-hincrby-hincrbyfloat"><span class="nav-number">3.2.3.</span> <span class="nav-text">3.hincrby,hincrbyfloat</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81set"><span class="nav-number">4.</span> <span class="nav-text">四、set</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E7%89%B9%E6%80%A7"><span class="nav-number">4.1.</span> <span class="nav-text">1.特性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%B8%B8%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-number">4.2.</span> <span class="nav-text">2.常用场景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-API"><span class="nav-number">4.3.</span> <span class="nav-text">3.API</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-sadd-%E5%8E%BB%E9%87%8D-srem-smembers"><span class="nav-number">4.3.1.</span> <span class="nav-text">1.sadd(去重),srem,smembers</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-sinter-sinterstore-%E4%BA%A4%E9%9B%86"><span class="nav-number">4.3.2.</span> <span class="nav-text">2.sinter,sinterstore(交集)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-sunion-sunionstore-%E5%B9%B6%E9%9B%86%E4%B8%94%E5%8E%BB%E9%87%8D"><span class="nav-number">4.3.3.</span> <span class="nav-text">3.sunion,sunionstore(并集且去重)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-sdiff-sdiffstore-%E5%B7%AE%E9%9B%86"><span class="nav-number">4.3.4.</span> <span class="nav-text">4.sdiff,sdiffstore(差集)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-srandmember-spop"><span class="nav-number">4.3.5.</span> <span class="nav-text">5.srandmember,spop</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81sorted-set"><span class="nav-number">5.</span> <span class="nav-text">五、sorted_set</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-zadd-zrange"><span class="nav-number">5.1.</span> <span class="nav-text">1.zadd,zrange</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-zrangebyscore-zrevrange"><span class="nav-number">5.2.</span> <span class="nav-text">2.zrangebyscore,zrevrange</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-zsocre-zrank"><span class="nav-number">5.3.</span> <span class="nav-text">3.zsocre,zrank</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-zincrby"><span class="nav-number">5.4.</span> <span class="nav-text">4.zincrby</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-zunionstore"><span class="nav-number">5.5.</span> <span class="nav-text">5.zunionstore</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6"><span class="nav-number">5.6.</span> <span class="nav-text">6.</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Lei"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Lei</p>
+  <div class="site-description" itemprop="description">The Art of Code Documentation</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">42</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">31</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/leoleiv8x" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;leoleiv8x" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/qq_43583755" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;qq_43583755" rel="noopener" target="_blank"><i class="fab fa-telegram fa-fw"></i>CSDN</a>
+      </span>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Lei</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">140k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">2:07</span>
+</div>
+
+<!-- 网站运行时间的设置 -->
+<span id="timeDate">载入天数...</span>
+<span id="times">载入时分秒...</span>
+<script>
+    var now = new Date();
+    function createtime() {
+        var grt= new Date("12/12/2021 12:00:00");//此处修改你的建站时间或者网站上线时间
+        now.setTime(now.getTime()+250);
+        days = (now - grt ) / 1000 / 60 / 60 / 24; dnum = Math.floor(days);
+        hours = (now - grt ) / 1000 / 60 / 60 - (24 * dnum); hnum = Math.floor(hours);
+        if(String(hnum).length ==1 ){hnum = "0" + hnum;} minutes = (now - grt ) / 1000 /60 - (24 * 60 * dnum) - (60 * hnum);
+        mnum = Math.floor(minutes); if(String(mnum).length ==1 ){mnum = "0" + mnum;}
+        seconds = (now - grt ) / 1000 - (24 * 60 * 60 * dnum) - (60 * 60 * hnum) - (60 * mnum);
+        snum = Math.round(seconds); if(String(snum).length ==1 ){snum = "0" + snum;}
+        document.getElementById("timeDate").innerHTML = "本站已安全运行 "+dnum+" 天 ";
+        document.getElementById("times").innerHTML = hnum + " 小时 " + mnum + " 分 " + snum + " 秒";
+    }
+    setInterval("createtime()",250);
+</script>
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+<span><br></span> 
+
+<span class="post-meta-item-icon">
+      <i class="fa fa-user"></i>
+</span>
+<span>总访客&nbsp<span id="busuanzi_value_site_uv"></span>&nbsp人</span>
+    <span class="post-meta-divider">|</span>
+<span class="post-meta-item-icon">
+      <i class="fa fa-eye"></i>
+</span>
+    <span>总访问量&nbsp<span id="busuanzi_value_site_pv"></span>&nbsp次</span>
+
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/lozad@1/dist/lozad.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"jsonPath":"/live2dw/assets/assets/hijiki.model.json"},"display":{"position":"right","width":150,"height":300},"mobile":{"show":true},"react":{"opacity":0.7},"log":false});</script></body>
+</html>
