@@ -21,16 +21,20 @@
     var CONFIG = {"hostname":"leoleiv8x.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":true,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta property="og:type" content="article">
+  <meta name="description" content="Adapter 概念 Adapter就是一个适配器,就一个连接两个不相关东西的  例子 main - a() main方法中只有a(),但实际的话需要用到c() Adapter: a(c())">
+<meta property="og:type" content="article">
 <meta property="og:title" content="设计模式-Adapter">
 <meta property="og:url" content="https://leoleiv8x.github.io/posts/89d9.html">
 <meta property="og:site_name" content="LENO">
+<meta property="og:description" content="Adapter 概念 Adapter就是一个适配器,就一个连接两个不相关东西的  例子 main - a() main方法中只有a(),但实际的话需要用到c() Adapter: a(c())">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leoleiv8x.github.io/images/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-Adapter.asset/1641872516019.png">
 <meta property="article:published_time" content="2022-01-10T02:20:38.000Z">
-<meta property="article:modified_time" content="2022-01-10T14:45:27.528Z">
+<meta property="article:modified_time" content="2022-01-12T13:18:18.769Z">
 <meta property="article:author" content="Lei">
-<meta property="article:tag" content="HTTP请求接口工具">
+<meta property="article:tag" content="设计模式-适配器">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leoleiv8x.github.io/images/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-Adapter.asset/1641872516019.png">
 
 <link rel="canonical" href="https://leoleiv8x.github.io/posts/89d9.html">
 
@@ -213,17 +217,23 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2022-01-10 10:20:38 / 修改时间：22:45:27" itemprop="dateCreated datePublished" datetime="2022-01-10T10:20:38+08:00">2022-01-10</time>
+              <time title="创建时间：2022-01-10 10:20:38" itemprop="dateCreated datePublished" datetime="2022-01-10T10:20:38+08:00">2022-01-10</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-01-12 21:18:18" itemprop="dateModified" datetime="2022-01-12T21:18:18+08:00">2022-01-12</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E5%B7%A5%E5%85%B7/" itemprop="url" rel="index"><span itemprop="name">工具</span></a>
+                  <a href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">设计模式</span></a>
                 </span>
             </span>
 
@@ -233,7 +243,7 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>0</span>
+              <span>1.1k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
@@ -252,7 +262,52 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <span id="more"></span>
+        <h2 id="Adapter"><a href="#Adapter" class="headerlink" title="Adapter"></a>Adapter</h2><ul>
+<li><p>概念</p>
+<p>Adapter就是一个适配器,就一个连接两个不相关东西的</p>
+</li>
+<li><p>例子</p>
+<p>main - a() main方法中只有a(),但实际的话需要用到c()</p>
+<p>Adapter: a(c())</p>
+<span id="more"></span></li>
+<li><p><strong>注意事项</strong></p>
+<ol>
+<li>在我们经常遇见带Adapter的类其实不是使用的Adapter模式,而是为了方便实现接口的方法,用了一个类来实现,里面实现的方法是空方法</li>
+<li>我们常见到的Adapter和Bridage使用适配器模式经常是相反的(KeyAdapter,WindowAdapter)</li>
+</ol>
+</li>
+<li><p>场景</p>
+<ol>
+<li><p>JDK-IO</p>
+</li>
+<li><p>Java只能访问JDBC,SQLServer只能用ODBC</p>
+<p>所以要用一个JDBC-ODBC-Bridge,它使用的就是适配器模式</p>
+</li>
+</ol>
+</li>
+<li><p>UML</p>
+<p><img data-src="../images/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-Adapter.asset/1641872516019.png" alt="1641872516019"></p>
+</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> lei</span></span><br><span class="line"><span class="comment"> * &lt;p&gt;</span></span><br><span class="line"><span class="comment"> * &lt;p&gt;</span></span><br><span class="line"><span class="comment"> * Adapter模式并不是我们经常见到的XXXAdapter就是使用的此模式</span></span><br><span class="line"><span class="comment"> * Adapter就是一个适配器,就一个连接两个不相关东西的</span></span><br><span class="line"><span class="comment"> * 最简单的例子:</span></span><br><span class="line"><span class="comment"> * main - a() main方法中只有a(),但实际的话需要用到c()</span></span><br><span class="line"><span class="comment"> * Adapter: a(c())</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Main</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">        <span class="comment">//FileInputStream和BufferReader无关,但是使用InputStreamReader进行了连接</span></span><br><span class="line">        <span class="comment">//JDK中InputStreamReader就是用的适配器</span></span><br><span class="line">        FileInputStream fis = <span class="keyword">new</span> FileInputStream(<span class="string">&quot;//&quot;</span>);</span><br><span class="line">        InputStreamReader isr = <span class="keyword">new</span> InputStreamReader(fis);</span><br><span class="line">        BufferedReader br = <span class="keyword">new</span> BufferedReader(isr);</span><br><span class="line">        String line = br.readLine();</span><br><span class="line">        <span class="keyword">while</span> (line != <span class="keyword">null</span> &amp;&amp; !line.equals(<span class="string">&quot;&quot;</span>)) &#123;</span><br><span class="line">            System.out.println(line);</span><br><span class="line">        &#125;</span><br><span class="line">        br.close();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>总结:</p>
+<ol>
+<li><p>不能见名写了Adapter就以为是Adapter模式</p>
+</li>
+<li><p>场景</p>
+<p>Java中的IO和数据库访问 JDBC-ODBC-Bridge</p>
+</li>
+<li><p>一般情况下Bridgae和Adapter是相反的</p>
+</li>
+<li><p>理解</p>
+<p>A中只能调用a,但要用到c,所以要a(b(c))</p>
+<p>b则为适配器</p>
+</li>
+</ol>
+</blockquote>
+
     </div>
 
     
@@ -262,7 +317,7 @@
       <footer class="post-footer">
           <div class="post-tags">
              <div class="post-tags">
-              <a href="/tags/HTTP%E8%AF%B7%E6%B1%82%E6%8E%A5%E5%8F%A3%E5%B7%A5%E5%85%B7/" rel="tag"><i class="fa fa-tag"></i> HTTP请求接口工具</a>
+              <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-%E9%80%82%E9%85%8D%E5%99%A8/" rel="tag"><i class="fa fa-tag"></i> 设计模式-适配器</a>
           </div>
           <script type="text/javascript">
             var tagsall=document.getElementsByClassName("post-tags")
@@ -392,6 +447,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Adapter"><span class="nav-number">1.</span> <span class="nav-text">Adapter</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -420,7 +476,7 @@
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">36</span>
+        <span class="site-state-item-count">45</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -469,13 +525,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">151k</span>
+    <span title="站点总字数">168k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">2:17</span>
+    <span title="站点阅读时长">2:33</span>
 </div>
 
 <!-- 网站运行时间的设置 -->

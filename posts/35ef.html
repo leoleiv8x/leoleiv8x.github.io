@@ -21,16 +21,21 @@
     var CONFIG = {"hostname":"leoleiv8x.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":true,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta property="og:type" content="article">
+  <meta name="description" content="Chain of Responsibility 场景  过滤器 一个功能对应的多种场景   优点 需要添加其他的时候只需直接定义一个类添加进去即可,解耦  UML     代码实现常规实现方式123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555">
+<meta property="og:type" content="article">
 <meta property="og:title" content="设计模式-Chain Of Responsibility">
 <meta property="og:url" content="https://leoleiv8x.github.io/posts/35ef.html">
 <meta property="og:site_name" content="LENO">
+<meta property="og:description" content="Chain of Responsibility 场景  过滤器 一个功能对应的多种场景   优点 需要添加其他的时候只需直接定义一个类添加进去即可,解耦  UML     代码实现常规实现方式123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://leoleiv8x.github.io/posts/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-Chain-Of-Responsibility.assets/1642074489318.png">
+<meta property="og:image" content="https://leoleiv8x.github.io/posts/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-Chain-Of-Responsibility.assets/1642074493552.png">
 <meta property="article:published_time" content="2022-01-10T02:21:40.000Z">
-<meta property="article:modified_time" content="2022-01-10T14:45:27.528Z">
+<meta property="article:modified_time" content="2022-03-06T10:00:35.069Z">
 <meta property="article:author" content="Lei">
-<meta property="article:tag" content="HTTP请求接口工具">
+<meta property="article:tag" content="设计模式-责任链">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://leoleiv8x.github.io/posts/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-Chain-Of-Responsibility.assets/1642074489318.png">
 
 <link rel="canonical" href="https://leoleiv8x.github.io/posts/35ef.html">
 
@@ -213,17 +218,23 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2022-01-10 10:21:40 / 修改时间：22:45:27" itemprop="dateCreated datePublished" datetime="2022-01-10T10:21:40+08:00">2022-01-10</time>
+              <time title="创建时间：2022-01-10 10:21:40" itemprop="dateCreated datePublished" datetime="2022-01-10T10:21:40+08:00">2022-01-10</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-03-06 18:00:35" itemprop="dateModified" datetime="2022-03-06T18:00:35+08:00">2022-03-06</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E5%B7%A5%E5%85%B7/" itemprop="url" rel="index"><span itemprop="name">工具</span></a>
+                  <a href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">设计模式</span></a>
                 </span>
             </span>
 
@@ -233,14 +244,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>0</span>
+              <span>3.6k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>1 分钟</span>
+              <span>3 分钟</span>
             </span>
 
         </div>
@@ -253,6 +264,29 @@
 
       
         <span id="more"></span>
+
+<h2 id="Chain-of-Responsibility"><a href="#Chain-of-Responsibility" class="headerlink" title="Chain of Responsibility"></a>Chain of Responsibility</h2><ul>
+<li><p>场景</p>
+<ol>
+<li>过滤器</li>
+<li>一个功能对应的多种场景</li>
+</ol>
+</li>
+<li><p>优点</p>
+<p>需要添加其他的时候只需直接定义一个类添加进去即可,解耦</p>
+</li>
+<li><p>UML</p>
+<p><img data-src="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-Chain-Of-Responsibility.assets/1642074489318.png" alt="1642074489318"></p>
+</li>
+</ul>
+<p><img data-src="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-Chain-Of-Responsibility.assets/1642074493552.png" alt="1642074493552"></p>
+<h3 id="代码实现"><a href="#代码实现" class="headerlink" title="代码实现"></a>代码实现</h3><h4 id="常规实现方式"><a href="#常规实现方式" class="headerlink" title="常规实现方式"></a>常规实现方式</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 在filterChain中处理加入位置的记录</span></span><br><span class="line"><span class="comment"> * 同时在filter中加入第三个参数</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Servlet_Main</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        Request request = <span class="keyword">new</span> Request();</span><br><span class="line">        request.str = <span class="string">&quot;大家好:)，&lt;script&gt;，欢迎访问 mashibing.com ，大家都是996 &quot;</span>;</span><br><span class="line">        Response response = <span class="keyword">new</span> Response();</span><br><span class="line">        response.str = <span class="string">&quot;response&quot;</span>;</span><br><span class="line"></span><br><span class="line">        FilterChain chain = <span class="keyword">new</span> FilterChain();</span><br><span class="line">        chain.add(<span class="keyword">new</span> HTMLFilter()).add(<span class="keyword">new</span> SensitiveFilter());</span><br><span class="line">        chain.doFilter(request, response, chain);</span><br><span class="line">        System.out.println(request.str);</span><br><span class="line">        System.out.println(response.str);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">interface</span> <span class="title">Filter</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">doFilter</span><span class="params">(Request request, Response response, FilterChain chain)</span></span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">HTMLFilter</span> <span class="keyword">implements</span> <span class="title">Filter</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">doFilter</span><span class="params">(Request request, Response response, FilterChain chain)</span> </span>&#123;</span><br><span class="line">        request.str = request.str.replaceAll(<span class="string">&quot;&lt;&quot;</span>, <span class="string">&quot;[&quot;</span>).replaceAll(<span class="string">&quot;&gt;&quot;</span>, <span class="string">&quot;]&quot;</span>) + <span class="string">&quot;HTMLFilter()&quot;</span>;</span><br><span class="line">        chain.doFilter(request, response, chain);</span><br><span class="line">        response.str += <span class="string">&quot;--HTMLFilter()&quot;</span>;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Request</span> </span>&#123;</span><br><span class="line">    String str;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Response</span> </span>&#123;</span><br><span class="line">    String str;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SensitiveFilter</span> <span class="keyword">implements</span> <span class="title">Filter</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">doFilter</span><span class="params">(Request request, Response response, FilterChain chain)</span> </span>&#123;</span><br><span class="line">        request.str = request.str.replaceAll(<span class="string">&quot;996&quot;</span>, <span class="string">&quot;955&quot;</span>) + <span class="string">&quot; SensitiveFilter()&quot;</span>;</span><br><span class="line">        chain.doFilter(request, response, chain);</span><br><span class="line">        response.str += <span class="string">&quot;--SensitiveFilter()&quot;</span>;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">FilterChain</span> <span class="keyword">implements</span> <span class="title">Filter</span> </span>&#123;</span><br><span class="line">    List&lt;Filter&gt; filters = <span class="keyword">new</span> ArrayList&lt;&gt;();</span><br><span class="line">    <span class="keyword">int</span> index = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> FilterChain <span class="title">add</span><span class="params">(Filter f)</span> </span>&#123;</span><br><span class="line">        filters.add(f);</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">this</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">doFilter</span><span class="params">(Request request, Response response, FilterChain chain)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (index == filters.size()) <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">        Filter f = filters.get(index);</span><br><span class="line">        index++;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> f.doFilter(request, response, chain);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="模拟Servlet实现方式"><a href="#模拟Servlet实现方式" class="headerlink" title="模拟Servlet实现方式"></a>模拟Servlet实现方式</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 完全模式下的Servlet</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Servlet_Main</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        Request request = <span class="keyword">new</span> Request();</span><br><span class="line">        request.str = <span class="string">&quot;大家好:)，&lt;script&gt;，欢迎访问 mashibing.com ，大家都是996 &quot;</span>;</span><br><span class="line">        Response response = <span class="keyword">new</span> Response();</span><br><span class="line">        response.str = <span class="string">&quot;response&quot;</span>;</span><br><span class="line"></span><br><span class="line">        FilterChain chain = <span class="keyword">new</span> FilterChain();</span><br><span class="line">        chain.add(<span class="keyword">new</span> HTMLFilter()).add(<span class="keyword">new</span> SensitiveFilter());</span><br><span class="line">        chain.doFilter(request, response);</span><br><span class="line">        System.out.println(request.str);</span><br><span class="line">        System.out.println(response.str);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">interface</span> <span class="title">Filter</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">doFilter</span><span class="params">(Request request, Response response, FilterChain chain)</span></span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">HTMLFilter</span> <span class="keyword">implements</span> <span class="title">Filter</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doFilter</span><span class="params">(Request request, Response response, FilterChain chain)</span> </span>&#123;</span><br><span class="line">        request.str = request.str.replaceAll(<span class="string">&quot;&lt;&quot;</span>, <span class="string">&quot;[&quot;</span>).replaceAll(<span class="string">&quot;&gt;&quot;</span>, <span class="string">&quot;]&quot;</span>)</span><br><span class="line">                + <span class="string">&quot;HTMLFilter()&quot;</span>;</span><br><span class="line">        chain.doFilter(request, response);</span><br><span class="line">        response.str += <span class="string">&quot;--HTMLFilter()&quot;</span>;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Request</span> </span>&#123;</span><br><span class="line">    String str;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Response</span> </span>&#123;</span><br><span class="line">    String str;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SensitiveFilter</span> <span class="keyword">implements</span> <span class="title">Filter</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doFilter</span><span class="params">(Request request, Response response, FilterChain chain)</span> </span>&#123;</span><br><span class="line">        request.str = request.str.replaceAll(<span class="string">&quot;996&quot;</span>, <span class="string">&quot;955&quot;</span>) + <span class="string">&quot; SensitiveFilter()&quot;</span>;</span><br><span class="line">        chain.doFilter(request, response);</span><br><span class="line">        response.str += <span class="string">&quot;--SensitiveFilter()&quot;</span>;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">FilterChain</span> </span>&#123;</span><br><span class="line">    List&lt;Filter&gt; filters = <span class="keyword">new</span> ArrayList&lt;&gt;();</span><br><span class="line">    <span class="keyword">int</span> index = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> FilterChain <span class="title">add</span><span class="params">(Filter f)</span> </span>&#123;</span><br><span class="line">        filters.add(f);</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">this</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doFilter</span><span class="params">(Request request, Response response)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span>(index == filters.size()) <span class="keyword">return</span>;</span><br><span class="line">        Filter f = filters.get(index);</span><br><span class="line">        index ++;</span><br><span class="line"></span><br><span class="line">        f.doFilter(request, response, <span class="keyword">this</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
     </div>
 
     
@@ -262,7 +296,7 @@
       <footer class="post-footer">
           <div class="post-tags">
              <div class="post-tags">
-              <a href="/tags/HTTP%E8%AF%B7%E6%B1%82%E6%8E%A5%E5%8F%A3%E5%B7%A5%E5%85%B7/" rel="tag"><i class="fa fa-tag"></i> HTTP请求接口工具</a>
+              <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F-%E8%B4%A3%E4%BB%BB%E9%93%BE/" rel="tag"><i class="fa fa-tag"></i> 设计模式-责任链</a>
           </div>
           <script type="text/javascript">
             var tagsall=document.getElementsByClassName("post-tags")
@@ -392,6 +426,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Chain-of-Responsibility"><span class="nav-number">1.</span> <span class="nav-text">Chain of Responsibility</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="nav-number">1.1.</span> <span class="nav-text">代码实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%B8%B8%E8%A7%84%E5%AE%9E%E7%8E%B0%E6%96%B9%E5%BC%8F"><span class="nav-number">1.1.1.</span> <span class="nav-text">常规实现方式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A8%A1%E6%8B%9FServlet%E5%AE%9E%E7%8E%B0%E6%96%B9%E5%BC%8F"><span class="nav-number">1.1.2.</span> <span class="nav-text">模拟Servlet实现方式</span></a></li></ol></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -420,7 +455,7 @@
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">36</span>
+        <span class="site-state-item-count">45</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -469,13 +504,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">151k</span>
+    <span title="站点总字数">168k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">2:17</span>
+    <span title="站点阅读时长">2:33</span>
 </div>
 
 <!-- 网站运行时间的设置 -->
